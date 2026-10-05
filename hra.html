@@ -896,8 +896,8 @@ function returnToMainMenu() {
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
-  touchInputP1 = { vx: 0, vy: 0 };
-  touchInputP2 = { vx: 0, vy: 0 };
+  touchInputP1.vx = 0; touchInputP1.vy = 0;
+  touchInputP2.vx = 0; touchInputP2.vy = 0;
   document.getElementById('touch-controls').classList.add('hidden');
   document.getElementById('pc-hud-guide').classList.add('hidden');
   setWaitText(false);
@@ -1127,8 +1127,9 @@ function initGame() {
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
-  touchInputP1 = { vx: 0, vy: 0 };
-  touchInputP2 = { vx: 0, vy: 0 };
+  // Objekty se NESMÍ nahrazovat novými, joysticky drží odkaz na ty původní
+  touchInputP1.vx = 0; touchInputP1.vy = 0;
+  touchInputP2.vx = 0; touchInputP2.vy = 0;
   gameRunning = true;
 
   const touchUI = document.getElementById('touch-controls');
