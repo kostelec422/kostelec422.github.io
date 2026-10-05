@@ -134,7 +134,6 @@ text-align: left;
 ul { margin-left: 20px; margin-bottom: 15px; }
 
 .btn {
-background: linear-gradient(180deg, #8a2be2 0%, #4a148c 100%);
 background: linear-gradient(180deg, #b8860b 0%, #785202 100%);
 color: #fff;
 border: 2px solid #ffd700;
@@ -282,7 +281,7 @@ white-space: nowrap;
 <!-- HLAVNÍ MENU -->
 <div id="menu-main" class="overlay">
 <div class="panel">
-<h1>⚔️ Rytířský Souboj ⚔️</h1>
+<h1>⚔️ Rytířský Souboj ⚔️️</h1>
 <p style="text-align:center;">Vyber si zařízení a režim hry:</p>
 <div class="btn-group">
 <button class="btn" onclick="selectDevice('pc')">💻 Notebook / PC</button>
@@ -359,7 +358,7 @@ white-space: nowrap;
 <ul>
 <li>Každý hráč začíná s <strong>50 Životy (HP)</strong>.</li>
 <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
-<li><strong>ŠTÍT:</strong> Pokud držíš štít otočený k soupeři, <strong>100% odrazíš útok</strong> a fyzicky nepustíš meč ani soupeře skrz!</li>
+<li><strong>ŠTÍT:</strong> Pokud držíš štít, <strong>100% odrazíš útok</strong> a neodeberou se ti žádné životy!</li>
 <li><strong>LÉKÁRNIČKY:</strong> Padají z nebe! Když ji chytneš, přibude ti <strong>+10 HP</strong> (maximálně do 50 HP).</li>
 </ul>
 <h2>Pohyby a Ovládání:</h2>
@@ -425,6 +424,10 @@ const keys = {};
 
 // Hráči & Objekty
 let player1, player2, medkits = [], particles = [], floatingTexts = [];
+
+// Vstup z mobilního joysticku
+let touchInputP1 = { vx: 0, vy: 0 };
+let touchInputP2 = { vx: 0, vy: 0 };
 
 class Knight {
 constructor(x, y, color, isP2 = false) {
@@ -564,16 +567,12 @@ const swordReachX = this.x + dir * 38;
 const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
 
 if (dist < target.radius + 15) {
-// KONTROLA ŠTÍTU: Pokud target drží štít a seje proti útočníkovi
-const targetShieldingFacingAttacker = target.isShielding &&
-((target.facingRight && target.x < this.x) || (!target.facingRight && target.x > this.x));
-
-if (targetShieldingFacingAttacker) {
-// Útok ODRAŽEN ŠTÍTEM! Způsob jiskry a odraz
+// KONTROLA ŠTÍTU: Pokud target drží jakýkoliv štít, veškeré poškození je ZABLOKOVÁNO!
+if (target.isShielding) {
+// Útok ODRAŽEN ŠTÍTEM! (0 damage)
 createSparks(swordReachX, this.y, '#00ccff');
 createFloatingText('ODRAŽENO!', target.x, target.y - 45, '#00ccff');
-// Fyzický odraz zbraně
-this.x -= dir * 10;
+this.x -= dir * 12; // Odraz zbraně zpět
 } else {
 // ZÁSAH MEČEM! (-5 HP)
 target.hp = Math.max(0, target.hp - 5);
@@ -745,6 +744,8 @@ player2 = new Knight(canvas.width - 150, canvas.height / 2, '#ff4444', true);
 medkits = [];
 particles = [];
 floatingTexts = [];
+touchInputP1 = { vx: 0, vy: 0 };
+touchInputP2 = { vx: 0, vy: 0 };
 gameRunning = true;
 
 // Ovládání na mobilu
@@ -791,22 +792,26 @@ function update() {
 if (!gameRunning) return;
 
 // --- POHYB HRÁČE 1 ---
-player1.vx = 0; player1.vy = 0;
+player1.vx = touchInputP1.vx; 
+player1.vy = touchInputP1.vy;
+
 if (keys['KeyA'] || keys['a']) { player1.vx = -player1.speed; player1.facingRight = false; }
 if (keys['KeyD'] || keys['d']) { player1.vx = player1.speed; player1.facingRight = true; }
 if (keys['KeyW'] || keys['w']) { player1.vy = -player1.speed; }
 if (keys['KeyS'] || keys['s']) { player1.vy = player1.speed; }
-player1.isShielding = !!(keys['KeyG'] || keys['g']);
+if (keys['KeyG'] || keys['g']) { player1.isShielding = true; }
 if (keys['KeyF'] || keys['f']) { player1.attack(player2); }
 
 // --- POHYB HRÁČE 2 (NEBO AI) ---
-player2.vx = 0; player2.vy = 0;
 if (gameMode === 'pvp') {
+player2.vx = touchInputP2.vx;
+player2.vy = touchInputP2.vy;
+
 if (keys['ArrowLeft']) { player2.vx = -player2.speed; player2.facingRight = false; }
 if (keys['ArrowRight']) { player2.vx = player2.speed; player2.facingRight = true; }
 if (keys['ArrowUp']) { player2.vy = -player2.speed; }
 if (keys['ArrowDown']) { player2.vy = player2.speed; }
-player2.isShielding = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+if (keys['ShiftLeft'] || keys['ShiftRight']) { player2.isShielding = true; }
 if (keys['Space'] || keys[' ']) { player2.attack(player1); }
 } else {
 // LOGIKA POČÍTAČE (AI)
@@ -847,9 +852,9 @@ if (player1.hp <= 0 || player2.hp <= 0) {
 gameRunning = false;
 let msg = '';
 if (player1.hp > 0 && player2.hp <= 0) {
-msg = 'Hráč jedna ovládl arénu';
+msg = 'Hráč jedna ovládl arénu!';
 } else if (player2.hp > 0 && player1.hp <= 0) {
-msg = gameMode === 'ai' ? 'Počítač ovládl arénu' : 'Hráč dvě ovládl arénu';
+msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Hráč dvě ovládl arénu!';
 } else {
 msg = 'Oba rytíři padli!';
 }
@@ -886,6 +891,9 @@ let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75
 if (dist > 55) {
 player2.vx = (dx / dist) * player2.speed * speedMod;
 player2.vy = (dy / dist) * player2.speed * speedMod;
+} else {
+player2.vx = 0;
+player2.vy = 0;
 }
 
 // Krytí a útok AI
@@ -943,22 +951,26 @@ requestAnimationFrame(gameLoop);
 }
 gameLoop();
 
-// TOUCH JOYSTICK ENGINE (Mobil)
-function setupJoystick(zoneId, knobId, onChange) {
+// TOUCH JOYSTICK ENGINE (Opravený Multi-touch)
+function setupJoystick(zoneId, knobId, playerTarget, onDirectionChange) {
 const zone = document.getElementById(zoneId);
 const knob = document.getElementById(knobId);
-let active = false;
-let startX, startY;
+let touchId = null;
+let startX = 0, startY = 0;
 
 zone.addEventListener('touchstart', e => {
-active = true;
-const t = e.touches[0];
-startX = t.clientX; startY = t.clientY;
-});
+e.preventDefault();
+if (touchId === null) {
+const t = e.changedTouches[0];
+touchId = t.identifier;
+startX = t.clientX;
+startY = t.clientY;
+}
+}, { passive: false });
 
 window.addEventListener('touchmove', e => {
-if (!active) return;
-const t = Array.from(e.touches).find(touch => touch.target === zone || zone.contains(touch.target));
+if (touchId === null) return;
+const t = Array.from(e.touches).find(touch => touch.identifier === touchId);
 if (!t) return;
 
 const dx = t.clientX - startX;
@@ -972,39 +984,47 @@ const kx = Math.cos(angle) * moveR;
 const ky = Math.sin(angle) * moveR;
 
 knob.style.transform = `translate(${kx}px, ${ky}px)`;
-onChange(kx / maxR, ky / maxR);
-});
 
-const endHandler = () => {
-if (!active) return;
-active = false;
+const normX = kx / maxR;
+const normY = ky / maxR;
+
+onDirectionChange(normX, normY);
+}, { passive: false });
+
+const handleTouchEnd = e => {
+if (touchId === null) return;
+const t = Array.from(e.changedTouches).find(touch => touch.identifier === touchId);
+if (t) {
+touchId = null;
 knob.style.transform = `translate(0px, 0px)`;
-onChange(0, 0);
+onDirectionChange(0, 0);
+}
 };
-window.addEventListener('touchend', endHandler);
-window.addEventListener('touchcancel', endHandler);
+
+window.addEventListener('touchend', handleTouchEnd);
+window.addEventListener('touchcancel', handleTouchEnd);
 }
 
 // Nastavení virtuálních joysticků
-setupJoystick('p1-joystick-zone', 'p1-joystick-knob', (nx, ny) => {
+setupJoystick('p1-joystick-zone', 'p1-joystick-knob', player1, (nx, ny) => {
 if (!player1) return;
-player1.vx = nx * player1.speed;
-player1.vy = ny * player1.speed;
+touchInputP1.vx = nx * player1.speed;
+touchInputP1.vy = ny * player1.speed;
 if (nx !== 0) player1.facingRight = nx > 0;
 });
 
-setupJoystick('p2-joystick-zone', 'p2-joystick-knob', (nx, ny) => {
-if (!player2 || gameMode === 'ai') return;
-player2.vx = nx * player2.speed;
-player2.vy = ny * player2.speed;
+setupJoystick('p2-joystick-zone', 'p2-joystick-knob', player2, (nx, ny) => {
+if (!player2) return;
+touchInputP2.vx = nx * player2.speed;
+touchInputP2.vy = ny * player2.speed;
 if (nx !== 0) player2.facingRight = nx > 0;
 });
 
 // Tlačítka na mobilu
 const bindBtn = (id, onPress, onRelease) => {
 const el = document.getElementById(id);
-el.addEventListener('touchstart', e => { e.preventDefault(); onPress(); });
-el.addEventListener('touchend', e => { e.preventDefault(); if(onRelease) onRelease(); });
+el.addEventListener('touchstart', e => { e.preventDefault(); onPress(); }, { passive: false });
+el.addEventListener('touchend', e => { e.preventDefault(); if(onRelease) onRelease(); }, { passive: false });
 };
 
 bindBtn('p1-btn-attack', () => player1 && player1.attack(player2));
