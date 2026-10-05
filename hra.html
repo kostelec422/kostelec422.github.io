@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Rytířský Souboj - Knight Arena</title>
+<!-- Připojení PeerJS knihovny pro online multiplayer -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <style>
 * {
 box-sizing: border-box;
@@ -249,7 +251,6 @@ transform: scale(0.92);
 filter: brightness(1.3);
 }
 
-/* Návod dole na obrazovce pro PC */
 #pc-hud-guide {
 position: absolute;
 bottom: 8px;
@@ -269,7 +270,6 @@ white-space: nowrap;
 </head>
 <body>
 
-<!-- Varování na výšku -->
 <div id="rotate-warning">
 <div class="icon">📱</div>
 <h1>DEJ MOBIL NA ŠÍŘKU, ABY HRA FUNGOVALA!</h1>
@@ -281,7 +281,7 @@ white-space: nowrap;
 <!-- HLAVNÍ MENU -->
 <div id="menu-main" class="overlay">
 <div class="panel">
-<h1>⚔️ Rytířský Souboj ⚔️️</h1>
+<h1>⚔️ Rytířský Souboj ⚔</h1>
 <p style="text-align:center;">Vyber si zařízení a režim hry:</p>
 <div class="btn-group">
 <button class="btn" onclick="selectDevice('pc')">💻 Notebook / PC</button>
@@ -327,7 +327,7 @@ white-space: nowrap;
 </div>
 </div>
 
-<!-- WEB MULTIPLAYER -->
+<!-- WEB MULTIPLAYER (PeerJS) -->
 <div id="menu-web" class="overlay hidden">
 <div class="panel">
 <h1>Hra přes Web</h1>
@@ -338,19 +338,20 @@ white-space: nowrap;
 </div>
 <div id="room-display" class="hidden" style="margin-top:15px;">
 <p style="text-align:center;">Tůj 3místný kód: <strong id="room-code-num" style="font-size:28px; color:#f3c644;">---</strong></p>
-<p style="text-align:center; font-size:12px;">Řekni kód kamarádovi. Čekám na připojení...</p>
+<p id="room-status-text" style="text-align:center; font-size:12px;">Připojuji k síti...</p>
 </div>
 <div id="room-input-zone" class="hidden" style="margin-top:15px;">
 <input type="text" id="join-code-input" maxlength="3" placeholder="123">
 <br>
 <button class="btn" onclick="joinRoom()">Připojit se</button>
+<p id="join-status-text" style="text-align:center; font-size:12px; color:#ff9999; margin-top:5px;"></p>
 </div>
 <br>
 <button class="btn btn-secondary" onclick="showScreen('menu-pvp')">ZPĚT</button>
 </div>
 </div>
 
-<!-- OBRAZOVKA PRAVIDEL A OVLÁDÁNÍ PŘED BOJEM -->
+<!-- NÁVOD -->
 <div id="instructions-screen" class="overlay hidden">
 <div class="panel">
 <h1>📜 Pravidla & Pohyby</h1>
@@ -358,8 +359,8 @@ white-space: nowrap;
 <ul>
 <li>Každý hráč začíná s <strong>50 Životy (HP)</strong>.</li>
 <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
-<li><strong>ŠTÍT:</strong> Pokud držíš štít, <strong>100% odrazíš útok</strong> a neodeberou se ti žádné životy!</li>
-<li><strong>LÉKÁRNIČKY:</strong> Padají z nebe! Když ji chytneš, přibude ti <strong>+10 HP</strong> (maximálně do 50 HP).</li>
+<li><strong>ŠTÍT:</strong> Pokud držíš štít, <strong>100% odrazíš útok</strong>! Nemůžeš ale při tom mečovat.</li>
+<li><strong>LÉKÁRNIČKY:</strong> Padají z nebe! Doplní <strong>+10 HP</strong>.</li>
 </ul>
 <h2>Pohyby a Ovládání:</h2>
 <div id="controls-desc"></div>
@@ -370,668 +371,10 @@ white-space: nowrap;
 </div>
 </div>
 
-<!-- VÝSLEDKOVÁ OBRAZOVKA -->
+<!-- VÝSLEDKY -->
 <div id="game-over-screen" class="overlay hidden">
 <div class="panel">
 <h1 id="winner-announcement" style="font-size:28px; color:#f3c644;">---</h1>
 <div class="btn-group" style="margin-top:20px;">
 <button class="btn" onclick="restartCurrentGame()">⚔️ Hrát znovu</button>
-<button class="btn btn-secondary" onclick="returnToMainMenu()">Vyjet do hlavního menu</button>
-</div>
-</div>
-</div>
-
-<!-- MOBILNÍ DOTYKOVÉ PRVKY -->
-<div id="touch-controls" class="touch-controls hidden">
-<!-- Hráč 1 -->
-<div id="p1-joystick-zone" class="joystick-zone">
-<div id="p1-joystick-knob" class="joystick-knob"></div>
-</div>
-<div id="p1-action-buttons" class="action-buttons">
-<div class="action-btn" id="p1-btn-attack">⚔️<br>MEČ</div>
-<div class="action-btn shield" id="p1-btn-shield">🛡️<br>ŠTÍT</div>
-</div>
-
-<!-- Hráč 2 (pro 2 hráče na 1 mobilu) -->
-<div id="p2-joystick-zone" class="joystick-zone hidden">
-<div id="p2-joystick-knob" class="joystick-knob"></div>
-</div>
-<div id="p2-action-buttons" class="action-buttons hidden">
-<div class="action-btn" id="p2-btn-attack">⚔️<br>MEČ</div>
-<div class="action-btn shield" id="p2-btn-shield">🛡️<br>ŠTÍT</div>
-</div>
-</div>
-
-<div id="pc-hud-guide" class="hidden">
-P1: [W A S D] Pohyb | [F] Meč | [G] Štít &nbsp;&nbsp;||&nbsp;&nbsp; P2: [ŠIPKY] Pohyb | [MEZERNÍK] Meč | [SHIFT] Štít
-</div>
-</div>
-
-<script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-// Stav Aplikace
-let selectedDevice = 'pc'; // 'pc' nebo 'mobile'
-let gameMode = 'ai'; // 'ai' nebo 'pvp'
-let aiDifficulty = 'medium'; // 'easy', 'medium', 'hard'
-let isWebMatch = false;
-let isOnlyRulesView = false;
-let gameRunning = false;
-
-// Klávesy
-const keys = {};
-
-// Hráči & Objekty
-let player1, player2, medkits = [], particles = [], floatingTexts = [];
-
-// Vstup z mobilního joysticku
-let touchInputP1 = { vx: 0, vy: 0 };
-let touchInputP2 = { vx: 0, vy: 0 };
-
-class Knight {
-constructor(x, y, color, isP2 = false) {
-this.x = x;
-this.y = y;
-this.radius = 22;
-this.color = color;
-this.hp = 50;
-this.maxHp = 50;
-this.speed = 4;
-this.facingRight = !isP2;
-this.isShielding = false;
-this.isAttacking = false;
-this.attackCooldown = 0;
-this.attackSwing = 0;
-this.isP2 = isP2;
-this.vx = 0;
-this.vy = 0;
-this.walkCycle = 0;
-}
-
-update() {
-// Pohyb
-if (this.vx !== 0 || this.vy !== 0) {
-this.walkCycle += 0.2;
-}
-
-this.x += this.vx;
-this.y += this.vy;
-
-// Hranice arény
-this.x = Math.max(35, Math.min(canvas.width - 35, this.x));
-this.y = Math.max(35, Math.min(canvas.height - 35, this.y));
-
-// Cooldown útoku
-if (this.attackCooldown > 0) this.attackCooldown--;
-if (this.isAttacking) {
-this.attackSwing += 0.3;
-if (this.attackSwing >= Math.PI) {
-this.isAttacking = false;
-this.attackSwing = 0;
-}
-}
-}
-
-draw() {
-ctx.save();
-ctx.translate(this.x, this.y);
-
-// Směr pohledu
-const dir = this.facingRight ? 1 : -1;
-
-// Stín
-ctx.beginPath();
-ctx.ellipse(0, 18, 18, 8, 0, 0, Math.PI * 2);
-ctx.fillStyle = 'rgba(0,0,0,0.4)';
-ctx.fill();
-
-// Nohy (Animace chůze)
-const legOffset = Math.sin(this.walkCycle) * 8;
-ctx.strokeStyle = '#333';
-ctx.lineWidth = 6;
-ctx.beginPath();
-ctx.moveTo(-6, 10); ctx.lineTo(-6 + legOffset, 22);
-ctx.moveTo(6, 10); ctx.lineTo(6 - legOffset, 22);
-ctx.stroke();
-
-// Tělo / Brnění
-ctx.beginPath();
-ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-ctx.fillStyle = this.color;
-ctx.fill();
-ctx.lineWidth = 3;
-ctx.strokeStyle = '#111';
-ctx.stroke();
-
-// Helma / Průzor
-ctx.fillStyle = '#111';
-ctx.fillRect(dir > 0 ? 2 : -14, -8, 12, 5);
-
-// Štít (Před postavou)
-if (this.isShielding) {
-ctx.save();
-ctx.translate(dir * 18, 0);
-ctx.fillStyle = '#4682B4';
-ctx.strokeStyle = '#FFFFFF';
-ctx.lineWidth = 3;
-ctx.beginPath();
-ctx.arc(0, 0, 16, -Math.PI/2, Math.PI/2, dir < 0);
-ctx.closePath();
-ctx.fill();
-ctx.stroke();
-ctx.restore();
-}
-
-// Meč
-ctx.save();
-ctx.translate(dir * 10, 5);
-let swordAngle = 0;
-if (this.isAttacking) {
-swordAngle = dir * Math.sin(this.attackSwing) * 1.5;
-}
-ctx.rotate(swordAngle);
-
-// Čepel
-ctx.fillStyle = '#DDDDDD';
-ctx.strokeStyle = '#555555';
-ctx.lineWidth = 1;
-ctx.fillRect(0, -3, dir * 30, 6);
-ctx.strokeRect(0, -3, dir * 30, 6);
-// Rukojeť
-ctx.fillStyle = '#8B4513';
-ctx.fillRect(-dir * 4, -5, dir * 6, 10);
-ctx.restore();
-
-ctx.restore();
-
-// HP Ukazatel nad postavou
-ctx.fillStyle = 'rgba(0,0,0,0.6)';
-ctx.fillRect(this.x - 25, this.y - 38, 50, 8);
-ctx.fillStyle = this.hp > 20 ? '#00ffcc' : '#ff3333';
-ctx.fillRect(this.x - 25, this.y - 38, (this.hp / this.maxHp) * 50, 8);
-ctx.strokeStyle = '#000';
-ctx.lineWidth = 1;
-ctx.strokeRect(this.x - 25, this.y - 38, 50, 8);
-}
-
-attack(target) {
-if (this.attackCooldown > 0 || this.isShielding) return;
-this.isAttacking = true;
-this.attackCooldown = 25;
-
-const dir = this.facingRight ? 1 : -1;
-const swordReachX = this.x + dir * 38;
-
-// Vzdálenost k protivníkovi
-const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
-
-if (dist < target.radius + 15) {
-// KONTROLA ŠTÍTU: Pokud target drží jakýkoliv štít, veškeré poškození je ZABLOKOVÁNO!
-if (target.isShielding) {
-// Útok ODRAŽEN ŠTÍTEM! (0 damage)
-createSparks(swordReachX, this.y, '#00ccff');
-createFloatingText('ODRAŽENO!', target.x, target.y - 45, '#00ccff');
-this.x -= dir * 12; // Odraz zbraně zpět
-} else {
-// ZÁSAH MEČEM! (-5 HP)
-target.hp = Math.max(0, target.hp - 5);
-createSparks(target.x, target.y, '#ff0000');
-createFloatingText('-5 HP', target.x, target.y - 45, '#ff3333');
-}
-}
-}
-}
-
-// Lékárnička
-class Medkit {
-constructor() {
-this.x = 80 + Math.random() * (canvas.width - 160);
-this.y = -20;
-this.targetY = 100 + Math.random() * (canvas.height - 200);
-this.speed = 2;
-this.size = 14;
-this.collected = false;
-}
-
-update() {
-if (this.y < this.targetY) {
-this.y += this.speed;
-}
-}
-
-draw() {
-ctx.save();
-ctx.translate(this.x, this.y);
-
-// Zářivý obal
-ctx.fillStyle = '#ffffff';
-ctx.fillRect(-this.size, -this.size, this.size*2, this.size*2);
-ctx.strokeStyle = '#00cc66';
-ctx.lineWidth = 3;
-ctx.strokeRect(-this.size, -this.size, this.size*2, this.size*2);
-
-// Červený kříž
-ctx.fillStyle = '#ff2222';
-ctx.fillRect(-4, -10, 8, 20);
-ctx.fillRect(-10, -4, 20, 8);
-
-ctx.restore();
-}
-}
-
-// Efekty částic (Jiskry)
-function createSparks(x, y, color) {
-for (let i = 0; i < 8; i++) {
-particles.push({
-x: x, y: y,
-vx: (Math.random() - 0.5) * 6,
-vy: (Math.random() - 0.5) * 6,
-life: 15,
-color: color
-});
-}
-}
-
-function createFloatingText(text, x, y, color) {
-floatingTexts.push({ text, x, y, life: 30, color });
-}
-
-// --- REŽIMY A MENUS ---
-function selectDevice(device) {
-selectedDevice = device;
-showScreen('menu-mode');
-}
-
-function showScreen(screenId) {
-document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-if (screenId) {
-document.getElementById(screenId).classList.remove('hidden');
-}
-}
-
-function openDifficultyMenu() {
-gameMode = 'ai';
-showScreen('menu-difficulty');
-}
-
-function openPvPMenu() {
-gameMode = 'pvp';
-isWebMatch = false;
-showScreen('menu-pvp');
-}
-
-function setupLocalPvP() {
-prepareInstructions();
-}
-
-function startSinglePlayer(diff) {
-aiDifficulty = diff;
-prepareInstructions();
-}
-
-function showRulesOnly() {
-isOnlyRulesView = true;
-document.getElementById('start-battle-btn').classList.add('hidden');
-document.getElementById('controls-desc').innerHTML = getControlsHTML();
-showScreen('instructions-screen');
-}
-
-function prepareInstructions() {
-isOnlyRulesView = false;
-document.getElementById('start-battle-btn').classList.remove('hidden');
-document.getElementById('controls-desc').innerHTML = getControlsHTML();
-showScreen('instructions-screen');
-}
-
-function getControlsHTML() {
-if (selectedDevice === 'mobile') {
-let html = '<p>📱 <strong>Ovládání na mobilu:</strong> Použij virtuální kolečko vlevo pro pohyb a tlačítka MEČ / ŠTÍT vpravo.</p>';
-if (gameMode === 'pvp' && !isWebMatch) {
-html += '<p>👥 <strong>2 Hráči na 1 mobilu:</strong> Hráč 1 hraje vlevo, Hráč 2 má ovládání na pravé straně!</p>';
-}
-return html;
-} else {
-return `
-<p>💻 <strong>Ovládání na klávesnici:</strong></p>
-<p><strong>Hráč 1 (vlevo):</strong> Pohyb = [W, A, S, D] | Útok = [F] | Štít = [G]</p>
-<p><strong>Hráč 2 / AI (vpravo):</strong> Pohyb = [ŠIPKY] | Útok = [MEZERNÍK] | Štít = [SHIFT]</p>
-`;
-}
-}
-
-function confirmAndStartGame() {
-showScreen(null);
-initGame();
-}
-
-function returnToMainMenu() {
-gameRunning = false;
-showScreen('menu-main');
-}
-
-// WEB MATCHMAKING SIMULACE
-function createRoom() {
-document.getElementById('room-display').classList.remove('hidden');
-document.getElementById('room-input-zone').classList.add('hidden');
-const code = Math.floor(100 + Math.random() * 900);
-document.getElementById('room-code-num').innerText = code;
-setTimeout(() => {
-isWebMatch = true;
-prepareInstructions();
-}, 3000);
-}
-
-function showJoinRoom() {
-document.getElementById('room-input-zone').classList.remove('hidden');
-document.getElementById('room-display').classList.add('hidden');
-}
-
-function joinRoom() {
-const val = document.getElementById('join-code-input').value;
-if (val.length === 3) {
-isWebMatch = true;
-prepareInstructions();
-} else {
-alert('Zadej 3místný kód!');
-}
-}
-
-// INICIALIZACE HRY
-function initGame() {
-player1 = new Knight(150, canvas.height / 2, '#3388ff', false);
-player2 = new Knight(canvas.width - 150, canvas.height / 2, '#ff4444', true);
-medkits = [];
-particles = [];
-floatingTexts = [];
-touchInputP1 = { vx: 0, vy: 0 };
-touchInputP2 = { vx: 0, vy: 0 };
-gameRunning = true;
-
-// Ovládání na mobilu
-const touchUI = document.getElementById('touch-controls');
-const p2Zone = document.getElementById('p2-joystick-zone');
-const p2Btns = document.getElementById('p2-action-buttons');
-const pcHud = document.getElementById('pc-hud-guide');
-
-if (selectedDevice === 'mobile') {
-touchUI.classList.remove('hidden');
-pcHud.classList.add('hidden');
-if (gameMode === 'pvp' && !isWebMatch) {
-p2Zone.classList.remove('hidden');
-p2Btns.classList.remove('hidden');
-} else {
-p2Zone.classList.add('hidden');
-p2Btns.classList.add('hidden');
-}
-} else {
-touchUI.classList.add('hidden');
-pcHud.classList.remove('hidden');
-}
-}
-
-// RESTART
-function restartCurrentGame() {
-showScreen(null);
-initGame();
-}
-
-// SYSTÉM SPADU LÉKÁRNIČEK
-setInterval(() => {
-if (gameRunning && medkits.length < 2) {
-medkits.push(new Medkit());
-}
-}, 8000);
-
-// KLÁVESNICE INPUTS
-window.addEventListener('keydown', e => { keys[e.code] = true; keys[e.key] = true; });
-window.addEventListener('keyup', e => { keys[e.code] = false; keys[e.key] = false; });
-
-// LOGIKA A SOUBOJ (HERNÍ SMYČKA)
-function update() {
-if (!gameRunning) return;
-
-// --- POHYB HRÁČE 1 ---
-player1.vx = touchInputP1.vx; 
-player1.vy = touchInputP1.vy;
-
-if (keys['KeyA'] || keys['a']) { player1.vx = -player1.speed; player1.facingRight = false; }
-if (keys['KeyD'] || keys['d']) { player1.vx = player1.speed; player1.facingRight = true; }
-if (keys['KeyW'] || keys['w']) { player1.vy = -player1.speed; }
-if (keys['KeyS'] || keys['s']) { player1.vy = player1.speed; }
-if (keys['KeyG'] || keys['g']) { player1.isShielding = true; }
-if (keys['KeyF'] || keys['f']) { player1.attack(player2); }
-
-// --- POHYB HRÁČE 2 (NEBO AI) ---
-if (gameMode === 'pvp') {
-player2.vx = touchInputP2.vx;
-player2.vy = touchInputP2.vy;
-
-if (keys['ArrowLeft']) { player2.vx = -player2.speed; player2.facingRight = false; }
-if (keys['ArrowRight']) { player2.vx = player2.speed; player2.facingRight = true; }
-if (keys['ArrowUp']) { player2.vy = -player2.speed; }
-if (keys['ArrowDown']) { player2.vy = player2.speed; }
-if (keys['ShiftLeft'] || keys['ShiftRight']) { player2.isShielding = true; }
-if (keys['Space'] || keys[' ']) { player2.attack(player1); }
-} else {
-// LOGIKA POČÍTAČE (AI)
-updateAI();
-}
-
-// FYZICKÝ BLOK ŠTÍTU: Hráč nemůže projít skrz vytažený štít druhého hráče
-checkShieldSolidBlock(player1, player2);
-checkShieldSolidBlock(player2, player1);
-
-player1.update();
-player2.update();
-
-// KOLIZE S LÉKÁRNIČKAMI
-medkits.forEach((m, idx) => {
-m.update();
-[player1, player2].forEach(p => {
-if (Math.hypot(p.x - m.x, p.y - m.y) < p.radius + m.size) {
-p.hp = Math.min(p.maxHp, p.hp + 10);
-createFloatingText('+10 HP', p.x, p.y - 45, '#00ffcc');
-medkits.splice(idx, 1);
-}
-});
-});
-
-// Částice & Texty
-particles.forEach((p, i) => {
-p.x += p.vx; p.y += p.vy; p.life--;
-if (p.life <= 0) particles.splice(i, 1);
-});
-floatingTexts.forEach((t, i) => {
-t.y -= 0.8; t.life--;
-if (t.life <= 0) floatingTexts.splice(i, 1);
-});
-
-// KONTROLA VÍTĚZSTVÍ
-if (player1.hp <= 0 || player2.hp <= 0) {
-gameRunning = false;
-let msg = '';
-if (player1.hp > 0 && player2.hp <= 0) {
-msg = 'Hráč jedna ovládl arénu!';
-} else if (player2.hp > 0 && player1.hp <= 0) {
-msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Hráč dvě ovládl arénu!';
-} else {
-msg = 'Oba rytíři padli!';
-}
-document.getElementById('winner-announcement').innerText = msg;
-showScreen('game-over-screen');
-}
-}
-
-// Fyzická barikáda štítu
-function checkShieldSolidBlock(attacker, defender) {
-if (!defender.isShielding) return;
-const dir = defender.facingRight ? 1 : -1;
-const shieldX = defender.x + dir * 20;
-
-const dist = Math.hypot(attacker.x - shieldX, attacker.y - defender.y);
-if (dist < attacker.radius + 15) {
-// Odtlačení útočníka od štítu
-const angle = Math.atan2(attacker.y - defender.y, attacker.x - shieldX);
-attacker.x = shieldX + Math.cos(angle) * (attacker.radius + 16);
-attacker.y = defender.y + Math.sin(angle) * (attacker.radius + 16);
-}
-}
-
-// AI Chování
-function updateAI() {
-const dx = player1.x - player2.x;
-const dy = player1.y - player2.y;
-const dist = Math.hypot(dx, dy);
-
-player2.facingRight = dx > 0;
-
-let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75 : 1);
-
-if (dist > 55) {
-player2.vx = (dx / dist) * player2.speed * speedMod;
-player2.vy = (dy / dist) * player2.speed * speedMod;
-} else {
-player2.vx = 0;
-player2.vy = 0;
-}
-
-// Krytí a útok AI
-if (dist < 70) {
-if (player1.isAttacking && aiDifficulty !== 'easy') {
-player2.isShielding = true;
-} else {
-player2.isShielding = false;
-player2.attack(player1);
-}
-} else {
-player2.isShielding = false;
-}
-}
-
-// VYKRESLOVÁNÍ
-function render() {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-// Dlážděná aréna
-ctx.fillStyle = '#221c16';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
-ctx.strokeStyle = '#332920';
-ctx.lineWidth = 2;
-for (let x = 0; x < canvas.width; x += 50) {
-for (let y = 0; y < canvas.height; y += 50) {
-ctx.strokeRect(x, y, 50, 50);
-}
-}
-
-// Vykreslení objektů
-medkits.forEach(m => m.draw());
-if (player1) player1.draw();
-if (player2) player2.draw();
-
-// Částice
-particles.forEach(p => {
-ctx.fillStyle = p.color;
-ctx.fillRect(p.x, p.y, 4, 4);
-});
-
-// Vznášející se texty
-floatingTexts.forEach(t => {
-ctx.fillStyle = t.color;
-ctx.font = 'bold 16px sans-serif';
-ctx.fillText(t.text, t.x - 15, t.y);
-});
-}
-
-// Hlavní smyčka
-function gameLoop() {
-update();
-render();
-requestAnimationFrame(gameLoop);
-}
-gameLoop();
-
-// TOUCH JOYSTICK ENGINE (Opravený Multi-touch)
-function setupJoystick(zoneId, knobId, playerTarget, onDirectionChange) {
-const zone = document.getElementById(zoneId);
-const knob = document.getElementById(knobId);
-let touchId = null;
-let startX = 0, startY = 0;
-
-zone.addEventListener('touchstart', e => {
-e.preventDefault();
-if (touchId === null) {
-const t = e.changedTouches[0];
-touchId = t.identifier;
-startX = t.clientX;
-startY = t.clientY;
-}
-}, { passive: false });
-
-window.addEventListener('touchmove', e => {
-if (touchId === null) return;
-const t = Array.from(e.touches).find(touch => touch.identifier === touchId);
-if (!t) return;
-
-const dx = t.clientX - startX;
-const dy = t.clientY - startY;
-const dist = Math.hypot(dx, dy);
-const maxR = 40;
-const angle = Math.atan2(dy, dx);
-
-const moveR = Math.min(dist, maxR);
-const kx = Math.cos(angle) * moveR;
-const ky = Math.sin(angle) * moveR;
-
-knob.style.transform = `translate(${kx}px, ${ky}px)`;
-
-const normX = kx / maxR;
-const normY = ky / maxR;
-
-onDirectionChange(normX, normY);
-}, { passive: false });
-
-const handleTouchEnd = e => {
-if (touchId === null) return;
-const t = Array.from(e.changedTouches).find(touch => touch.identifier === touchId);
-if (t) {
-touchId = null;
-knob.style.transform = `translate(0px, 0px)`;
-onDirectionChange(0, 0);
-}
-};
-
-window.addEventListener('touchend', handleTouchEnd);
-window.addEventListener('touchcancel', handleTouchEnd);
-}
-
-// Nastavení virtuálních joysticků
-setupJoystick('p1-joystick-zone', 'p1-joystick-knob', player1, (nx, ny) => {
-if (!player1) return;
-touchInputP1.vx = nx * player1.speed;
-touchInputP1.vy = ny * player1.speed;
-if (nx !== 0) player1.facingRight = nx > 0;
-});
-
-setupJoystick('p2-joystick-zone', 'p2-joystick-knob', player2, (nx, ny) => {
-if (!player2) return;
-touchInputP2.vx = nx * player2.speed;
-touchInputP2.vy = ny * player2.speed;
-if (nx !== 0) player2.facingRight = nx > 0;
-});
-
-// Tlačítka na mobilu
-const bindBtn = (id, onPress, onRelease) => {
-const el = document.getElementById(id);
-el.addEventListener('touchstart', e => { e.preventDefault(); onPress(); }, { passive: false });
-el.addEventListener('touchend', e => { e.preventDefault(); if(onRelease) onRelease(); }, { passive: false });
-};
-
-bindBtn('p1-btn-attack', () => player1 && player1.attack(player2));
-bindBtn('p1-btn-shield', () => player1 && (player1.isShielding = true), () => player1 && (player1.isShielding = false));
-
-bindBtn('p2-btn-attack', () => player2 && player2.attack(player1));
-bindBtn('p2-btn-shield', () => player2 && (player2.isShielding = true), () => player2 && (player2.isShielding = false));
-</script>
-</body>
-</html>
+<button class="btn
