@@ -194,6 +194,13 @@ input[type="text"] {
   margin: 15px auto;
 }
 
+.wait-text {
+  text-align: center;
+  color: #f3c644;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
 /* Mobilní ovládání na displeji */
 .touch-controls {
   position: absolute;
@@ -347,13 +354,13 @@ input[type="text"] {
         <button class="btn" onclick="createRoom()">➕ Vytvořit kód místnosti</button>
         <button class="btn" onclick="showJoinRoom()">🔑 Zadat kód od kamaráda</button>
       </div>
-      
+
       <div id="room-display" class="hidden" style="margin-top:15px;">
         <p style="text-align:center;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:#f3c644;">---</strong></p>
         <div id="qrcode-box"></div>
         <p id="room-status-text" style="text-align:center; font-size:13px; color:#aaa;">Připojuji k síti...</p>
       </div>
-      
+
       <div id="room-input-zone" class="hidden" style="margin-top:15px;">
         <input type="text" id="join-code-input" maxlength="6" placeholder="KÓD">
         <br>
@@ -382,6 +389,7 @@ input[type="text"] {
         <button class="btn" id="start-battle-btn" onclick="confirmAndStartGame()">⚔️ ROZUMÍM, JÍT DO BOJE!</button>
         <button class="btn btn-secondary" onclick="returnToMainMenu()">Vyjet do hlavního menu</button>
       </div>
+      <p id="wait-text-instr" class="wait-text hidden">⏳ Čekám na soupeře...</p>
     </div>
   </div>
 
@@ -393,6 +401,7 @@ input[type="text"] {
         <button class="btn" onclick="restartCurrentGame()">⚔️ Hrát znovu</button>
         <button class="btn btn-secondary" onclick="returnToMainMenu()">Vyjet do hlavního menu</button>
       </div>
+      <p id="wait-text-over" class="wait-text hidden">⏳ Čekám na soupeře...</p>
     </div>
   </div>
 
@@ -411,23 +420,28 @@ input[type="text"] {
     </div>
     <div id="p2-action-buttons" class="action-buttons hidden">
       <div class="action-btn" id="p2-btn-attack">⚔️<br>MEČ</div>
-      <div class="action-btn shield" id="p2-btn-shield">🛡️️<br>ŠTÍT</div>
+      <div class="action-btn shield" id="p2-btn-shield">🛡️<br>ŠTÍT</div>
     </div>
   </div>
 
-  <div id="pc-hud-guide" class="hidden">
-    P1: [W A S D] Pohyb | [F] Meč | [G] Štít &nbsp;&nbsp;||&nbsp;&nbsp; P2: [ŠIPKY] Pohyb | [MEZERNÍK] Meč | [SHIFT] Štít
-  </div>
+  <div id="pc-hud-guide" class="hidden"></div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// Záloha pro starší prohlížeče bez roundRect
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) {
+    this.rect(x, y, w, h);
+  };
+}
+
 // Stav Aplikace
-let selectedDevice = 'pc'; 
-let gameMode = 'ai'; 
-let aiDifficulty = 'medium'; 
+let selectedDevice = 'pc';
+let gameMode = 'ai';
+let aiDifficulty = 'medium';
 let isWebMatch = false;
 let isHost = false;
 let isOnlyRulesView = false;
@@ -438,7 +452,18 @@ let peer = null;
 let conn = null;
 const PEER_PREFIX = "KA-";
 
-// Klávesy
+// Společný start / restart přes web
+let hostReady = false;
+let clientReady = false;
+
+// Události (jiskry, texty), které host posílá klientovi
+let netEvents = [];
+
+// Vstup klienta (hráč 2 přes web) z tlačítek na displeji
+let pendingClientAttack = false;
+let clientTouchShield = false;
+
+// Klávesy (pouze podle e.code, aby to fungovalo na každé klávesnici)
 const keys = {};
 
 // Hráči & Objekty
@@ -466,6 +491,11 @@ class Knight {
     this.vx = 0;
     this.vy = 0;
     this.walkCycle = 0;
+    // Pro vizuální dopočet na klientovi (web hra)
+    this.lastX = x;
+    this.lastY = y;
+    this.netAttacking = false;
+    this.prevNetAttacking = false;
   }
 
   update() {
@@ -482,6 +512,28 @@ class Knight {
     this.y = Math.max(35, Math.min(canvas.height - 35, this.y));
 
     if (this.attackCooldown > 0) this.attackCooldown--;
+    if (this.isAttacking) {
+      this.attackSwing += 0.25;
+      if (this.attackSwing >= Math.PI) {
+        this.isAttacking = false;
+        this.attackSwing = 0;
+      }
+    }
+  }
+
+  // Klient nic nepočítá, jen animuje chůzi a máchnutí mečem podle dat od hosta
+  clientVisualUpdate() {
+    const moved = Math.hypot(this.x - this.lastX, this.y - this.lastY) > 0.3;
+    this.walkCycle = moved ? this.walkCycle + 0.25 : 0;
+    this.lastX = this.x;
+    this.lastY = this.y;
+
+    if (this.netAttacking && !this.prevNetAttacking) {
+      this.isAttacking = true;
+      this.attackSwing = 0;
+    }
+    this.prevNetAttacking = this.netAttacking;
+
     if (this.isAttacking) {
       this.attackSwing += 0.25;
       if (this.attackSwing >= Math.PI) {
@@ -613,6 +665,7 @@ class Knight {
     if (this.attackCooldown > 0 || this.isShielding) return;
 
     this.isAttacking = true;
+    this.attackSwing = 0;
     this.attackCooldown = 25;
 
     const dir = this.facingRight ? 1 : -1;
@@ -673,10 +726,21 @@ function createSparks(x, y, color) {
       color: color
     });
   }
+  if (isWebMatch && isHost && netEvents.length < 50) {
+    netEvents.push({ k: 's', x: x, y: y, c: color });
+  }
 }
 
 function createFloatingText(text, x, y, color) {
   floatingTexts.push({ text, x, y, life: 30, color });
+  if (isWebMatch && isHost && netEvents.length < 50) {
+    netEvents.push({ k: 't', t: text, x: x, y: y, c: color });
+  }
+}
+
+function faceByVelocity(p) {
+  if (p.vx > 0.5) p.facingRight = true;
+  else if (p.vx < -0.5) p.facingRight = false;
 }
 
 function selectDevice(device) {
@@ -691,8 +755,15 @@ function showScreen(screenId) {
   }
 }
 
+function setWaitText(show) {
+  document.getElementById('wait-text-instr').classList.toggle('hidden', !show);
+  document.getElementById('wait-text-over').classList.toggle('hidden', !show);
+}
+
 function openDifficultyMenu() {
   gameMode = 'ai';
+  isWebMatch = false;
+  isHost = false;
   showScreen('menu-difficulty');
 }
 
@@ -703,10 +774,16 @@ function openPvPMenu() {
 }
 
 function setupLocalPvP() {
+  gameMode = 'pvp';
+  isWebMatch = false;
+  isHost = false;
   prepareInstructions();
 }
 
 function startSinglePlayer(diff) {
+  gameMode = 'ai';
+  isWebMatch = false;
+  isHost = false;
   aiDifficulty = diff;
   prepareInstructions();
 }
@@ -714,6 +791,7 @@ function startSinglePlayer(diff) {
 function showRulesOnly() {
   isOnlyRulesView = true;
   document.getElementById('start-battle-btn').classList.add('hidden');
+  setWaitText(false);
   document.getElementById('controls-desc').innerHTML = getControlsHTML();
   showScreen('instructions-screen');
 }
@@ -721,6 +799,7 @@ function showRulesOnly() {
 function prepareInstructions() {
   isOnlyRulesView = false;
   document.getElementById('start-battle-btn').classList.remove('hidden');
+  setWaitText(false);
   document.getElementById('controls-desc').innerHTML = getControlsHTML();
   showScreen('instructions-screen');
 }
@@ -732,9 +811,15 @@ function getControlsHTML() {
       html += '<p>👥 <strong>2 Hráči na 1 mobilu:</strong> Hráč 1 vlevo, Hráč 2 vpravo!</p>';
     }
     if (isWebMatch) {
-      html += `<p>🌐 <strong>Web Hra:</strong> Ovládáš svého rytíře na svém telefonu!</p>`;
+      html += `<p>🌐 <strong>Web Hra:</strong> Ovládáš svého rytíře na svém telefonu! ${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>`;
     }
     return html;
+  } else if (isWebMatch) {
+    return `
+      <p>💻 <strong>Web hra – ovládání na klávesnici:</strong></p>
+      <p>Pohyb = [W, A, S, D] nebo [ŠIPKY] | Meč = [F] nebo [MEZERNÍK] | Štít = [G] nebo [SHIFT]</p>
+      <p>${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>
+    `;
   } else {
     return `
       <p>💻 <strong>Ovládání na klávesnici:</strong></p>
@@ -744,15 +829,78 @@ function getControlsHTML() {
   }
 }
 
-function confirmAndStartGame() {
+// Spuštění kola (lokálně)
+function startRound() {
   showScreen(null);
+  setWaitText(false);
   initGame();
+}
+
+function confirmAndStartGame() {
+  if (isWebMatch) {
+    markReadyWeb();
+  } else {
+    startRound();
+  }
+}
+
+function restartCurrentGame() {
+  if (isWebMatch) {
+    markReadyWeb();
+  } else {
+    startRound();
+  }
+}
+
+// --- Společný start přes web: hra začne, až kliknou oba ---
+function markReadyWeb() {
+  if (isHost) {
+    hostReady = true;
+  } else {
+    clientReady = true;
+    if (conn && conn.open) conn.send({ type: 'ready' });
+  }
+  setWaitText(true);
+  tryStartWebRound();
+}
+
+function tryStartWebRound() {
+  if (isHost && hostReady && clientReady) {
+    startWebRound();
+  }
+}
+
+function startWebRound() {
+  hostReady = false;
+  clientReady = false;
+  if (conn && conn.open) conn.send({ type: 'start' });
+  startRound();
+}
+
+function closeNetwork() {
+  const oldConn = conn;
+  const oldPeer = peer;
+  conn = null;   // handler 'close' pozná, že jde o záměrné zavření
+  peer = null;
+  if (oldConn) { try { oldConn.close(); } catch (e) {} }
+  if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
 }
 
 function returnToMainMenu() {
   gameRunning = false;
-  if (conn) conn.close();
-  if (peer) peer.destroy();
+  closeNetwork();
+  isWebMatch = false;
+  isHost = false;
+  hostReady = false;
+  clientReady = false;
+  netEvents = [];
+  pendingClientAttack = false;
+  clientTouchShield = false;
+  touchInputP1 = { vx: 0, vy: 0 };
+  touchInputP2 = { vx: 0, vy: 0 };
+  document.getElementById('touch-controls').classList.add('hidden');
+  document.getElementById('pc-hud-guide').classList.add('hidden');
+  setWaitText(false);
   showScreen('menu-main');
 }
 
@@ -767,13 +915,17 @@ function createRoom() {
 
   isHost = true;
   isWebMatch = true;
+  gameMode = 'pvp';
+  hostReady = false;
+  clientReady = false;
 
-  if (peer) peer.destroy();
-  peer = new Peer(PEER_PREFIX + roomCode);
+  closeNetwork();
+  const myPeer = new Peer(PEER_PREFIX + roomCode);
+  peer = myPeer;
 
-  peer.on('open', (id) => {
+  myPeer.on('open', () => {
     document.getElementById('room-status-text').innerText = "Čekám na připojení soupeře...";
-    
+
     // Vygenerovat QR kód s přímým odkazem
     const joinUrl = window.location.href.split('?')[0] + '?room=' + roomCode;
     document.getElementById('qrcode-box').innerHTML = '';
@@ -784,16 +936,19 @@ function createRoom() {
     });
   });
 
-  peer.on('connection', (c) => {
+  myPeer.on('connection', (c) => {
+    if (conn) { c.close(); return; }   // přijmeme jen jednoho soupeře
     conn = c;
-    setupNetworkEvents();
-    document.getElementById('room-status-text').innerText = "Soupeř připojen! Spouštím hru...";
-    setTimeout(() => {
-      prepareInstructions();
-    }, 800);
+    setupNetworkEvents(c);
+    c.on('open', () => {
+      document.getElementById('room-status-text').innerText = "Soupeř připojen! Spouštím hru...";
+      setTimeout(() => {
+        if (conn === c) prepareInstructions();
+      }, 800);
+    });
   });
 
-  peer.on('error', (err) => {
+  myPeer.on('error', (err) => {
     console.error(err);
     document.getElementById('room-status-text').innerText = "Chyba při vytváření místnosti!";
   });
@@ -805,7 +960,7 @@ function showJoinRoom() {
 }
 
 function joinRoom(autoCode) {
-  const code = (autoCode || document.getElementById('join-code-input').value).trim().toUpperCase();
+  const code = (typeof autoCode === 'string' ? autoCode : document.getElementById('join-code-input').value).trim().toUpperCase();
   if (!code) {
     alert('Zadej kód místnosti!');
     return;
@@ -815,34 +970,66 @@ function joinRoom(autoCode) {
 
   isHost = false;
   isWebMatch = true;
+  gameMode = 'pvp';
+  hostReady = false;
+  clientReady = false;
 
-  if (peer) peer.destroy();
-  peer = new Peer();
+  closeNetwork();
+  const myPeer = new Peer();
+  peer = myPeer;
 
-  peer.on('open', () => {
-    conn = peer.connect(PEER_PREFIX + code);
+  myPeer.on('open', () => {
+    const c = myPeer.connect(PEER_PREFIX + code, { reliable: true });
+    conn = c;
+    setupNetworkEvents(c);
 
-    conn.on('open', () => {
-      setupNetworkEvents();
+    c.on('open', () => {
+      document.getElementById('join-status-text').innerText = "";
       prepareInstructions();
     });
 
-    conn.on('error', (err) => {
+    c.on('error', () => {
       document.getElementById('join-status-text').innerText = "Chyba připojení k danému kódu!";
     });
   });
 
-  peer.on('error', (err) => {
+  myPeer.on('error', (err) => {
     console.error(err);
-    document.getElementById('join-status-text').innerText = "Nedaří se připojit k serveru!";
+    if (err && err.type === 'peer-unavailable') {
+      document.getElementById('join-status-text').innerText = "Místnost s tímto kódem neexistuje.";
+    } else {
+      document.getElementById('join-status-text').innerText = "Nedaří se připojit k serveru!";
+    }
   });
 }
 
-function setupNetworkEvents() {
-  conn.on('data', (data) => {
+function setupNetworkEvents(c) {
+  c.on('data', (data) => {
+    if (!data) return;
+
+    if (data.type === 'ready') {
+      if (isHost) {
+        clientReady = true;
+        tryStartWebRound();
+      }
+      return;
+    }
+
+    if (data.type === 'start') {
+      if (!isHost) {
+        clientReady = false;
+        startRound();
+      }
+      return;
+    }
+
     if (data.type === 'sync') {
+      // Dokud hra neběží a hráči neexistují, data ignorujeme (dřív to způsobovalo pád)
+      if (!gameRunning || !player1 || !player2) return;
+
       if (isHost) {
         // Host přijímá pokyny od Hráče 2 (klienta)
+        if (!data.p2) return;
         player2.vx = data.p2.vx;
         player2.vy = data.p2.vy;
         player2.facingRight = data.p2.facingRight;
@@ -850,34 +1037,41 @@ function setupNetworkEvents() {
         if (data.p2.attackTrigger) player2.attack(player1);
       } else {
         // Klient přijímá celkový stav hry od Hosta
-        if (player1 && player2) {
-          player1.x = data.p1.x;
-          player1.y = data.p1.y;
-          player1.hp = data.p1.hp;
-          player1.facingRight = data.p1.facingRight;
-          player1.isShielding = data.p1.isShielding;
-          player1.isAttacking = data.p1.isAttacking;
+        if (!data.p1 || !data.p2) return;
 
-          player2.x = data.p2.x;
-          player2.y = data.p2.y;
-          player2.hp = data.p2.hp;
-          player2.facingRight = data.p2.facingRight;
-          player2.isShielding = data.p2.isShielding;
-          player2.isAttacking = data.p2.isAttacking;
+        player1.x = data.p1.x;
+        player1.y = data.p1.y;
+        player1.hp = data.p1.hp;
+        player1.facingRight = data.p1.facingRight;
+        player1.isShielding = data.p1.isShielding;
+        player1.netAttacking = data.p1.isAttacking;
 
-          if (data.medkits) {
-            medkits = data.medkits.map(m => {
-              let med = new Medkit(m.x, m.targetY);
-              med.y = m.y;
-              return med;
-            });
-          }
+        // Svého rytíře (hráč 2) nechává klient otáčet a krýt štítem lokálně, ať to nebliká
+        player2.x = data.p2.x;
+        player2.y = data.p2.y;
+        player2.hp = data.p2.hp;
+        player2.netAttacking = data.p2.isAttacking;
+
+        if (data.medkits) {
+          medkits = data.medkits.map(m => {
+            const med = new Medkit(m.x, m.targetY);
+            med.y = m.y;
+            return med;
+          });
+        }
+
+        if (data.events) {
+          data.events.forEach(ev => {
+            if (ev.k === 's') createSparks(ev.x, ev.y, ev.c);
+            else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c);
+          });
         }
       }
     }
   });
 
-  conn.on('close', () => {
+  c.on('close', () => {
+    if (c !== conn) return;   // záměrné zavření z naší strany
     alert('Soupeř se odpojil.');
     returnToMainMenu();
   });
@@ -891,7 +1085,8 @@ function sendNetworkSync(attackTriggered = false) {
       type: 'sync',
       p1: { x: player1.x, y: player1.y, hp: player1.hp, facingRight: player1.facingRight, isShielding: player1.isShielding, isAttacking: player1.isAttacking },
       p2: { x: player2.x, y: player2.y, hp: player2.hp, facingRight: player2.facingRight, isShielding: player2.isShielding, isAttacking: player2.isAttacking },
-      medkits: medkits.map(m => ({ x: m.x, y: m.y, targetY: m.targetY }))
+      medkits: medkits.map(m => ({ x: m.x, y: m.y, targetY: m.targetY })),
+      events: netEvents.splice(0)
     });
   } else {
     conn.send({
@@ -929,6 +1124,9 @@ function initGame() {
   medkits = [];
   particles = [];
   floatingTexts = [];
+  netEvents = [];
+  pendingClientAttack = false;
+  clientTouchShield = false;
   touchInputP1 = { vx: 0, vy: 0 };
   touchInputP2 = { vx: 0, vy: 0 };
   gameRunning = true;
@@ -950,13 +1148,13 @@ function initGame() {
     }
   } else {
     touchUI.classList.add('hidden');
+    if (isWebMatch) {
+      pcHud.innerHTML = 'Pohyb: [W A S D] / [ŠIPKY] &nbsp;|&nbsp; Meč: [F] / [MEZERNÍK] &nbsp;|&nbsp; Štít: [G] / [SHIFT]';
+    } else {
+      pcHud.innerHTML = 'P1: [W A S D] Pohyb | [F] Meč | [G] Štít &nbsp;&nbsp;||&nbsp;&nbsp; P2: [ŠIPKY] Pohyb | [MEZERNÍK] Meč | [SHIFT] Štít';
+    }
     pcHud.classList.remove('hidden');
   }
-}
-
-function restartCurrentGame() {
-  showScreen(null);
-  initGame();
 }
 
 // SPAD LÉKÁRNIČEK
@@ -969,21 +1167,27 @@ setInterval(() => {
 }, 8000);
 
 // KLÁVESNICE INPUTS
-window.addEventListener('keydown', e => { 
-  keys[e.code] = true; 
-  keys[e.key] = true; 
+window.addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    e.preventDefault();
+  }
+  keys[e.code] = true;
 });
 
-window.addEventListener('keyup', e => { 
-  keys[e.code] = false; 
-  keys[e.key] = false;
+window.addEventListener('keyup', e => {
+  keys[e.code] = false;
 
-  if (e.code === 'KeyG' || e.key === 'g' || e.key === 'G') {
-    if (player1) player1.isShielding = false;
+  if (e.code === 'KeyG') {
+    if (player1 && (!isWebMatch || isHost)) player1.isShielding = false;
   }
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.key === 'Shift') {
-    if (player2) player2.isShielding = false;
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    if (player2 && !isWebMatch) player2.isShielding = false;
   }
+});
+
+// Při přepnutí na jiné okno se uvolní všechny klávesy (aby nezůstaly "zaseknuté")
+window.addEventListener('blur', () => {
+  for (const k in keys) keys[k] = false;
 });
 
 // TOUCH LOGIKA (JOYSTICK & TLAČÍTKA)
@@ -1047,15 +1251,11 @@ function setupTouchListeners() {
 
       const normX = dx / maxRadius;
       const normY = dy / maxRadius;
-
-      const p = (isHost || !isWebMatch) ? player1 : player2;
-      const speed = p ? p.speed : 4;
+      const speed = 4;
 
       inputObj.vx = Math.abs(normX) > 0.2 ? normX * speed : 0;
       inputObj.vy = Math.abs(normY) > 0.2 ? normY * speed : 0;
-
-      if (inputObj.vx > 0.5) p.facingRight = true;
-      if (inputObj.vx < -0.5) p.facingRight = false;
+      // Natočení rytíře se řeší v update() podle rychlosti
     }
   }
 
@@ -1067,6 +1267,7 @@ function setupTouchListeners() {
     const btn = document.getElementById(btnId);
     btn.addEventListener('touchstart', e => {
       e.preventDefault();
+      if (!gameRunning) return;
       onPress();
     }, { passive: false });
     if (onRelease) {
@@ -1081,27 +1282,44 @@ function setupTouchListeners() {
     }
   };
 
+  // Hráč 1 (nebo na webu: můj rytíř – host = modrý, klient = červený)
   bindAction('p1-btn-attack', () => {
     if (!isWebMatch || isHost) player1.attack(player2);
-    else player2.attack(player1);
+    else pendingClientAttack = true;   // klient pošle úder hostovi
   });
 
-  bindAction('p1-btn-shield', 
+  bindAction('p1-btn-shield',
     () => {
       if (!isWebMatch || isHost) player1.isShielding = true;
-      else player2.isShielding = true;
+      else clientTouchShield = true;
     },
     () => {
-      if (!isWebMatch || isHost) player1.isShielding = false;
-      else player2.isShielding = false;
+      if (!isWebMatch || isHost) { if (player1) player1.isShielding = false; }
+      else clientTouchShield = false;
     }
   );
 
+  // Hráč 2 (jen hra na 1 zařízení)
   bindAction('p2-btn-attack', () => { player2.attack(player1); });
-  bindAction('p2-btn-shield', 
+  bindAction('p2-btn-shield',
     () => { player2.isShielding = true; },
-    () => { player2.isShielding = false; }
+    () => { if (player2) player2.isShielding = false; }
   );
+}
+
+function finishGame() {
+  gameRunning = false;
+  let msg = '';
+  if (player1.hp > 0 && player2.hp <= 0) {
+    msg = 'Hráč 1 (Modrý) ovládl arénu!';
+  } else if (player2.hp > 0 && player1.hp <= 0) {
+    msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Hráč 2 (Červený) ovládl arénu!';
+  } else {
+    msg = 'Oba rytíři padli!';
+  }
+  document.getElementById('winner-announcement').innerText = msg;
+  setWaitText(false);
+  showScreen('game-over-screen');
 }
 
 // LOGIKA A SOUBOJ
@@ -1110,34 +1328,39 @@ function update() {
 
   if (!isWebMatch || isHost) {
     // --- OVLÁDÁNÍ HRÁČE 1 ---
-    player1.vx = touchInputP1.vx; 
+    player1.vx = touchInputP1.vx;
     player1.vy = touchInputP1.vy;
 
-    if (keys['KeyA'] || keys['a']) { player1.vx = -player1.speed; player1.facingRight = false; }
-    else if (keys['KeyD'] || keys['d']) { player1.vx = player1.speed; player1.facingRight = true; }
+    if (keys['KeyA'] || (isWebMatch && keys['ArrowLeft'])) { player1.vx = -player1.speed; }
+    else if (keys['KeyD'] || (isWebMatch && keys['ArrowRight'])) { player1.vx = player1.speed; }
 
-    if (keys['KeyW'] || keys['w']) { player1.vy = -player1.speed; }
-    else if (keys['KeyS'] || keys['s']) { player1.vy = player1.speed; }
+    if (keys['KeyW'] || (isWebMatch && keys['ArrowUp'])) { player1.vy = -player1.speed; }
+    else if (keys['KeyS'] || (isWebMatch && keys['ArrowDown'])) { player1.vy = player1.speed; }
 
-    if (keys['KeyG'] || keys['g']) player1.isShielding = true;
-    if (keys['KeyF'] || keys['f']) { player1.attack(player2); }
+    faceByVelocity(player1);
+
+    if (keys['KeyG'] || (isWebMatch && (keys['ShiftLeft'] || keys['ShiftRight']))) player1.isShielding = true;
+    if (keys['KeyF'] || (isWebMatch && keys['Space'])) { player1.attack(player2); }
 
     // --- OVLÁDÁNÍ HRÁČE 2 ---
     if (gameMode === 'pvp' && !isWebMatch) {
       player2.vx = touchInputP2.vx;
       player2.vy = touchInputP2.vy;
 
-      if (keys['ArrowLeft']) { player2.vx = -player2.speed; player2.facingRight = false; }
-      else if (keys['ArrowRight']) { player2.vx = player2.speed; player2.facingRight = true; }
+      if (keys['ArrowLeft']) { player2.vx = -player2.speed; }
+      else if (keys['ArrowRight']) { player2.vx = player2.speed; }
 
       if (keys['ArrowUp']) { player2.vy = -player2.speed; }
       else if (keys['ArrowDown']) { player2.vy = player2.speed; }
 
+      faceByVelocity(player2);
+
       if (keys['ShiftLeft'] || keys['ShiftRight']) player2.isShielding = true;
-      if (keys['Space'] || keys[' ']) { player2.attack(player1); }
+      if (keys['Space']) { player2.attack(player1); }
     } else if (gameMode === 'ai') {
       updateAI();
     }
+    // Při web hře řídí hráče 2 data od klienta (vx, vy, štít, útok)
 
     checkShieldSolidBlock(player1, player2);
     checkShieldSolidBlock(player2, player1);
@@ -1145,67 +1368,63 @@ function update() {
     player1.update();
     player2.update();
 
-    // Lékárničky
-    medkits.forEach((m, idx) => {
+    // Lékárničky (procházíme odzadu, aby mazání nepřeskakovalo prvky)
+    for (let i = medkits.length - 1; i >= 0; i--) {
+      const m = medkits[i];
       m.update();
-      [player1, player2].forEach(p => {
+      for (const p of [player1, player2]) {
         if (Math.hypot(p.x - m.x, p.y - m.y) < p.radius + m.size) {
           p.hp = Math.min(p.maxHp, p.hp + 10);
           createFloatingText('+10 HP', p.x, p.y - 48, '#2ecc71');
-          medkits.splice(idx, 1);
+          medkits.splice(i, 1);
+          break;
         }
-      });
-    });
+      }
+    }
 
     if (isWebMatch && isHost) {
       sendNetworkSync();
     }
   } else {
     // --- KLIENT (Hráč 2 přes Web) ---
-    let clientAttackTrigger = false;
-
     player2.vx = touchInputP1.vx;
     player2.vy = touchInputP1.vy;
 
-    if (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) { player2.vx = -player2.speed; player2.facingRight = false; }
-    else if (keys['KeyD'] || keys['d'] || keys['ArrowRight']) { player2.vx = player2.speed; player2.facingRight = true; }
+    if (keys['KeyA'] || keys['ArrowLeft']) { player2.vx = -player2.speed; }
+    else if (keys['KeyD'] || keys['ArrowRight']) { player2.vx = player2.speed; }
 
-    if (keys['KeyW'] || keys['w'] || keys['ArrowUp']) { player2.vy = -player2.speed; }
-    else if (keys['KeyS'] || keys['s'] || keys['ArrowDown']) { player2.vy = player2.speed; }
+    if (keys['KeyW'] || keys['ArrowUp']) { player2.vy = -player2.speed; }
+    else if (keys['KeyS'] || keys['ArrowDown']) { player2.vy = player2.speed; }
 
-    player2.isShielding = !!(keys['KeyG'] || keys['g'] || keys['ShiftLeft'] || keys['ShiftRight']);
+    faceByVelocity(player2);
 
-    if (keys['KeyF'] || keys['f'] || keys['Space'] || keys[' ']) {
-      clientAttackTrigger = true;
-      keys['KeyF'] = false; keys['f'] = false; keys['Space'] = false; keys[' '] = false;
-    }
+    player2.isShielding = clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']);
+
+    const clientAttackTrigger = pendingClientAttack || !!(keys['KeyF'] || keys['Space']);
+    pendingClientAttack = false;
 
     sendNetworkSync(clientAttackTrigger);
+
+    // Jen animace (chůze nohou, máchnutí mečem)
+    player1.clientVisualUpdate();
+    player2.clientVisualUpdate();
   }
 
-  // Částice & Texty
-  particles.forEach((p, i) => {
+  // Částice & Texty (odzadu kvůli mazání)
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
     p.x += p.vx; p.y += p.vy; p.life--;
     if (p.life <= 0) particles.splice(i, 1);
-  });
-  floatingTexts.forEach((t, i) => {
+  }
+  for (let i = floatingTexts.length - 1; i >= 0; i--) {
+    const t = floatingTexts[i];
     t.y -= 0.8; t.life--;
     if (t.life <= 0) floatingTexts.splice(i, 1);
-  });
+  }
 
   // KONTROLA VÍTĚZSTVÍ
   if (player1.hp <= 0 || player2.hp <= 0) {
-    gameRunning = false;
-    let msg = '';
-    if (player1.hp > 0 && player2.hp <= 0) {
-      msg = 'Hráč 1 (Modrý) ovládl arénu!';
-    } else if (player2.hp > 0 && player1.hp <= 0) {
-      msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Hráč 2 (Červený) ovládl arénu!';
-    } else {
-      msg = 'Oba rytíři padli!';
-    }
-    document.getElementById('winner-announcement').innerText = msg;
-    showScreen('game-over-screen');
+    finishGame();
   }
 }
 
@@ -1289,9 +1508,25 @@ function render() {
   });
 }
 
-// HERNÍ SMYČKA
-function gameLoop() {
-  update();
+// HERNÍ SMYČKA – pevných 60 kroků za sekundu bez ohledu na obnovovací frekvenci displeje
+// (na telefonu se 120 Hz by jinak hra a hlavně host běžel dvakrát rychleji)
+const STEP_MS = 1000 / 60;
+let lastTime = 0;
+let accumulator = 0;
+
+function gameLoop(ts) {
+  if (!lastTime) lastTime = ts;
+  accumulator += Math.min(ts - lastTime, 250);
+  lastTime = ts;
+
+  let steps = 0;
+  while (accumulator >= STEP_MS && steps < 5) {
+    update();
+    accumulator -= STEP_MS;
+    steps++;
+  }
+  if (steps === 5) accumulator = 0;
+
   render();
   requestAnimationFrame(gameLoop);
 }
