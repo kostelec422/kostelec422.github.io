@@ -12,6 +12,13 @@
 <!-- QRCode.js pro snadné skenování druhým telefonem -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+:root {
+  --joy: 130px;   /* průměr joysticku */
+  --btn: 65px;    /* průměr tlačítek MEČ / ŠTÍT */
+}
+@media (max-height: 420px) { :root { --joy: 112px; --btn: 58px; } }
+@media (max-height: 340px) { :root { --joy: 96px;  --btn: 52px; } }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -35,8 +42,8 @@ body, html {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  right: 0;
+  bottom: 0;
   background: #000;
   z-index: 99999;
   flex-direction: column;
@@ -70,9 +77,12 @@ body, html {
 }
 
 #game-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
+  /* fixed + všechny strany na 0 = přesně viditelná plocha (100vh na Androidu zahrnuje i skrytý panel prohlížeče) */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -214,9 +224,9 @@ input[type="text"] {
 
 .joystick-zone {
   position: absolute;
-  bottom: 20px;
-  width: 130px;
-  height: 130px;
+  bottom: 16px;
+  width: var(--joy);
+  height: var(--joy);
   background: rgba(255, 255, 255, 0.08);
   border: 2px dashed rgba(255, 255, 255, 0.25);
   border-radius: 50%;
@@ -224,12 +234,11 @@ input[type="text"] {
   touch-action: none;
 }
 #p1-joystick-zone { left: 20px; }
-#p2-joystick-zone { right: 20px; }
 
 .joystick-knob {
   position: absolute;
-  top: 35px; left: 35px;
-  width: 60px; height: 60px;
+  top: 27%; left: 27%;
+  width: 46%; height: 46%;
   background: radial-gradient(circle, #f3c644 0%, #8a6300 100%);
   border: 2px solid #fff;
   border-radius: 50%;
@@ -239,17 +248,17 @@ input[type="text"] {
 
 .action-buttons {
   position: absolute;
-  bottom: 20px;
+  bottom: 16px;
   display: flex;
   gap: 12px;
   pointer-events: auto;
 }
 #p1-action-buttons { right: 20px; }
-#p2-action-buttons { left: 20px; }
 
 .action-btn {
-  width: 65px;
-  height: 65px;
+  flex: 0 0 auto;
+  width: var(--btn);
+  height: var(--btn);
   border-radius: 50%;
   background: linear-gradient(145deg, #cc2222, #660000);
   border: 2px solid #ff9999;
@@ -304,7 +313,7 @@ input[type="text"] {
     <div class="panel">
       <h1>⚔️ Rytířský Souboj ⚔️</h1>
       <p style="text-align:center;">Vyber si zařízení a režim hry:</p>
-      <p style="text-align:center; font-size:12px; color:#8c6f4d;">verze 3 (oprava pohybu)</p>
+      <p style="text-align:center; font-size:12px; color:#8c6f4d;">verze 4</p>
       <div class="btn-group">
         <button class="btn" onclick="selectDevice('pc')">💻 Notebook / PC</button>
         <button class="btn" onclick="selectDevice('mobile')">📱 Mobil / Tablet</button>
@@ -342,7 +351,7 @@ input[type="text"] {
     <div class="panel">
       <h1>2 Hráči - Kde budete hrát?</h1>
       <div class="btn-group">
-        <button class="btn" onclick="setupLocalPvP()">📱 Na 1 Zařízení (společně)</button>
+        <button class="btn" id="btn-local-pvp" onclick="setupLocalPvP()">💻 Na 1 Zařízení (společně)</button>
         <button class="btn" onclick="showScreen('menu-web')">🌐 Na 2 Zařízeních přes Web</button>
         <button class="btn btn-secondary" onclick="showScreen('menu-mode')">ZPĚT</button>
       </div>
@@ -380,7 +389,7 @@ input[type="text"] {
   <div id="instructions-screen" class="overlay hidden">
     <div class="panel">
       <h1>📜 Pravidla & Pohyby</h1>
-      <h2>Pravidla:</h2>
+      <h2>Pravidla hry:</h2>
       <ul>
         <li>Každý hráč začíná s <strong>50 Životy (HP)</strong>.</li>
         <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
@@ -419,13 +428,6 @@ input[type="text"] {
       <div class="action-btn shield" id="p1-btn-shield">🛡️<br>ŠTÍT</div>
     </div>
 
-    <div id="p2-joystick-zone" class="joystick-zone hidden">
-      <div id="p2-joystick-knob" class="joystick-knob"></div>
-    </div>
-    <div id="p2-action-buttons" class="action-buttons hidden">
-      <div class="action-btn" id="p2-btn-attack">⚔️<br>MEČ</div>
-      <div class="action-btn shield" id="p2-btn-shield">🛡️<br>ŠTÍT</div>
-    </div>
   </div>
 
   <div id="pc-hud-guide" class="hidden"></div>
@@ -475,7 +477,6 @@ let player1, player2, medkits = [], particles = [], floatingTexts = [];
 
 // Vstup z mobilního joysticku
 let touchInputP1 = { vx: 0, vy: 0 };
-let touchInputP2 = { vx: 0, vy: 0 };
 
 class Knight {
   constructor(x, y, color, isP2 = false) {
@@ -754,6 +755,10 @@ function selectDevice(device) {
 
 function showScreen(screenId) {
   document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
+  if (screenId === 'menu-pvp') {
+    // Hra dvou hráčů na jednom zařízení je jen pro notebook / PC
+    document.getElementById('btn-local-pvp').classList.toggle('hidden', selectedDevice === 'mobile');
+  }
   if (screenId) {
     document.getElementById(screenId).classList.remove('hidden');
   }
@@ -778,6 +783,7 @@ function openPvPMenu() {
 }
 
 function setupLocalPvP() {
+  if (selectedDevice === 'mobile') return;   // na mobilu / tabletu není
   gameMode = 'pvp';
   isWebMatch = false;
   isHost = false;
@@ -811,9 +817,6 @@ function prepareInstructions() {
 function getControlsHTML() {
   if (selectedDevice === 'mobile') {
     let html = '<p>📱 <strong>Ovládání na mobilu:</strong> Použij joystick vlevo pro pohyb a tlačítka MEČ / ŠTÍT vpravo.</p>';
-    if (gameMode === 'pvp' && !isWebMatch) {
-      html += '<p>👥 <strong>2 Hráči na 1 mobilu:</strong> Hráč 1 vlevo, Hráč 2 vpravo!</p>';
-    }
     if (isWebMatch) {
       html += `<p>🌐 <strong>Web Hra:</strong> Ovládáš svého rytíře na svém telefonu! ${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>`;
     }
@@ -901,7 +904,6 @@ function returnToMainMenu() {
   pendingClientAttack = false;
   clientTouchShield = false;
   touchInputP1.vx = 0; touchInputP1.vy = 0;
-  touchInputP2.vx = 0; touchInputP2.vy = 0;
   document.getElementById('touch-controls').classList.add('hidden');
   document.getElementById('pc-hud-guide').classList.add('hidden');
   setWaitText(false);
@@ -1133,24 +1135,14 @@ function initGame() {
   clientTouchShield = false;
   // Objekty se NESMÍ nahrazovat novými, joysticky drží odkaz na ty původní
   touchInputP1.vx = 0; touchInputP1.vy = 0;
-  touchInputP2.vx = 0; touchInputP2.vy = 0;
   gameRunning = true;
 
   const touchUI = document.getElementById('touch-controls');
-  const p2Zone = document.getElementById('p2-joystick-zone');
-  const p2Btns = document.getElementById('p2-action-buttons');
   const pcHud = document.getElementById('pc-hud-guide');
 
   if (selectedDevice === 'mobile') {
     touchUI.classList.remove('hidden');
     pcHud.classList.add('hidden');
-    if (gameMode === 'pvp' && !isWebMatch) {
-      p2Zone.classList.remove('hidden');
-      p2Btns.classList.remove('hidden');
-    } else {
-      p2Zone.classList.add('hidden');
-      p2Btns.classList.add('hidden');
-    }
   } else {
     touchUI.classList.add('hidden');
     if (isWebMatch) {
@@ -1202,7 +1194,7 @@ function setupTouchListeners() {
     const knob = document.getElementById(knobId);
     let touchId = null;
 
-    const maxRadius = 40;
+    let maxRadius = 40;
 
     zone.addEventListener('touchstart', e => {
       e.preventDefault();
@@ -1240,6 +1232,7 @@ function setupTouchListeners() {
 
     function moveKnob(touch) {
       const rect = zone.getBoundingClientRect();
+      maxRadius = rect.width * 0.31;
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
@@ -1265,7 +1258,6 @@ function setupTouchListeners() {
   }
 
   handleJoystick('p1-joystick-zone', 'p1-joystick-knob', touchInputP1);
-  handleJoystick('p2-joystick-zone', 'p2-joystick-knob', touchInputP2);
 
   // Akční tlačítka
   const bindAction = (btnId, onPress, onRelease) => {
@@ -1287,7 +1279,7 @@ function setupTouchListeners() {
     }
   };
 
-  // Hráč 1 (nebo na webu: můj rytíř – host = modrý, klient = červený)
+  // Moje tlačítka (na webu: můj rytíř – host = modrý, klient = červený)
   bindAction('p1-btn-attack', () => {
     if (!isWebMatch || isHost) player1.attack(player2);
     else pendingClientAttack = true;   // klient pošle úder hostovi
@@ -1302,13 +1294,6 @@ function setupTouchListeners() {
       if (!isWebMatch || isHost) { if (player1) player1.isShielding = false; }
       else clientTouchShield = false;
     }
-  );
-
-  // Hráč 2 (jen hra na 1 zařízení)
-  bindAction('p2-btn-attack', () => { player2.attack(player1); });
-  bindAction('p2-btn-shield',
-    () => { player2.isShielding = true; },
-    () => { if (player2) player2.isShielding = false; }
   );
 }
 
@@ -1349,8 +1334,8 @@ function update() {
 
     // --- OVLÁDÁNÍ HRÁČE 2 ---
     if (gameMode === 'pvp' && !isWebMatch) {
-      player2.vx = touchInputP2.vx;
-      player2.vy = touchInputP2.vy;
+      player2.vx = 0;
+      player2.vy = 0;
 
       if (keys['ArrowLeft']) { player2.vx = -player2.speed; }
       else if (keys['ArrowRight']) { player2.vx = player2.speed; }
