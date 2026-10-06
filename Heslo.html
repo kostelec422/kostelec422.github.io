@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přístup na heslo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .box {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #obsah {
+            display: none; /* Obsah je výchozí skrytý */
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Co uvidí neuživatel / uzamčená obrazovka -->
+    <div id="zamek" class="box">
+        <h2>Tato stránka je chráněna heslem</h2>
+        <button onclick="overHeslo()">Zadat heslo</button>
+    </div>
+
+    <!-- Obsah, který se zobrazí až po zadání správného hesla -->
+    <div id="obsah" class="box">
+        <h1>Vítej!</h1>
+        <p>Tohle je tajný obsah stránky.</p>
+    </div>
+
+    <script>
+        // Nastav si své heslo zde
+        const SPRAVNE_HESLO = "1234";
+
+        function overHeslo() {
+            let zadaneHeslo = prompt("Zadej přístupové heslo:");
+
+            if (zadaneHeslo === SPRAVNE_HESLO) {
+                document.getElementById("zamek").style.display = "none";
+                document.getElementById("obsah").style.display = "block";
+            } else if (zadaneHeslo !== null) {
+                alert("Nespravné heslo! Přístup zamítnut.");
+            }
+        }
+    </script>
+
+</body>
+</html>
