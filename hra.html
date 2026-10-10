@@ -2,8 +2,9 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Rytířský Souboj - Knight Arena</title>
+<meta name="theme-color" content="#070a12">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -12,32 +13,59 @@
 <!-- QRCode.js pro snadné skenování druhým telefonem -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+:root {
+  --bg: #070a12;
+  --panel: rgba(14, 19, 32, 0.80);
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #e9edf6;
+  --muted: #9aa6bd;
+  --accent: #fbbf24;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --joy: 130px;
+  --btn: 65px;
+}
+@media (max-height: 420px) { :root { --joy: 112px; --btn: 58px; } }
+@media (max-height: 340px) { :root { --joy: 96px;  --btn: 52px; } }
+
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
-body, html {
+html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: #0d0d11;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #fff;
+  background: var(--bg);
+  font-family: var(--font);
+  color: var(--text);
 }
 
-/* Varování při otočení na výšku */
+.ic {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 #rotate-warning {
   display: none;
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #000;
+  right: 0;
+  bottom: 0;
+  background: #05070d;
   z-index: 99999;
   flex-direction: column;
   justify-content: center;
@@ -45,45 +73,38 @@ body, html {
   text-align: center;
   padding: 20px;
 }
-#rotate-warning .icon {
-  font-size: 80px;
-  margin-bottom: 20px;
-  animation: rotateAnim 2s infinite ease-in-out;
-}
+#rotate-warning .icon { font-size: 72px; margin-bottom: 18px; animation: rotateAnim 2s infinite ease-in-out; }
 #rotate-warning h1 {
-  color: #ffcc00;
-  font-size: 26px;
+  color: var(--accent);
+  font-size: 22px;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
 }
 @keyframes rotateAnim {
   0% { transform: rotate(0deg); }
   50% { transform: rotate(90deg); }
   100% { transform: rotate(0deg); }
 }
-
 @media screen and (orientation: portrait) {
-  #rotate-warning {
-    display: flex !important;
-  }
+  #rotate-warning { display: flex !important; }
 }
 
 #game-container {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: radial-gradient(circle, #2c2117 0%, #0a0806 100%);
+  background: radial-gradient(ellipse at 50% 40%, #121a2e 0%, #05070d 75%);
 }
 
-canvas {
-  background-color: #1a1612;
-  box-shadow: 0 0 30px rgba(0,0,0,0.9), inset 0 0 50px rgba(0,0,0,0.8);
-  border: 4px solid #4a3828;
-  border-radius: 8px;
+canvas#gameCanvas {
+  background: #10151f;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .06);
+  border-radius: 14px;
   max-width: 100%;
   max-height: 100%;
 }
@@ -91,209 +112,403 @@ canvas {
 .overlay {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(10, 8, 6, 0.88);
+  background: rgba(5, 8, 16, 0.58);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 100;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 8px;
 }
 
 .hidden { display: none !important; }
 
 .panel {
-  background: linear-gradient(145deg, #2a2018, #18120d);
-  border: 3px solid #8c6f4d;
-  box-shadow: 0 0 25px rgba(0,0,0,0.8), inset 0 0 15px rgba(218, 165, 32, 0.2);
-  border-radius: 12px;
-  padding: 25px 35px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
+  border-radius: 22px;
+  padding: 26px 30px;
   text-align: center;
-  max-width: 650px;
-  width: 90%;
-  max-height: 90vh;
+  max-width: 680px;
+  width: 94%;
+  max-height: calc(100% - 4px);
   overflow-y: auto;
 }
+.panel.flexcol { display: flex; flex-direction: column; overflow: hidden; }
+.panel.flexcol > .title { flex: 0 0 auto; }
+.panel.flexcol > .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.panel.flexcol > .foot { flex: 0 0 auto; }
+.scroll::-webkit-scrollbar { width: 6px; }
+.scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
+.panel::-webkit-scrollbar { width: 6px; }
+.panel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
 
-h1 {
-  color: #f3c644;
-  font-size: 32px;
+h1, .title {
+  font-weight: 800;
+  font-size: clamp(20px, 5.4vh, 32px);
+  letter-spacing: .05em;
   text-transform: uppercase;
-  letter-spacing: 3px;
-  margin-bottom: 20px;
-  text-shadow: 2px 2px 4px #000;
+  margin-bottom: 14px;
+  background: linear-gradient(90deg, #fde68a, #f59e0b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
-
 h2 {
-  color: #d4af37;
-  font-size: 22px;
-  margin-bottom: 15px;
-}
-
-p, li {
-  color: #d1c7bd;
+  color: var(--text);
   font-size: 15px;
-  line-height: 1.5;
-  margin-bottom: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin: 14px 0 8px;
   text-align: left;
 }
-
-ul { margin-left: 20px; margin-bottom: 15px; }
+p, li {
+  color: #c4cde0;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  text-align: left;
+}
+p.lead { text-align: center; color: var(--muted); margin-bottom: 4px; }
+p.version { text-align: center; font-size: 11px; color: #5d6a85; margin: 14px 0 0; letter-spacing: .1em; }
+ul { margin-left: 20px; margin-bottom: 10px; }
+.logo { width: 54px; height: 54px; color: var(--accent); margin-bottom: 6px; }
 
 .btn {
-  background: linear-gradient(180deg, #b8860b 0%, #785202 100%);
-  color: #fff;
-  border: 2px solid #ffd700;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 14px;
+  font: 700 14px/1 var(--font);
+  letter-spacing: .02em;
+  color: #1c1405;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, .28), inset 0 1px 0 rgba(255, 255, 255, .5);
   cursor: pointer;
-  margin: 8px;
-  transition: all 0.2s;
-  text-shadow: 1px 1px 2px #000;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-  display: inline-block;
+  transition: transform .12s, filter .12s, box-shadow .12s;
 }
-
-.btn:hover, .btn:active {
-  transform: scale(1.05);
-  background: linear-gradient(180deg, #d4af37 0%, #966f03 100%);
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-}
-
+.btn .ic { width: 18px; height: 18px; }
+.btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.btn:active { transform: scale(.97); }
 .btn-secondary {
-  background: linear-gradient(180deg, #5a5a5a 0%, #2a2a2a 100%);
-  border-color: #a0a0a0;
+  color: var(--text);
+  background: rgba(255, 255, 255, .07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15);
 }
-
 .btn-group {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
-  margin-top: 15px;
+  margin-top: 14px;
 }
 
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .11);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03));
+  color: var(--text);
+  font: 700 15px/1.2 var(--font);
+  cursor: pointer;
+  transition: transform .12s, border-color .12s, background .12s;
+}
+.choice .ic { width: 30px; height: 30px; color: var(--accent); }
+.choice small { font-weight: 500; color: var(--muted); font-size: 12px; }
+.choice:hover { transform: translateY(-2px); border-color: rgba(251, 191, 36, .65); background: linear-gradient(180deg, rgba(251, 191, 36, .14), rgba(255, 255, 255, .04)); }
+.choice:active { transform: scale(.97); }
+.choice .dotlvl { width: 14px; height: 14px; border-radius: 50%; margin: 8px 0; }
+
 input[type="text"] {
-  padding: 10px;
-  font-size: 20px;
-  letter-spacing: 5px;
+  padding: 11px;
+  font: 700 20px var(--font);
+  letter-spacing: 6px;
   text-align: center;
-  border-radius: 6px;
-  border: 2px solid #8c6f4d;
-  background: #000;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, .18);
+  background: rgba(0, 0, 0, .35);
   color: #fff;
-  width: 180px;
+  width: 190px;
   margin: 10px 0;
   text-transform: uppercase;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
 }
+input[type="text"]:focus { border-color: var(--accent); }
 
 #qrcode-box {
   background: #fff;
   padding: 10px;
   display: inline-block;
-  border-radius: 8px;
-  margin: 15px auto;
+  border-radius: 12px;
+  margin: 12px auto;
+}
+.wait-text { text-align: center; color: var(--accent); font-weight: 700; margin-top: 10px; }
+
+/* ---------- výběr výbavy ---------- */
+.panel.cust { max-width: 1000px; padding: 20px 22px; }
+.panel.cust h1 { margin-bottom: 10px; }
+.cust-slots { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.slot {
+  flex: 1 1 400px;
+  min-width: 300px;
+  text-align: left;
+  border-radius: 18px;
+  padding: 12px 14px 14px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-top: 3px solid var(--tc);
+}
+.slot-head {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 8px; color: var(--tc-l);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 10px var(--tc); }
+.slot-body { display: flex; gap: 12px; align-items: center; }
+.slot-preview {
+  width: 112px;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 72%, rgba(255, 255, 255, .13), rgba(255, 255, 255, .02) 70%);
+}
+.slot-rows { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.row-label {
+  width: 54px; flex: 0 0 auto;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
+}
+.chips { display: flex; gap: 6px; flex-wrap: nowrap; }
+.chip {
+  width: 54px; height: 58px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .05);
+  color: var(--muted);
+  font: 700 9.5px var(--font);
+  cursor: pointer;
+  padding: 3px 0 2px;
+  transition: transform .1s, border-color .12s, background .12s;
+}
+.chip canvas { width: 36px; height: 36px; display: block; }
+.chip:active { transform: scale(.94); }
+.chip.sel {
+  border-color: var(--tc, var(--accent));
+  background: rgba(255, 255, 255, .13);
+  color: #fff;
+  box-shadow: 0 0 14px -3px var(--tc, var(--accent));
+}
+.chip.gen { width: 76px; height: 34px; font-size: 12px; }
+.arena {
+  margin-top: 12px;
+  text-align: left;
+  border-radius: 18px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+.arena .row { align-items: center; }
+.arena .row-label { width: 54px; }
+.chip.bg { width: 84px; height: 62px; --tc: var(--accent); }
+.chip.bg canvas { width: 70px; height: auto; aspect-ratio: 35 / 18; border-radius: 6px; }
+.arena .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.cust-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+
+input[type="password"] {
+  padding: 10px; font: 700 16px var(--font); letter-spacing: 3px; text-align: center;
+  border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
+  color: #fff; width: 100%; max-width: 260px; margin: 4px 0; outline: none;
+  user-select: text; -webkit-user-select: text;
+}
+input[type="password"]:focus, textarea:focus { border-color: var(--accent); outline: none; }
+textarea#code-text {
+  width: 100%; height: 84px; margin: 6px 0; padding: 8px; border-radius: 12px; resize: none;
+  border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35); color: #cbd5e1;
+  font: 11px/1.3 monospace; user-select: text; -webkit-user-select: text;
+}
+.code-box { text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); margin-top: 10px; }
+.code-box h2 { text-align: center; margin-top: 0; }
+#code-msg { text-align: center; font-weight: 700; min-height: 20px; margin: 10px 0 0; }
+
+/* obchod */
+.shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+.shop-row span { color: var(--muted); font-size: 13px; }
+.shop-row .btn { min-width: 150px; }
+.btn:disabled { opacity: .55; cursor: default; transform: none; filter: none; }
+
+/* týmové menu */
+.slotbtn { border-left: 8px solid var(--tc); min-width: 230px; }
+
+@media (max-height: 420px) {
+  .panel { padding: 14px 18px; border-radius: 18px; }
+  .panel.cust { padding: 10px 14px; }
+  .panel.cust h1 { margin-bottom: 6px; font-size: 17px; }
+  .logo { display: none; }
+  .choices { margin-top: 10px; }
+  .choice { padding: 12px 10px; }
+  .choice .ic { width: 24px; height: 24px; }
+  h1, .title { margin-bottom: 8px; }
+  .slot { padding: 8px 10px 10px; }
+  .slot-head { margin-bottom: 4px; }
+  .slot-preview { width: 84px; }
+  .row-label { width: 46px; font-size: 9.5px; }
+  .chip { width: 48px; height: 46px; font-size: 9px; border-radius: 10px; }
+  .chip canvas { width: 27px; height: 27px; }
+  .chip.gen { width: 66px; height: 30px; }
+  .arena { margin-top: 6px; padding: 5px 10px; }
+  .chip.bg { width: 68px; height: 46px; }
+  .chip.bg canvas { width: 52px; }
+  .cust-actions { margin-top: 8px; }
+  .btn { padding: 10px 18px; }
+  .arena .row + .hint { display: none; }
+  .panel.flexcol > .foot { padding-top: 6px; }
+}
+@media (max-height: 380px) {
+  .panel.cust > .title, #instructions-screen .panel > .title, #menu-team .panel > .title { display: none; }
 }
 
-.wait-text {
-  text-align: center;
-  color: #f3c644;
-  font-weight: bold;
-  margin-top: 10px;
-}
-
-/* Mobilní ovládání na displeji */
+/* ---------- ovládání na displeji ---------- */
 .touch-controls {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none;
   z-index: 50;
+  --team: #3b82f6;
 }
-
 .joystick-zone {
   position: absolute;
-  bottom: 20px;
-  width: 130px;
-  height: 130px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px dashed rgba(255, 255, 255, 0.25);
+  left: max(16px, env(safe-area-inset-left));
+  bottom: 16px;
+  width: var(--joy);
+  height: var(--joy);
   border-radius: 50%;
   pointer-events: auto;
   touch-action: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .14) 0%, rgba(255, 255, 255, .05) 62%, rgba(255, 255, 255, .02) 100%);
+  border: 1.5px solid rgba(255, 255, 255, .32);
+  box-shadow: inset 0 0 22px rgba(255, 255, 255, .08), 0 6px 20px rgba(0, 0, 0, .35);
 }
-#p1-joystick-zone { left: 20px; }
-#p2-joystick-zone { right: 20px; }
-
+.joystick-zone::before {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, .2);
+}
 .joystick-knob {
   position: absolute;
-  top: 35px; left: 35px;
-  width: 60px; height: 60px;
-  background: radial-gradient(circle, #f3c644 0%, #8a6300 100%);
-  border: 2px solid #fff;
+  top: 27%; left: 27%;
+  width: 46%; height: 46%;
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
   pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .95), var(--team) 64%);
+  box-shadow: 0 0 18px var(--team), 0 4px 10px rgba(0, 0, 0, .5);
+  border: 1.5px solid rgba(255, 255, 255, .75);
 }
-
 .action-buttons {
   position: absolute;
-  bottom: 20px;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: 16px;
   display: flex;
   gap: 12px;
+  align-items: flex-end;
   pointer-events: auto;
 }
-#p1-action-buttons { right: 20px; }
-#p2-action-buttons { left: 20px; }
-
 .action-btn {
-  width: 65px;
-  height: 65px;
+  flex: 0 0 auto;
+  width: var(--btn);
+  height: var(--btn);
   border-radius: 50%;
-  background: linear-gradient(145deg, #cc2222, #660000);
-  border: 2px solid #ff9999;
-  color: #fff;
-  font-weight: bold;
-  font-size: 13px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  text-align: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  gap: 2px;
+  color: #fff;
+  font: 800 9.5px var(--font);
+  letter-spacing: .1em;
   touch-action: manipulation;
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .28), rgba(255, 255, 255, .06) 70%);
+  border: 1.5px solid rgba(255, 255, 255, .42);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .4), inset 0 0 14px rgba(255, 255, 255, .08);
 }
-.action-btn.shield {
-  background: linear-gradient(145deg, #2266cc, #002266);
-  border-color: #99ccff;
+.action-btn .ic { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); stroke-width: 2.2; }
+.action-btn.attack {
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .5), var(--team) 78%);
+  border-color: rgba(255, 255, 255, .75);
+  box-shadow: 0 0 18px var(--team), 0 6px 18px rgba(0, 0, 0, .4);
 }
-.action-btn:active {
-  transform: scale(0.92);
-  filter: brightness(1.3);
-}
+.action-btn:active { transform: scale(.92); filter: brightness(1.25); }
 
 #pc-hud-guide {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.75);
-  border: 1px solid #8c6f4d;
+  background: rgba(8, 12, 22, .72);
+  border: 1px solid rgba(255, 255, 255, .12);
   padding: 6px 16px;
-  border-radius: 20px;
+  border-radius: 999px;
   font-size: 12px;
-  color: #f3c644;
+  color: #c9d2e6;
   pointer-events: none;
   z-index: 40;
   white-space: nowrap;
 }
+#pc-hud-guide b {
+  color: #fff;
+  background: rgba(255, 255, 255, .13);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+#pc-hud-guide span.sep { opacity: .35; margin: 0 6px; }
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-sword" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></symbol>
+    <symbol id="i-swords" viewBox="0 0 24 24"><use href="#i-sword"/><use href="#i-sword" transform="translate(24 0) scale(-1 1)"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.6-3.2 7.8-8 9-4.8-1.2-8-4.4-8-9V6z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V5"/><circle cx="12" cy="3.6" r="1.2"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="13" r="1.1"/><path d="M2.5 13v2.5M21.5 13v2.5"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.6.2 4.5 2.2 4.5 4.8"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.4 3 14.6 0 18M12 3c-3 3.4-3 14.6 0 18"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  </defs>
+</svg>
+
 <div id="rotate-warning">
   <div class="icon">📱</div>
-  <h1>DEJ MOBIL NA ŠÍŘKU, ABY HRA FUNGOVALA!</h1>
+  <h1>Otoč telefon na šířku, aby hra fungovala!</h1>
 </div>
 
 <div id="game-container">
@@ -302,24 +517,88 @@ input[type="text"] {
   <!-- HLAVNÍ MENU -->
   <div id="menu-main" class="overlay">
     <div class="panel">
-      <h1>⚔️ Rytířský Souboj ⚔️</h1>
-      <p style="text-align:center;">Vyber si zařízení a režim hry:</p>
-      <p style="text-align:center; font-size:12px; color:#8c6f4d;">verze 3 (oprava pohybu)</p>
-      <div class="btn-group">
-        <button class="btn" onclick="selectDevice('pc')">💻 Notebook / PC</button>
-        <button class="btn" onclick="selectDevice('mobile')">📱 Mobil / Tablet</button>
+      <svg class="ic logo"><use href="#i-swords"/></svg>
+      <h1 class="title">Rytířský souboj</h1>
+      <p class="lead">Na čem budeš hrát?</p>
+      <div class="choices">
+        <button class="choice" onclick="selectDevice('pc')"><svg class="ic"><use href="#i-monitor"/></svg>Notebook / PC<small>ovládání klávesnicí</small></button>
+        <button class="choice" onclick="selectDevice('mobile')"><svg class="ic"><use href="#i-phone"/></svg>Mobil / Tablet<small>dotykové ovládání</small></button>
+        <button class="choice" onclick="openShop()"><svg class="ic"><use href="#i-key"/></svg>Obchod<small id="shop-keys-label">0 klíčů</small></button>
+        <button class="choice" onclick="openCode()"><svg class="ic"><use href="#i-refresh"/></svg>Můj kód<small>přenos klíčů na jiné zařízení</small></button>
+        <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
+      </div>
+      <p class="version">VERZE 7</p>
+    </div>
+  </div>
+
+  <!-- OBCHOD -->
+  <div id="menu-shop" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Obchod</h1>
+      <div class="scroll">
+        <p id="shop-keys" class="lead" style="font-size:18px;color:var(--accent);font-weight:800"></p>
+        <p class="lead">Za výhru kola dostaneš 1 klíč. Vylepšení platí 2 dny od koupě, i když zrovna nehraješ.</p>
+        <div id="shop-items" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
 
-  <!-- MENU REŽIMŮ -->
-  <div id="menu-mode" class="overlay hidden">
+  <!-- BANKA -->
+  <div id="menu-bank" class="overlay hidden">
     <div class="panel">
-      <h1>Vyber Režim Hry</h1>
+      <h1 class="title">Banka</h1>
+      <p class="lead">Klíče v bance jsou v bezpečí a v obchodě je nemůžeš utratit. Dokud je nevybereš, nic za ně nekoupíš ani omylem.</p>
+      <p id="bank-wallet" class="lead" style="font-size:18px;color:var(--accent);font-weight:800;margin-top:12px"></p>
+      <p id="bank-safe" class="lead" style="font-size:18px;color:#7dd3fc;font-weight:800"></p>
       <div class="btn-group">
-        <button class="btn" onclick="openDifficultyMenu()">🤖 Hra proti Počítači</button>
-        <button class="btn" onclick="openPvPMenu()">⚔️ Hra pro 2 Hráče</button>
-        <button class="btn btn-secondary" onclick="showRulesOnly()">📜 Pravidla & Pohyby</button>
+        <button class="btn" id="bank-in-1" onclick="bankMove('in', false)">Vložit 1</button>
+        <button class="btn" id="bank-in-all" onclick="bankMove('in', true)">Vložit všechny</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="bank-out-1" onclick="bankMove('out', false)">Vybrat 1</button>
+        <button class="btn btn-secondary" id="bank-out-all" onclick="bankMove('out', true)">Vybrat všechny</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MŮJ KÓD A PŘENOS -->
+  <div id="menu-code" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Můj kód</h1>
+      <div class="scroll">
+        <p id="code-status" class="lead" style="font-weight:800;color:var(--accent)"></p>
+        <p class="lead">Kód chrání tvoje klíče. Bez něj se postup nedá uložit do textu, načíst ani změnit kód.</p>
+
+        <div class="code-box">
+          <h2>Přenést klíče na jiné zařízení</h2>
+          <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
+          <div class="btn-group" style="margin-top:6px">
+            <button class="btn" onclick="xferStartSend()">Poslat klíče</button>
+            <button class="btn btn-secondary" onclick="xferShowReceive()">Přijmout klíče</button>
+          </div>
+          <div id="xfer-send" class="hidden">
+            <p class="lead" style="margin:10px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
+            <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
+            <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
+            <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
+          </div>
+          <div id="xfer-recv" class="hidden">
+            <p class="lead" style="margin:10px 0 0">Zadej kód z prvního zařízení:</p>
+            <input type="text" id="xfer-code-in" maxlength="6" placeholder="KÓD"><br>
+            <button class="btn" onclick="xferReceive()">Přijmout</button>
+            <p id="xfer-recv-status" class="lead" style="margin-top:6px;font-weight:700"></p>
+          </div>
+        </div>
+        <p id="code-msg" class="hidden"></p>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="closeXfer();showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
@@ -327,12 +606,35 @@ input[type="text"] {
   <!-- OBTÍŽNOST AI -->
   <div id="menu-difficulty" class="overlay hidden">
     <div class="panel">
-      <h1>Obtížnost Počítače</h1>
+      <h1 class="title">Obtížnost počítače</h1>
+      <div class="choices">
+        <button class="choice" onclick="startSinglePlayer('easy')"><span class="dotlvl" style="background:#4ade80"></span>Nejlehčí</button>
+        <button class="choice" onclick="startSinglePlayer('medium')"><span class="dotlvl" style="background:#fbbf24"></span>Střední</button>
+        <button class="choice" onclick="startSinglePlayer('hard')"><span class="dotlvl" style="background:#f87171"></span>Nejtěžší</button>
+      </div>
       <div class="btn-group">
-        <button class="btn" onclick="startSinglePlayer('easy')">🟢 Nejlehčí</button>
-        <button class="btn" onclick="startSinglePlayer('medium')">🟡 Střední</button>
-        <button class="btn" onclick="startSinglePlayer('hard')">🔴 Nejtěžší</button>
-        <button class="btn btn-secondary" onclick="showScreen('menu-mode')">ZPĚT</button>
+        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TÝMY A SOUBOJE (až 4 bojovníci) -->
+  <div id="menu-team" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Týmy a souboje</h1>
+      <div class="scroll">
+        <h2>Formát</h2>
+        <div id="team-formats" class="btn-group" style="margin-top:0"></div>
+        <h2>Bojovníci</h2>
+        <div id="team-slots" class="btn-group" style="margin-top:0"></div>
+        <p id="team-hint" class="lead" style="margin-top:10px"></p>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="teamBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn btn-secondary" id="team-diff" onclick="cycleTeamDiff()"></button>
+        <button class="btn" onclick="createCodeForFriend()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit kód pro kamaráda</button>
+        <button class="btn btn-secondary" onclick="openJoinFromTeam()"><svg class="ic"><use href="#i-key"/></svg>Mám kód od kamaráda</button>
+        <button class="btn" id="team-next" onclick="teamNext()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
       </div>
     </div>
   </div>
@@ -340,11 +642,12 @@ input[type="text"] {
   <!-- TYP PVP -->
   <div id="menu-pvp" class="overlay hidden">
     <div class="panel">
-      <h1>2 Hráči - Kde budete hrát?</h1>
+      <h1 class="title">Kde budete hrát?</h1>
+      <div class="choices">
+        <button class="choice" onclick="showScreen('menu-web')"><svg class="ic"><use href="#i-globe"/></svg>Na 2 zařízeních<small>přes internet</small></button>
+      </div>
       <div class="btn-group">
-        <button class="btn" onclick="setupLocalPvP()">📱 Na 1 Zařízení (společně)</button>
-        <button class="btn" onclick="showScreen('menu-web')">🌐 Na 2 Zařízeních přes Web</button>
-        <button class="btn btn-secondary" onclick="showScreen('menu-mode')">ZPĚT</button>
+        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
@@ -352,60 +655,77 @@ input[type="text"] {
   <!-- WEB MULTIPLAYER (PeerJS + QR) -->
   <div id="menu-web" class="overlay hidden">
     <div class="panel">
-      <h1>Hra přes Web / QR Kód</h1>
-      <p style="text-align:center;">Naskenuj druhým telefonem nebo zadej kód!</p>
-      <div class="btn-group">
-        <button class="btn" onclick="createRoom()">➕ Vytvořit kód místnosti</button>
-        <button class="btn" onclick="showJoinRoom()">🔑 Zadat kód od kamaráda</button>
-      </div>
-
-      <div id="room-display" class="hidden" style="margin-top:15px;">
-        <p style="text-align:center;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:#f3c644;">---</strong></p>
+      <h1 class="title">Hra s kamarády</h1>
+      <p class="lead">Zadej kód místnosti od kamaráda, nebo naskenuj jeho QR kód.</p>
+      <div id="room-display" class="hidden" style="margin-top:12px;">
+        <p style="text-align:center;margin-bottom:0;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:var(--accent); letter-spacing:.12em;">---</strong></p>
         <div id="qrcode-box"></div>
-        <p id="room-status-text" style="text-align:center; font-size:13px; color:#aaa;">Připojuji k síti...</p>
+        <p id="room-status-text" style="text-align:center; font-size:13px; color:var(--muted);">Připojuji k síti...</p>
       </div>
 
-      <div id="room-input-zone" class="hidden" style="margin-top:15px;">
+      <div id="room-input-zone" class="hidden" style="margin-top:12px;">
         <input type="text" id="join-code-input" maxlength="6" placeholder="KÓD">
         <br>
         <button class="btn" onclick="joinRoom()">Připojit se</button>
-        <p id="join-status-text" style="text-align:center; font-size:13px; color:#ff9999; margin-top:5px;"></p>
+        <p id="join-status-text" style="text-align:center; font-size:13px; color:#fca5a5; margin-top:8px;"></p>
       </div>
-      <br>
-      <button class="btn btn-secondary" onclick="showScreen('menu-pvp')">ZPĚT</button>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="backFromWeb()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
     </div>
   </div>
 
   <!-- NÁVOD -->
   <div id="instructions-screen" class="overlay hidden">
-    <div class="panel">
-      <h1>📜 Pravidla & Pohyby</h1>
-      <h2>Pravidla hry:</h2>
+    <div class="panel flexcol">
+      <h1 class="title">Pravidla a ovládání</h1>
+      <div class="scroll">
+      <h2>Pravidla hry</h2>
       <ul>
-        <li>Každý hráč začíná s <strong>50 Životy (HP)</strong>.</li>
-        <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
-        <li><strong>ŠTÍT:</strong> Pokud držíš štít, <strong>100% odrazíš útok</strong>! Nemůžeš ale při tom mečovat.</li>
-        <li><strong>LÉKÁRNIČKY:</strong> Padají z nebe! Doplní <strong>+10 HP</strong>.</li>
+        <li>Každý hráč začíná s <strong>50 životy (HP)</strong>.</li>
+        <li>Zásah mečem odebere <strong>5 HP</strong> (s vylepšeními z obchodu se to mění).</li>
+        <li><strong>ŠTÍT:</strong> když ho držíš, <strong>odrazíš každý útok</strong>. Při držení štítu ale nemůžeš sekat.</li>
+        <li><strong>LÉKÁRNIČKY</strong> padají z nebe a doplní <strong>+10 HP</strong>.</li>
+        <li>V týmové hře spoluhráče neraníš. Vyhrává poslední tým, který zůstane stát.</li>
       </ul>
-      <h2>Pohyby a Ovládání:</h2>
+      <h2>Ovládání</h2>
       <div id="controls-desc"></div>
-      <div class="btn-group" style="margin-top:20px;">
-        <button class="btn" id="start-battle-btn" onclick="confirmAndStartGame()">⚔️ ROZUMÍM, JÍT DO BOJE!</button>
-        <button class="btn btn-secondary" onclick="returnToMainMenu()">Vyjet do hlavního menu</button>
       </div>
-      <p id="wait-text-instr" class="wait-text hidden">⏳ Čekám na soupeře...</p>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="goToCustomize(custReturn)"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn" id="start-battle-btn" onclick="confirmAndStartGame()"><svg class="ic"><use href="#i-sword"/></svg>Do boje!</button>
+      </div>
+      <p id="wait-text-rules" class="wait-text hidden">Čekám na soupeře...</p>
+    </div>
+  </div>
+
+  <!-- VÝBĚR VÝBAVY -->
+  <div id="customize-screen" class="overlay hidden">
+    <div class="panel cust flexcol">
+      <h1 class="title">Příprava na boj</h1>
+      <div class="scroll">
+        <div id="cust-slots" class="cust-slots"></div>
+        <div id="cust-arena" class="arena"></div>
+      </div>
+      <div class="cust-actions foot">
+        <button class="btn btn-secondary" onclick="custBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn" onclick="showRulesBeforeBattle()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
+      </div>
+      <p id="wait-text-cust" class="wait-text hidden">Čekám na soupeře...</p>
     </div>
   </div>
 
   <!-- VÝSLEDKY -->
   <div id="game-over-screen" class="overlay hidden">
     <div class="panel">
-      <h1 id="winner-announcement" style="font-size:28px; color:#f3c644;">---</h1>
-      <div class="btn-group" style="margin-top:20px;">
-        <button class="btn" onclick="restartCurrentGame()">⚔️ Hrát znovu</button>
-        <button class="btn btn-secondary" onclick="returnToMainMenu()">Vyjet do hlavního menu</button>
+      <h1 id="winner-announcement" class="title" style="font-size:26px;">---</h1>
+      <p id="key-reward" class="lead hidden" style="color:var(--accent);font-weight:800;font-size:16px;text-align:center"></p>
+      <div class="btn-group">
+        <button class="btn" onclick="restartCurrentGame()"><svg class="ic"><use href="#i-refresh"/></svg>Hrát znovu</button>
+        <button class="btn btn-secondary" onclick="goToCustomize('game-over-screen')"><svg class="ic"><use href="#i-shield"/></svg>Změnit výbavu</button>
+        <button class="btn btn-secondary" onclick="returnToMainMenu()">Hlavní menu</button>
       </div>
-      <p id="wait-text-over" class="wait-text hidden">⏳ Čekám na soupeře...</p>
+      <p id="wait-text-over" class="wait-text hidden">Čekám na soupeře...</p>
     </div>
   </div>
 
@@ -415,16 +735,8 @@ input[type="text"] {
       <div id="p1-joystick-knob" class="joystick-knob"></div>
     </div>
     <div id="p1-action-buttons" class="action-buttons">
-      <div class="action-btn" id="p1-btn-attack">⚔️<br>MEČ</div>
-      <div class="action-btn shield" id="p1-btn-shield">🛡️<br>ŠTÍT</div>
-    </div>
-
-    <div id="p2-joystick-zone" class="joystick-zone hidden">
-      <div id="p2-joystick-knob" class="joystick-knob"></div>
-    </div>
-    <div id="p2-action-buttons" class="action-buttons hidden">
-      <div class="action-btn" id="p2-btn-attack">⚔️<br>MEČ</div>
-      <div class="action-btn shield" id="p2-btn-shield">🛡️<br>ŠTÍT</div>
+      <div class="action-btn attack" id="p1-btn-attack"><svg class="ic"><use href="#i-sword"/></svg>MEČ</div>
+      <div class="action-btn" id="p1-btn-shield"><svg class="ic"><use href="#i-shield"/></svg>ŠTÍT</div>
     </div>
   </div>
 
@@ -434,68 +746,1115 @@ input[type="text"] {
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
 
-// Záloha pro starší prohlížeče bez roundRect
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) {
-    this.rect(x, y, w, h);
-  };
+// ======================================================================
+//  DATA: týmové barvy (pevné!) a nabídka výbavy
+// ======================================================================
+const TEAM = {
+  1: { name: 'MODRÝ',   main: '#3b82f6', dark: '#1e4fb8', light: '#9cc3ff', rgb: '59,130,246' },
+  2: { name: 'ČERVENÝ', main: '#ef4444', dark: '#a81f1f', light: '#ffa3a3', rgb: '239,68,68' },
+  3: { name: 'ŽLUTÝ',   main: '#eab308', dark: '#a16207', light: '#fde047', rgb: '234,179,8' },
+  4: { name: 'ZELENÝ',  main: '#22c55e', dark: '#15803d', light: '#86efac', rgb: '34,197,94' }
+};
+const CHARACTERS = [
+  { id: 'knight',  name: 'Rytíř' },
+  { id: 'viking',  name: 'Viking' },
+  { id: 'samurai', name: 'Samuraj' },
+  { id: 'pirate',  name: 'Pirát' }
+];
+const SWORDS = [
+  { id: 'broad',  name: 'Meč' },
+  { id: 'saber',  name: 'Šavle' },
+  { id: 'katana', name: 'Katana' },
+  { id: 'flame',  name: 'Plamenný' }
+];
+const SHIELDS = [
+  { id: 'round',  name: 'Kulatý' },
+  { id: 'heater', name: 'Erbovní' },
+  { id: 'scutum', name: 'Římský' },
+  { id: 'star',   name: 'Hvězdný' }
+];
+const BACKGROUNDS = [
+  { id: 'desert', name: 'Poušť' },
+  { id: 'forest', name: 'Les' },
+  { id: 'rocks',  name: 'Skály' }
+];
+// holčičí varianty (stejné pořadí = stejný index postavy)
+const GIRL_CHARACTERS = [
+  { id: 'knight',  name: 'Rytířka' },
+  { id: 'viking',  name: 'Vikinka' },
+  { id: 'samurai', name: 'Samurajka' },
+  { id: 'pirate',  name: 'Pirátka' }
+];
+const GIRL_SWORDS = [
+  { id: 'rapier',  name: 'Rapír' },
+  { id: 'crystal', name: 'Krystal' },
+  { id: 'rose',    name: 'Růže' },
+  { id: 'wand',    name: 'Hůlka' }
+];
+const GIRL_SHIELDS = [
+  { id: 'heart',     name: 'Srdce' },
+  { id: 'flower',    name: 'Květ' },
+  { id: 'butterfly', name: 'Motýl' },
+  { id: 'moon',      name: 'Měsíc' }
+];
+const charList   = st => (st && st.g) ? GIRL_CHARACTERS : CHARACTERS;
+const swordList  = st => (st && st.g) ? GIRL_SWORDS : SWORDS;
+const shieldList = st => (st && st.g) ? GIRL_SHIELDS : SHIELDS;
+const isGirlSword  = k => GIRL_SWORDS.some(x => x.id === k);
+const isGirlShield = k => GIRL_SHIELDS.some(x => x.id === k);
+
+// ======================================================================
+//  NASTAVENÍ (pamatuje se v prohlížeči, když to jde)
+// ======================================================================
+const STORE_KEY = 'ka-v5';
+const settings = { l: { 1: { c: 0, s: 0, h: 0, g: 0 }, 2: { c: 0, s: 0, h: 0, g: 0 } }, bg: 0 };
+
+function clampIdx(v, n) {
+  v = parseInt(v, 10);
+  return (v >= 0 && v < n) ? v : 0;
+}
+function cleanLoadout(o) {
+  o = o || {};
+  return { c: clampIdx(o.c, CHARACTERS.length), s: clampIdx(o.s, SWORDS.length), h: clampIdx(o.h, SHIELDS.length), g: clampIdx(o.g, 2) };
+}
+function randomLoadout() {
+  const r = n => Math.floor(Math.random() * n);
+  return { c: r(CHARACTERS.length), s: r(SWORDS.length), h: r(SHIELDS.length), g: r(2) };
+}
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    settings.l[1] = cleanLoadout(o.l && o.l[1]);
+    settings.l[2] = cleanLoadout(o.l && o.l[2]);
+    settings.bg = clampIdx(o.bg, BACKGROUNDS.length);
+  } catch (e) { /* bez uložení to prostě půjde dál */ }
+}
+function saveSettings() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+loadSettings();
+
+// ======================================================================
+//  OBCHOD A KLÍČE (ukládá se v prohlížeči; vylepšení vyprší po 2 dnech reálného času)
+// ======================================================================
+const SHOP_KEY = 'ka-shop';
+const PERK_MS = 2 * 24 * 3600 * 1000;
+const SHOP_ITEMS = [
+  { id: 'sword', name: 'Ostrý meč',    cost: 10, desc: 'Každý zásah dává 10 poškození místo 5.' },
+  { id: 'boots', name: 'Rychlé boty',  cost: 5,  desc: 'Běháš rychleji.' },
+  { id: 'armor', name: 'Pancíř',       cost: 7,  desc: 'Dostáváš menší poškození: zásah tě bolí jen za 3 životy místo 5. Štít dál odrazí útok na 100 %.' }
+];
+const shop = { keys: 0, bank: 0, sword: 0, boots: 0, armor: 0 };   // keys = peněženka, bank = klíče v bezpečí v bance
+function loadShop() {
+  try {
+    const o = JSON.parse(localStorage.getItem(SHOP_KEY) || 'null');
+    if (!o) return;
+    shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
+    shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
+    ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
+  } catch (e) {}
+}
+function saveShop() { try { localStorage.setItem(SHOP_KEY, JSON.stringify(shop)); } catch (e) {} }
+function perkActive(k) { return shop[k] > Date.now(); }
+function activePerks() { return { sword: perkActive('sword'), boots: perkActive('boots'), armor: perkActive('armor') }; }
+function applyPerks(p, pk) {
+  if (!p || !pk) return;
+  if (pk.sword) p.dmg = 10;
+  if (pk.boots) p.speed = 5.5;
+  if (pk.armor) p.dmgTaken = 0.6;      // 5 → 3 (a 10 → 6)
+}
+function keysText(n) { return n === 1 ? '1 klíč' : (n >= 2 && n <= 4 ? n + ' klíče' : n + ' klíčů'); }
+function updateShopLabel() {
+  const el = document.getElementById('shop-keys-label');
+  if (el) el.textContent = keysText(shop.keys);
+  const bl = document.getElementById('bank-label');
+  if (bl) bl.textContent = 'v bance ' + keysText(shop.bank);
+}
+function timeLeft(t) {
+  const d = Math.max(0, t - Date.now());
+  const days = Math.floor(d / 86400000), h = Math.floor(d % 86400000 / 3600000), m = Math.floor(d % 3600000 / 60000);
+  return days ? days + ' d ' + h + ' h' : (h ? h + ' h ' + m + ' min' : Math.max(1, m) + ' min');
+}
+// ======================================================================
+//  MŮJ KÓD A PŘENOS POSTUPU (šifrováno kódem; bez serveru se přenáší ručně textem)
+// ======================================================================
+const CODE_KEY = 'ka-code';
+let codeRec = null;                       // { salt, hash } – kód samotný se neukládá
+function loadCodeRec() { try { codeRec = JSON.parse(localStorage.getItem(CODE_KEY) || 'null'); } catch (e) { codeRec = null; } }
+function saveCodeRec() { try { if (codeRec) localStorage.setItem(CODE_KEY, JSON.stringify(codeRec)); } catch (e) {} }
+loadCodeRec();
+const _enc = new TextEncoder(), _dec = new TextDecoder();
+function b64e(u) { let t = ''; u.forEach(c => { t += String.fromCharCode(c); }); return btoa(t); }
+function b64d(t) { const x = atob(t); const u = new Uint8Array(x.length); for (let i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u; }
+function cryptoOk() { return typeof crypto !== 'undefined' && !!crypto.subtle; }
+const NOCRYPTO = 'Tento prohlížeč (nebo způsob otevření souboru) šifrování neumí.';
+async function pbBase(code) { return crypto.subtle.importKey('raw', _enc.encode(code), 'PBKDF2', false, ['deriveBits', 'deriveKey']); }
+async function hashCode(code, salt) {
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code), 256);
+  return b64e(new Uint8Array(bits));
+}
+async function aesKeyFor(code, salt) {
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code),
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function verifyCode(code) { return !!codeRec && (await hashCode(code, b64d(codeRec.salt))) === codeRec.hash; }
+async function setCodeRec(code) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  codeRec = { salt: b64e(salt), hash: await hashCode(code, salt) };
+  saveCodeRec();
+}
+async function codeMakeCore(c1, c2) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (codeRec) return { ok: false, msg: 'Kód už máš. Použij Změnit kód.' };
+  if (c1.length < 4) return { ok: false, msg: 'Kód musí mít aspoň 4 znaky.' };
+  if (c1 !== c2) return { ok: false, msg: 'Kódy se neshodují.' };
+  await setCodeRec(c1);
+  return { ok: true, msg: 'Kód je hotový.' };
+}
+async function codeChangeCore(old, n1, n2) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
+  if (!(await verifyCode(old))) return { ok: false, msg: 'Starý kód nesedí.' };
+  if (n1.length < 4) return { ok: false, msg: 'Nový kód musí mít aspoň 4 znaky.' };
+  if (n1 !== n2) return { ok: false, msg: 'Nové kódy se neshodují.' };
+  await setCodeRec(n1);
+  return { ok: true, msg: 'Kód je změněný.' };
+}
+async function exportCore(code) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
+  if (!(await verifyCode(code))) return { ok: false, msg: 'Kód nesedí.' };
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = JSON.stringify({ v: 1, t: Date.now(), keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor });
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await aesKeyFor(code, salt), _enc.encode(data));
+  return { ok: true, msg: 'Hotovo. Text zkopíruj a vlož ho na druhém zařízení.', text: 'KA1.' + b64e(salt) + '.' + b64e(iv) + '.' + b64e(new Uint8Array(ct)) };
+}
+async function importCore(text, code) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  const parts = String(text || '').trim().split('.');
+  if (parts.length !== 4 || parts[0] !== 'KA1') return { ok: false, msg: 'Tohle není text s postupem.' };
+  if (codeRec && !(await verifyCode(code))) return { ok: false, msg: 'Na tomto zařízení je jiný kód. Zadej ten, který tu už máš.' };
+  let o;
+  try {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(parts[2]) }, await aesKeyFor(code, b64d(parts[1])), b64d(parts[3]));
+    o = JSON.parse(_dec.decode(pt));
+  } catch (e) { return { ok: false, msg: 'Špatný kód, nebo je text poškozený.' }; }
+  shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
+  shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
+  ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
+  saveShop();
+  if (!codeRec) await setCodeRec(code);
+  updateShopLabel();
+  return { ok: true, msg: 'Postup načtený: ' + keysText(shop.keys) + ' v peněžence, ' + keysText(shop.bank) + ' v bance.' };
+}
+function codeMsg(r) {
+  const el = document.getElementById('code-msg');
+  el.textContent = r.msg;
+  el.style.color = r.ok ? '#86efac' : '#fca5a5';
+}
+function renderCode() {
+  document.getElementById('code-status').textContent = codeRec ? '✔ Kód je nastavený' : 'Zatím nemáš kód';
+  document.getElementById('code-make-box').classList.toggle('hidden', !!codeRec);
+  document.getElementById('code-change-box').classList.toggle('hidden', !codeRec);
+}
+function openCode() {
+  document.getElementById('code-msg').textContent = '';
+  closeXfer();
+  document.getElementById('xfer-send').classList.add('hidden');
+  document.getElementById('xfer-recv').classList.add('hidden');
+  renderCode();
+  showScreen('menu-code');
 }
 
-// Stav Aplikace
+// ---------- přenos klíčů přímo mezi dvěma zařízeními (PeerJS) ----------
+let xferPeer = null;
+function closeXfer() { if (xferPeer) { try { xferPeer.destroy(); } catch (e) {} xferPeer = null; } }
+function hasStuff() { return shop.keys > 0 || shop.bank > 0 || perkActive('sword') || perkActive('boots') || perkActive('armor'); }
+function setSt(id, t, ok) { const el = document.getElementById(id); el.textContent = t; el.style.color = ok === true ? '#86efac' : (ok === false ? '#fca5a5' : ''); }
+
+function xferStartSend() {
+  closeXfer();
+  document.getElementById('xfer-send').classList.remove('hidden');
+  document.getElementById('xfer-recv').classList.add('hidden');
+  if (!hasStuff()) { document.getElementById('xfer-code').textContent = ''; document.getElementById('xfer-qr').innerHTML = ''; setSt('xfer-send-status', 'Nemáš co přenášet.', false); return; }
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
+  document.getElementById('xfer-code').textContent = code;
+  setSt('xfer-send-status', 'Připravuji spojení...');
+  const pr = new Peer('KAX-' + code);
+  xferPeer = pr;
+  let used = false;
+  pr.on('open', () => {
+    setSt('xfer-send-status', 'Čekám na druhé zařízení...');
+    document.getElementById('xfer-qr').innerHTML = '';
+    new QRCode(document.getElementById('xfer-qr'), { text: window.location.href.split('?')[0] + '?take=' + code, width: 120, height: 120 });
+  });
+  pr.on('connection', (c) => {
+    if (used) { try { c.close(); } catch (e) {} return; }
+    used = true;
+    const sent = { keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor };
+    c.on('open', () => { c.send({ type: 'xfer', data: sent }); setSt('xfer-send-status', 'Posílám...'); });
+    c.on('data', (d) => {
+      if (!d || d.type !== 'ack') return;
+      shop.keys = Math.max(0, shop.keys - sent.keys);
+      shop.bank = Math.max(0, shop.bank - sent.bank);
+      ['sword', 'boots', 'armor'].forEach(k => { if (shop[k] === sent[k]) shop[k] = 0; });
+      saveShop(); updateShopLabel();
+      setSt('xfer-send-status', '✔ Hotovo! Klíče jsou teď na druhém zařízení.', true);
+      setTimeout(closeXfer, 800);
+    });
+  });
+  pr.on('error', () => setSt('xfer-send-status', 'Chyba spojení. Zkus to znovu.', false));
+}
+
+function xferShowReceive() {
+  closeXfer();
+  document.getElementById('xfer-recv').classList.remove('hidden');
+  document.getElementById('xfer-send').classList.add('hidden');
+  setSt('xfer-recv-status', '');
+}
+
+function xferReceive(auto) {
+  const code = String(typeof auto === 'string' ? auto : val('xfer-code-in')).trim().toUpperCase();
+  if (code.length < 4) { setSt('xfer-recv-status', 'Zadej kód z prvního zařízení.', false); return; }
+  closeXfer();
+  setSt('xfer-recv-status', 'Připojuji se...');
+  const pr = new Peer();
+  xferPeer = pr;
+  let done = false;
+  const num = v => Math.min(1000000, Math.max(0, parseInt(v, 10) || 0));
+  pr.on('open', () => {
+    const c = pr.connect('KAX-' + code, { reliable: true });
+    c.on('data', (d) => {
+      if (done || !d || d.type !== 'xfer' || !d.data) return;
+      done = true;
+      const o = d.data;
+      shop.keys += num(o.keys);
+      shop.bank += num(o.bank);
+      ['sword', 'boots', 'armor'].forEach(k => { shop[k] = Math.max(shop[k], +o[k] || 0); });
+      saveShop(); updateShopLabel();
+      try { c.send({ type: 'ack' }); } catch (e) {}
+      setSt('xfer-recv-status', '✔ Přijato: ' + keysText(num(o.keys)) + ' v peněžence a ' + keysText(num(o.bank)) + ' v bance. Teď máš ' + keysText(shop.keys) + ' + ' + keysText(shop.bank) + ' v bance.', true);
+      setTimeout(closeXfer, 1000);
+    });
+    c.on('error', () => setSt('xfer-recv-status', 'Chyba spojení. Zkus to znovu.', false));
+  });
+  pr.on('error', (err) => setSt('xfer-recv-status', err && err.type === 'peer-unavailable' ? 'Kód nesedí nebo už vypršel.' : 'Nedaří se připojit k internetu.', false));
+}
+const val = id => document.getElementById(id).value;
+async function uiCodeMake() {
+  const r = await codeMakeCore(val('code-new1'), val('code-new2'));
+  if (r.ok) { document.getElementById('code-new1').value = ''; document.getElementById('code-new2').value = ''; }
+  renderCode(); codeMsg(r);
+}
+async function uiCodeChange() {
+  const r = await codeChangeCore(val('code-old'), val('code-chg1'), val('code-chg2'));
+  if (r.ok) ['code-old', 'code-chg1', 'code-chg2'].forEach(i => { document.getElementById(i).value = ''; });
+  codeMsg(r);
+}
+async function uiExport() {
+  const r = await exportCore(val('code-xfer'));
+  if (r.ok) {
+    const ta = document.getElementById('code-text');
+    ta.value = r.text; ta.focus(); ta.select();
+    try { await navigator.clipboard.writeText(r.text); r.msg += ' (Text je zkopírovaný.)'; } catch (e) {}
+  }
+  codeMsg(r);
+}
+async function uiImport() {
+  if (!confirm('Načtení přepíše klíče, banku a vylepšení na tomto zařízení. Pokračovat?')) return;
+  codeMsg(await importCore(val('code-text'), val('code-xfer')));
+}
+
+function openShop() { renderShop(); showScreen('menu-shop'); }
+
+// ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
+function openBank() { renderBank(); showScreen('menu-bank'); }
+function bankMove(dir, all) {
+  if (dir === 'in') {
+    const n = all ? shop.keys : Math.min(1, shop.keys);
+    shop.keys -= n; shop.bank += n;
+  } else {
+    const n = all ? shop.bank : Math.min(1, shop.bank);
+    shop.bank -= n; shop.keys += n;
+  }
+  saveShop();
+  renderBank();
+}
+function renderBank() {
+  document.getElementById('bank-wallet').textContent = '🔑 V peněžence: ' + keysText(shop.keys);
+  document.getElementById('bank-safe').textContent = '🏦 V bance: ' + keysText(shop.bank);
+  document.getElementById('bank-in-1').disabled = document.getElementById('bank-in-all').disabled = shop.keys < 1;
+  document.getElementById('bank-out-1').disabled = document.getElementById('bank-out-all').disabled = shop.bank < 1;
+  updateShopLabel();
+}
+function buyItem(id) {
+  const it = SHOP_ITEMS.find(x => x.id === id);
+  if (!it || perkActive(id) || shop.keys < it.cost) return;
+  shop.keys -= it.cost;
+  shop[id] = Date.now() + PERK_MS;
+  saveShop();
+  renderShop();
+}
+function renderShop() {
+  document.getElementById('shop-keys').textContent = '🔑 Máš ' + keysText(shop.keys);
+  const box = document.getElementById('shop-items');
+  box.innerHTML = '';
+  SHOP_ITEMS.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+    const info = document.createElement('div');
+    info.style.cssText = 'text-align:left;flex:1';
+    const nm = document.createElement('strong'); nm.textContent = it.name + ' · ' + keysText(it.cost);
+    const ds = document.createElement('span'); ds.textContent = it.desc + ' Platí 2 dny.';
+    info.appendChild(nm); info.appendChild(document.createElement('br')); info.appendChild(ds);
+    const b = document.createElement('button');
+    if (perkActive(it.id)) {
+      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Aktivní · ' + timeLeft(shop[it.id]);
+    } else if (shop.keys < it.cost) {
+      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Málo klíčů';
+    } else {
+      b.className = 'btn'; b.textContent = 'Koupit'; b.onclick = () => buyItem(it.id);
+    }
+    row.appendChild(info); row.appendChild(b);
+    box.appendChild(row);
+  });
+}
+loadShop();
+setTimeout(updateShopLabel, 0);
+
+// ======================================================================
+//  KRESLENÍ: pomocné funkce
+// ======================================================================
+const OUT = 'rgba(8,10,18,.88)';
+
+function rr(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function starPath(g, cx, cy, R, r) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, d = i % 2 ? r : R;
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+    if (i) g.lineTo(x, y); else g.moveTo(x, y);
+  }
+  g.closePath();
+}
+
+// ======================================================================
+//  KRESLENÍ: postava (všechno se kreslí otočené doprava, pak se zrcadlí)
+// ======================================================================
+function drawKnightFigure(g, team, st, dir, walk, shielding, swing, opts) {
+  opts = opts || {};
+  const T = TEAM[team];
+  g.save();
+  g.scale(dir, 1);
+
+  if (!opts.noShadow) {
+    g.beginPath();
+    g.ellipse(0, 23, 17, 6, 0, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(0,0,0,.33)';
+    g.fill();
+  }
+
+  if (st.g) drawHairBack(g, st.c);
+  drawLegs(g, walk, st.c);
+  drawBody(g, T, st.c);
+  if (st.g) drawSkirt(g, T);
+  drawHead(g, T, st.c);
+  if (st.g) drawBow(g);
+
+  if (shielding && !opts.noShield) {
+    g.save();
+    g.translate(21, -1);
+    drawShield(g, shieldList(st)[st.h].id, T, 1);
+    g.restore();
+  }
+  if (!opts.noSword) {
+    g.save();
+    g.translate(8, 3);
+    g.rotate(swing != null ? Math.sin(swing) * 1.8 : 0.2);
+    drawSword(g, swordList(st)[st.s].id, T);
+    g.restore();
+  }
+  g.restore();
+}
+
+// ---- holčičí doplňky ----
+function drawHairBack(g, c) {
+  g.fillStyle = ['#e9b949', '#d9822b', '#1c1c28', '#7a3b1d'][c] || '#7a3b1d';
+  g.strokeStyle = OUT; g.lineWidth = 1.6; g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(-8, -22);
+  g.bezierCurveTo(-24, -24, -28, -6, -18, 8);
+  g.bezierCurveTo(-16, 2, -10, -6, -6, -10);
+  g.closePath(); g.fill(); g.stroke();
+}
+function drawSkirt(g, T) {
+  g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(-12, 5); g.lineTo(12, 5); g.lineTo(18, 18); g.lineTo(-18, 18); g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = T.light; g.fillRect(-12, 5, 24, 3);
+}
+function drawBow(g) {
+  g.fillStyle = '#f472b6'; g.strokeStyle = OUT; g.lineWidth = 1.2; g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(-12, -20); g.lineTo(-20, -26); g.lineTo(-20, -14); g.closePath();
+  g.moveTo(-12, -20); g.lineTo(-4, -27);  g.lineTo(-4, -15);  g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = '#fbcfe8';
+  g.beginPath(); g.arc(-12, -20, 2.4, 0, Math.PI * 2); g.fill(); g.stroke();
+}
+
+function drawLegs(g, walk, c) {
+  const off = Math.sin(walk) * 8;
+  g.lineCap = 'round';
+  g.strokeStyle = c === 3 ? '#4a3524' : '#1b2030';
+  g.lineWidth = 5;
+  g.beginPath();
+  g.moveTo(-6, 10); g.lineTo(-6 - off, 21);
+  g.moveTo(6, 10);  g.lineTo(6 + off, 21);
+  g.stroke();
+  g.fillStyle = c === 3 ? '#2a1d12' : '#0e121b';
+  rr(g, -10 - off, 19, 8, 5, 2); g.fill();
+  rr(g, 2 + off, 19, 8, 5, 2);   g.fill();
+}
+
+function belt(g, leather, buckle) {
+  g.fillStyle = leather;
+  g.fillRect(-12, 5, 24, 4);
+  g.fillStyle = buckle;
+  rr(g, -3, 4, 6, 6, 1.5); g.fill();
+}
+
+function drawBody(g, T, c) {
+  const gr = g.createLinearGradient(0, -8, 0, 13);
+  gr.addColorStop(0, T.light); gr.addColorStop(0.35, T.main); gr.addColorStop(1, T.dark);
+  g.fillStyle = gr; g.strokeStyle = OUT; g.lineWidth = 2;
+  rr(g, -12, -8, 24, 21, 5); g.fill(); g.stroke();
+
+  if (c === 0) {
+    g.fillStyle = 'rgba(255,255,255,.22)';
+    rr(g, -8, -6, 7, 12, 3); g.fill();
+    belt(g, '#4a3320', '#f5c542');
+  } else if (c === 1) {
+    belt(g, '#3b2616', '#cbd5e1');
+    g.fillStyle = '#e0cfae'; g.strokeStyle = OUT; g.lineWidth = 1.4;
+    rr(g, -13, -10, 26, 7, 3.5); g.fill(); g.stroke();
+    g.fillStyle = '#c9b48f';
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-8 + i * 5.3, -3, 2.1, 0, Math.PI * 2); g.fill(); }
+  } else if (c === 2) {
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-11, -3 + i * 4); g.lineTo(11, -3 + i * 4); g.stroke(); }
+    g.fillStyle = '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.5;
+    rr(g, -16, -10, 9, 8, 2); g.fill(); g.stroke();
+    rr(g, 7, -10, 9, 8, 2);   g.fill(); g.stroke();
+    g.fillStyle = T.main; g.fillRect(-15, -5, 7, 1.8); g.fillRect(8, -5, 7, 1.8);
+    belt(g, '#161b26', '#fbbf24');
+  } else {
+    g.save();
+    rr(g, -12, -8, 24, 21, 5); g.clip();
+    g.fillStyle = 'rgba(255,255,255,.82)';
+    for (let y = -5; y < 12; y += 5) g.fillRect(-12, y, 24, 2.2);
+    g.restore();
+    g.strokeStyle = OUT; g.lineWidth = 2;
+    rr(g, -12, -8, 24, 21, 5); g.stroke();
+    belt(g, '#17110b', '#f5c542');
+  }
+}
+
+function drawHead(g, T, c) {
+  const skin = '#f2c9a3';
+  g.lineJoin = 'round';
+  if (c === 0) {
+    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8;
+    g.beginPath();
+    g.moveTo(1, -26);
+    g.bezierCurveTo(-4, -37, -16, -35, -21, -24);
+    g.bezierCurveTo(-14, -28, -8, -24, -3, -22);
+    g.closePath(); g.fill(); g.stroke();
+    const hg = g.createRadialGradient(-4, -19, 2, 0, -14, 16);
+    hg.addColorStop(0, '#f1f5fa'); hg.addColorStop(0.55, '#a3b0bf'); hg.addColorStop(1, '#5b697b');
+    g.fillStyle = hg; g.lineWidth = 2;
+    g.beginPath(); g.arc(0, -14, 13, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#0f141e'; rr(g, 1, -18, 12, 5, 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(-9, -21); g.quadraticCurveTo(-4, -26, 3, -26); g.stroke();
+  } else if (c === 1) {
+    g.fillStyle = '#f5ecd5'; g.strokeStyle = OUT; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-9, -21); g.bezierCurveTo(-18, -24, -20, -33, -14, -38); g.bezierCurveTo(-16, -31, -12, -27, -6, -25); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(9, -21);  g.bezierCurveTo(18, -24, 20, -33, 14, -38);   g.bezierCurveTo(16, -31, 12, -27, 6, -25);  g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = skin; g.lineWidth = 1.8;
+    g.beginPath(); g.arc(0, -14, 12.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    const bg = g.createLinearGradient(0, -8, 0, 4);
+    bg.addColorStop(0, '#e08a3c'); bg.addColorStop(1, '#a8501c');
+    g.fillStyle = bg; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(-10, -11); g.quadraticCurveTo(-11, 5, 1, 5); g.quadraticCurveTo(12, 5, 11, -11); g.quadraticCurveTo(0, -5, -10, -11); g.closePath(); g.fill(); g.stroke();
+    const dg = g.createLinearGradient(0, -27, 0, -15);
+    dg.addColorStop(0, '#b5bfcb'); dg.addColorStop(1, '#5f6b7a');
+    g.fillStyle = dg; g.lineWidth = 2;
+    g.beginPath(); g.arc(0, -14, 13, Math.PI, Math.PI * 2); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = '#6b7685'; rr(g, -13.5, -17, 27, 4, 2); g.fill(); g.stroke();
+    g.fillStyle = '#8f9bab'; g.fillRect(2.5, -14, 3, 8);
+    g.fillStyle = '#10151f';
+    g.beginPath(); g.arc(8, -11, 1.6, 0, Math.PI * 2); g.fill();
+  } else if (c === 2) {
+    for (let i = 0; i < 3; i++) {
+      g.fillStyle = i % 2 === 0 ? T.main : '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.3;
+      rr(g, -19 + i * 0.8, -18 + i * 4.2, 13, 4.6, 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-2, -26); g.quadraticCurveTo(-4, -37, -13, -41); g.quadraticCurveTo(-8, -32, -1, -24); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(2, -26);  g.quadraticCurveTo(4, -37, 13, -41);   g.quadraticCurveTo(8, -32, 1, -24);  g.closePath(); g.fill(); g.stroke();
+    const kg = g.createRadialGradient(-4, -20, 2, 0, -14, 16);
+    kg.addColorStop(0, '#4a5468'); kg.addColorStop(1, '#141922');
+    g.fillStyle = kg; g.lineWidth = 2;
+    g.beginPath(); g.arc(0, -14, 13, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1;
+    for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 4, -26); g.lineTo(i * 5, -17); g.stroke(); }
+    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.4;
+    rr(g, -13, -18, 26, 3.6, 1.8); g.fill(); g.stroke();
+    g.fillStyle = skin; rr(g, 2, -14.5, 10, 3.2, 1.4); g.fill();
+    g.fillStyle = '#10151f'; g.beginPath(); g.arc(8, -13, 1.1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2b3140'; g.strokeStyle = OUT; g.lineWidth = 1.4;
+    rr(g, 0, -11, 13.5, 10, 4); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(5, -10); g.lineTo(5, -2); g.moveTo(9, -10); g.lineTo(9, -2); g.stroke();
+    g.fillStyle = '#fbbf24'; g.beginPath(); g.arc(0, -27, 2.2, 0, Math.PI * 2); g.fill();
+  } else {
+    g.fillStyle = skin; g.strokeStyle = OUT; g.lineWidth = 1.8;
+    g.beginPath(); g.arc(0, -14, 12.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#10151f'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(-12, -19); g.lineTo(11, -10); g.stroke();
+    g.fillStyle = '#10151f';
+    g.beginPath(); g.arc(6, -13, 3.4, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(-3.5, -14, 1.9, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#7a3b1d'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-1, -7); g.quadraticCurveTo(3, -4, 8, -7); g.stroke();
+    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-12, -10, 1.8, 0, Math.PI * 2); g.fill();
+    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.8;
+    g.beginPath(); g.ellipse(0, -22, 18, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    const hg = g.createLinearGradient(0, -36, 0, -22);
+    hg.addColorStop(0, T.light); hg.addColorStop(0.4, T.main); hg.addColorStop(1, T.dark);
+    g.fillStyle = hg;
+    g.beginPath(); g.moveTo(-10.5, -22.5); g.quadraticCurveTo(-11, -36, 0, -36.5); g.quadraticCurveTo(11, -36, 10.5, -22.5); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = '#f5c542'; g.lineWidth = 1.4;
+    g.beginPath(); g.moveTo(-10.5, -24); g.quadraticCurveTo(0, -20.5, 10.5, -24); g.stroke();
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(0, -30, 3, 0, Math.PI * 2); g.fill();
+    g.fillRect(-1.6, -28.5, 3.2, 3);
+    g.fillStyle = '#10151f';
+    g.beginPath(); g.arc(-1.1, -30.4, 0.8, 0, Math.PI * 2); g.arc(1.1, -30.4, 0.8, 0, Math.PI * 2); g.fill();
+  }
+}
+
+// ======================================================================
+//  KRESLENÍ: meče (rukojeť v bodě 0,0, čepel míří doprava, délka do ~40)
+// ======================================================================
+function drawGirlSword(g, kind, T) {
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.fillStyle = '#f472b6'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
+  g.fillStyle = '#fde68a'; g.beginPath(); g.arc(-8, 0, 2.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = OUT; g.lineWidth = 1.2;
+  if (kind === 'rapier') {
+    g.fillStyle = '#fbbf24'; g.beginPath(); g.ellipse(2, 0, 3, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#8c99ab'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(4, 0); g.lineTo(43, 0); g.stroke();
+    g.strokeStyle = '#f4f8fc'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(5, 0); g.lineTo(42, 0); g.stroke();
+  } else if (kind === 'crystal') {
+    g.fillStyle = '#fbbf24'; rr(g, 0, -6, 3.4, 12, 1.6); g.fill(); g.stroke();
+    const gr = g.createLinearGradient(3, 0, 42, 0);
+    gr.addColorStop(0, '#f9a8d4'); gr.addColorStop(1, '#ffffff');
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(3.4, -2.6); g.lineTo(20, -6.5); g.lineTo(42, 0); g.lineTo(20, 6.5); g.lineTo(3.4, 2.6); g.closePath();
+    g.fill(); g.strokeStyle = 'rgba(190,60,130,.8)'; g.lineWidth = 1; g.stroke();
+    g.beginPath(); g.moveTo(8, 0); g.lineTo(38, 0); g.stroke();
+  } else if (kind === 'rose') {
+    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    g.beginPath(); g.arc(2, -3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.arc(2, 3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#f9a8d4'; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(5, 0); g.lineTo(40, 0); g.stroke();
+    g.strokeStyle = '#fff1f8'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(6, 0); g.lineTo(39, 0); g.stroke();
+    g.fillStyle = T.light; g.beginPath(); g.arc(-8, 0, 3.2, 0, Math.PI * 2); g.fill();
+  } else { // wand
+    g.fillStyle = '#fbbf24'; rr(g, 0, -5, 3.2, 10, 1.6); g.fill(); g.stroke();
+    g.strokeStyle = '#fbbf24'; g.lineWidth = 3.2;
+    g.beginPath(); g.moveTo(3, 0); g.lineTo(33, 0); g.stroke();
+    g.fillStyle = '#fde047'; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    starPath(g, 37, 0, 7, 3); g.fill(); g.stroke();
+  }
+}
+
+function drawSword(g, kind, T) {
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  if (isGirlSword(kind)) { drawGirlSword(g, kind, T); return; }
+  const steel = (y0, y1) => {
+    const gr = g.createLinearGradient(0, y0, 0, y1);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#d2dae5'); gr.addColorStop(1, '#8c99ab');
+    return gr;
+  };
+  if (kind === 'broad') {
+    g.fillStyle = '#6b3f1d'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
+    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-8, 0, 2.6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#f5c542'; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    rr(g, 0, -7, 3.6, 14, 1.6); g.fill(); g.stroke();
+    g.fillStyle = steel(-3.4, 3.4);
+    g.beginPath(); g.moveTo(3.6, -3.4); g.lineTo(33, -3.4); g.lineTo(40, 0); g.lineTo(33, 3.4); g.lineTo(3.6, 3.4); g.closePath();
+    g.fill(); g.strokeStyle = 'rgba(60,72,90,.9)'; g.lineWidth = 1; g.stroke();
+    g.strokeStyle = 'rgba(90,105,125,.7)'; g.beginPath(); g.moveTo(7, 0); g.lineTo(31, 0); g.stroke();
+  } else if (kind === 'saber') {
+    g.fillStyle = '#5a2a14'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
+    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-8, 0, 2.4, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#f5c542'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(1, -6); g.lineTo(1, 6); g.moveTo(1, 6); g.quadraticCurveTo(-4, 9.5, -8, 3); g.stroke();
+    g.strokeStyle = '#6f7d90'; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(2, 0); g.quadraticCurveTo(24, -9, 40, -2); g.stroke();
+    g.strokeStyle = '#eaf0f7'; g.lineWidth = 3.4;
+    g.beginPath(); g.moveTo(3, 0); g.quadraticCurveTo(24, -9, 39.5, -2); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(8, -1.6); g.quadraticCurveTo(24, -9.6, 36, -4); g.stroke();
+  } else if (kind === 'katana') {
+    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    rr(g, -12, -2.4, 13, 4.8, 2); g.fill(); g.stroke();
+    g.strokeStyle = T.light; g.lineWidth = 1;
+    for (let i = -10; i < 0; i += 3) { g.beginPath(); g.moveTo(i, -2.2); g.lineTo(i + 3, 2.2); g.moveTo(i + 3, -2.2); g.lineTo(i, 2.2); g.stroke(); }
+    g.fillStyle = '#2d3342'; g.strokeStyle = '#f5c542'; g.lineWidth = 1.2;
+    g.beginPath(); g.ellipse(2, 0, 2, 6.2, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#7b8aa0'; g.lineWidth = 4.4;
+    g.beginPath(); g.moveTo(4, 0); g.quadraticCurveTo(22, -4.5, 40, -1.2); g.stroke();
+    g.strokeStyle = '#f4f8fc'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(5, -0.2); g.quadraticCurveTo(22, -4.7, 39.4, -1.6); g.stroke();
+    g.strokeStyle = 'rgba(120,135,155,.8)'; g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(8, 0.9); g.quadraticCurveTo(22, -2.8, 36, -0.2); g.stroke();
+  } else { // flame
+    const blade = () => {
+      g.beginPath();
+      g.moveTo(4, -3.5);
+      [[10, -6], [15, -3], [21, -6.5], [27, -3.5], [33, -6], [40, 0],
+       [33, 6], [27, 3.5], [21, 6.5], [15, 3], [10, 6], [4, 3.5]].forEach(p => g.lineTo(p[0], p[1]));
+      g.closePath();
+    };
+    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
+    g.fillStyle = T.light; g.beginPath(); g.arc(-8, 0, 2.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = T.dark; rr(g, 0, -7.5, 3.8, 15, 1.8); g.fill(); g.stroke();
+    g.fillStyle = T.light; g.beginPath(); g.arc(1.9, 0, 1.4, 0, Math.PI * 2); g.fill();
+    blade();
+    g.strokeStyle = 'rgba(' + T.rgb + ',.38)'; g.lineWidth = 8; g.stroke();
+    const fg = g.createLinearGradient(4, 0, 40, 0);
+    fg.addColorStop(0, T.dark); fg.addColorStop(0.55, T.main); fg.addColorStop(1, '#ffffff');
+    g.fillStyle = fg; g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 1; g.stroke();
+  }
+}
+
+// ======================================================================
+//  KRESLENÍ: štíty (střed v 0,0; sx = roztažení do šířky pro náhledy)
+// ======================================================================
+function drawGirlShield(g, kind, T) {
+  g.lineJoin = 'round'; g.lineWidth = 2; g.strokeStyle = OUT;
+  const gr = g.createLinearGradient(-9, -18, 9, 18);
+  gr.addColorStop(0, T.light); gr.addColorStop(0.45, T.main); gr.addColorStop(1, T.dark);
+  g.fillStyle = gr;
+  if (kind === 'heart') {
+    g.beginPath();
+    g.moveTo(0, -8);
+    g.bezierCurveTo(-3, -18, -10, -17, -9, -8);
+    g.bezierCurveTo(-8, 2, -2, 8, 0, 17);
+    g.bezierCurveTo(2, 8, 8, 2, 9, -8);
+    g.bezierCurveTo(10, -17, 3, -18, 0, -8);
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.beginPath(); g.ellipse(-4, -8, 2.2, 3.4, -0.5, 0, Math.PI * 2); g.fill();
+  } else if (kind === 'flower') {
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      g.beginPath(); g.ellipse(Math.cos(a) * 5, Math.sin(a) * 10, 4.6, 7.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = '#fde047';
+    g.beginPath(); g.ellipse(0, 0, 3.6, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (kind === 'butterfly') {
+    g.beginPath(); g.ellipse(0, -9, 8.5, 9, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.ellipse(0, 9.5, 6.5, 8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.7)';
+    g.beginPath(); g.arc(0, -9, 3, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2b3140'; rr(g, -1.3, -17, 2.6, 34, 1.3); g.fill();
+  } else { // moon
+    g.beginPath();
+    g.ellipse(0, 0, 8.5, 17, 0, 0, Math.PI * 2);
+    g.moveTo(8.7, 0);
+    g.ellipse(3.5, 0, 5.2, 13.5, 0, 0, Math.PI * 2);
+    g.fill('evenodd'); g.stroke();
+    g.fillStyle = '#fde047'; starPath(g, -2, -1, 4.5, 1.9); g.fill();
+  }
+}
+
+function drawShield(g, kind, T, sx) {
+  g.save();
+  g.scale(sx || 1, 1);
+  if (isGirlShield(kind)) { drawGirlShield(g, kind, T); g.restore(); return; }
+  g.lineJoin = 'round';
+  g.lineWidth = 2; g.strokeStyle = OUT;
+  const grad = () => {
+    const gr = g.createLinearGradient(-9, -18, 9, 18);
+    gr.addColorStop(0, T.light); gr.addColorStop(0.45, T.main); gr.addColorStop(1, T.dark);
+    return gr;
+  };
+  if (kind === 'round') {
+    g.fillStyle = grad();
+    g.beginPath(); g.ellipse(0, 0, 8.5, 17, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.4;
+    g.beginPath(); g.ellipse(0, 0, 5.6, 12.4, 0, 0, Math.PI * 2); g.stroke();
+    const bg = g.createRadialGradient(-1, -2, 0.5, 0, 0, 5);
+    bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#9aa7b8');
+    g.fillStyle = bg; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    g.beginPath(); g.ellipse(0, 0, 3.4, 4.6, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (kind === 'heater') {
+    g.fillStyle = grad();
+    g.beginPath(); g.moveTo(-8, -17); g.lineTo(8, -17); g.lineTo(8, 1);
+    g.quadraticCurveTo(8, 13, 0, 19); g.quadraticCurveTo(-8, 13, -8, 1); g.closePath();
+    g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.88)';
+    g.fillRect(-1.6, -14, 3.2, 27); g.fillRect(-6, -8, 12, 3.2);
+  } else if (kind === 'scutum') {
+    g.fillStyle = grad(); rr(g, -8, -18, 16, 36, 7); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.3;
+    rr(g, -5.5, -15.5, 11, 31, 5); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.35)';
+    g.beginPath(); g.moveTo(0, -15); g.lineTo(0, 15); g.stroke();
+    g.fillStyle = '#f5c542'; g.strokeStyle = OUT; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(0, 0, 2.8, 3.8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else { // star
+    g.fillStyle = grad();
+    g.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4 + Math.PI / 8;
+      const x = Math.cos(a) * 8.6, y = Math.sin(a) * 17.5;
+      if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    }
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.92)';
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 3.2 : 7.4, a = -Math.PI / 2 + i * Math.PI / 5;
+      const x = Math.cos(a) * r * 0.9, y = Math.sin(a) * r;
+      if (i) g.lineTo(x, y); else g.moveTo(x, y);
+    }
+    g.closePath(); g.fill();
+  }
+  g.restore();
+}
+
+// ======================================================================
+//  POZADÍ (kreslí se jednou do skryté plochy a pak už jen kopíruje)
+// ======================================================================
+const HZ = 72;
+const bgCache = [];
+
+function getBackground(idx) {
+  if (!bgCache[idx]) {
+    const c = document.createElement('canvas');
+    c.width = 900; c.height = 500;
+    const g = c.getContext('2d');
+    const rnd = mulberry(1234 + idx * 77);
+    [paintDesert, paintForest, paintRocks][idx](g, rnd, 900, 500);
+    const v = g.createRadialGradient(450, 260, 190, 450, 260, 560);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.40)');
+    g.fillStyle = v; g.fillRect(0, 0, 900, 500);
+    bgCache[idx] = c;
+  }
+  return bgCache[idx];
+}
+
+function paintDesert(g, rnd, W, H) {
+  let gr = g.createLinearGradient(0, 0, 0, HZ + 14);
+  gr.addColorStop(0, '#ffa95f'); gr.addColorStop(0.6, '#ffd7a0'); gr.addColorStop(1, '#fff0d2');
+  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 14);
+  const sg = g.createRadialGradient(720, 38, 2, 720, 38, 70);
+  sg.addColorStop(0, 'rgba(255,252,230,1)'); sg.addColorStop(0.2, 'rgba(255,238,185,.9)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
+  g.fillStyle = sg; g.fillRect(630, 0, 180, HZ + 14);
+  g.fillStyle = '#fff7dc'; g.beginPath(); g.arc(720, 38, 15, 0, Math.PI * 2); g.fill();
+
+  const dune = (color, base, amp, f1, f2, ph) => {
+    g.fillStyle = color; g.beginPath(); g.moveTo(0, HZ + 24);
+    for (let x = 0; x <= W; x += 10) g.lineTo(x, base + Math.sin(x * f1 + ph) * amp + Math.sin(x * f2 + ph * 2) * amp * 0.5);
+    g.lineTo(W, HZ + 24); g.closePath(); g.fill();
+  };
+  dune('#f0c27e', HZ - 10, 7, 0.011, 0.031, 1);
+  dune('#e6b36c', HZ - 2, 6, 0.016, 0.04, 3);
+
+  gr = g.createLinearGradient(0, HZ, 0, H);
+  gr.addColorStop(0, '#e8c07a'); gr.addColorStop(0.5, '#dcae65'); gr.addColorStop(1, '#c79852');
+  g.fillStyle = gr; g.fillRect(0, HZ + 4, W, H - HZ - 4);
+  dune('#e8c07a', HZ + 6, 3, 0.02, 0.05, 5);
+
+  g.lineWidth = 1.2; g.lineCap = 'round';
+  for (let i = 0; i < 190; i++) {
+    const x = rnd() * W, y = HZ + 14 + rnd() * (H - HZ - 14), len = 20 + rnd() * 55;
+    g.strokeStyle = rnd() > 0.5 ? 'rgba(255,240,200,.24)' : 'rgba(150,100,40,.16)';
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + len / 2, y - 3 - rnd() * 3, x + len, y); g.stroke();
+  }
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * W, y = HZ + 12 + rnd() * (H - HZ - 12), r = 1 + rnd() * 2.4;
+    g.fillStyle = 'rgba(140,100,55,.55)'; g.beginPath(); g.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,240,205,.35)'; g.beginPath(); g.ellipse(x - 0.6, y - 0.7, r * 0.6, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+  }
+  const cactus = (x, y, s) => {
+    g.save(); g.translate(x, y); g.scale(s, s);
+    g.fillStyle = 'rgba(110,65,20,.25)'; g.beginPath(); g.ellipse(3, 0, 17, 4, 0, 0, Math.PI * 2); g.fill();
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    [[-4, -12, -11, -12, -11, -22], [4, -18, 11, -18, 11, -27]].forEach(a => {
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(a[2], a[3]); g.lineTo(a[4], a[5]);
+      g.strokeStyle = '#2f6038'; g.lineWidth = 8; g.stroke();
+      g.strokeStyle = '#57a05e'; g.lineWidth = 5.4; g.stroke();
+    });
+    const cg = g.createLinearGradient(-5, 0, 5, 0);
+    cg.addColorStop(0, '#3a7343'); cg.addColorStop(0.5, '#62a766'); cg.addColorStop(1, '#2f6038');
+    g.fillStyle = cg; g.strokeStyle = 'rgba(20,50,25,.65)'; g.lineWidth = 1.2;
+    rr(g, -5.5, -37, 11, 37, 5.5); g.fill(); g.stroke();
+    g.restore();
+  };
+  cactus(70, HZ + 20, 1.1); cactus(835, HZ + 24, 0.95); cactus(470, HZ + 10, 0.7);
+  cactus(30, 440, 1.0); cactus(870, 455, 1.15);
+  for (const p of [[250, HZ + 16], [640, HZ + 18], [180, 470], [700, 475]]) {
+    g.strokeStyle = '#8a6a3a'; g.lineWidth = 1.4;
+    for (let k = 0; k < 7; k++) {
+      const a = -Math.PI / 2 + (k - 3) * 0.32;
+      g.beginPath(); g.moveTo(p[0], p[1]); g.quadraticCurveTo(p[0] + Math.cos(a) * 9, p[1] + Math.sin(a) * 9, p[0] + Math.cos(a) * 17, p[1] + Math.sin(a) * 15); g.stroke();
+    }
+  }
+}
+
+function paintForest(g, rnd, W, H) {
+  let gr = g.createLinearGradient(0, 0, 0, HZ + 20);
+  gr.addColorStop(0, '#9fd3bd'); gr.addColorStop(1, '#e6f5e2');
+  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 20);
+  const pine = (x, base, h, color) => {
+    g.fillStyle = color;
+    for (let k = 0; k < 3; k++) {
+      const w = h * (0.62 - k * 0.12), top = base - h + k * h * 0.22, bot = top + h * 0.5;
+      g.beginPath(); g.moveTo(x, top); g.lineTo(x + w / 2, bot); g.lineTo(x - w / 2, bot); g.closePath(); g.fill();
+    }
+    g.fillRect(x - 1.5, base - h * 0.1, 3, h * 0.1);
+  };
+  const row = (color, base, size, step, jit) => {
+    for (let x = -10; x < W + 20; x += step) pine(x + rnd() * jit, base, size * (0.8 + rnd() * 0.5), color);
+  };
+  row('#7bb792', HZ + 2, 44, 15, 8);
+  row('#52996d', HZ + 10, 52, 21, 10);
+  row('#2f7650', HZ + 20, 60, 28, 14);
+
+  gr = g.createLinearGradient(0, HZ + 18, 0, H);
+  gr.addColorStop(0, '#4f9d58'); gr.addColorStop(0.5, '#3f8b48'); gr.addColorStop(1, '#337640');
+  g.fillStyle = gr; g.fillRect(0, HZ + 20, W, H - HZ - 20);
+  const sh = g.createLinearGradient(0, HZ + 20, 0, HZ + 44);
+  sh.addColorStop(0, 'rgba(10,40,20,.38)'); sh.addColorStop(1, 'rgba(10,40,20,0)');
+  g.fillStyle = sh; g.fillRect(0, HZ + 20, W, 24);
+
+  const dirt = g.createRadialGradient(450, 300, 40, 450, 300, 380);
+  dirt.addColorStop(0, 'rgba(140,108,66,.34)'); dirt.addColorStop(0.6, 'rgba(140,108,66,.16)'); dirt.addColorStop(1, 'rgba(140,108,66,0)');
+  g.save(); g.translate(0, 300); g.scale(1, 0.47); g.translate(0, -300);
+  g.fillStyle = dirt; g.fillRect(0, 0, W, 700); g.restore();
+
+  for (let i = 0; i < 60; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(160,220,120,.07)' : 'rgba(10,50,20,.09)';
+    g.beginPath(); g.ellipse(rnd() * W, HZ + 30 + rnd() * (H - HZ - 30), 20 + rnd() * 40, 8 + rnd() * 16, 0, 0, Math.PI * 2); g.fill();
+  }
+  g.lineCap = 'round'; g.lineWidth = 1.3;
+  for (let i = 0; i < 900; i++) {
+    const x = rnd() * W, y = HZ + 26 + rnd() * (H - HZ - 26), l = 3 + rnd() * 5;
+    g.strokeStyle = rnd() > 0.5 ? 'rgba(170,230,120,.5)' : 'rgba(15,70,30,.5)';
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 4, y - l); g.stroke();
+  }
+  const cols = ['#ffffff', '#ffe27a', '#ffb3d1', '#c4b5fd'];
+  for (let i = 0; i < 55; i++) {
+    g.fillStyle = cols[Math.floor(rnd() * cols.length)];
+    g.beginPath(); g.arc(rnd() * W, HZ + 40 + rnd() * (H - HZ - 40), 1.2 + rnd() * 1.4, 0, Math.PI * 2); g.fill();
+  }
+  const bush = (x, y, s) => {
+    g.fillStyle = 'rgba(0,30,10,.3)'; g.beginPath(); g.ellipse(x, y + 8 * s, 26 * s, 6 * s, 0, 0, Math.PI * 2); g.fill();
+    [[-12, 0, 12], [0, -6, 15], [13, 0, 12], [0, 3, 13]].forEach((c, i) => {
+      g.fillStyle = i % 2 ? '#2f7a45' : '#3c9355';
+      g.beginPath(); g.arc(x + c[0] * s, y + c[1] * s, c[2] * s, 0, Math.PI * 2); g.fill();
+    });
+    g.fillStyle = 'rgba(190,255,170,.2)'; g.beginPath(); g.arc(x - 4 * s, y - 10 * s, 6 * s, 0, Math.PI * 2); g.fill();
+  };
+  bush(32, 120, 0.9); bush(868, 112, 1.0); bush(40, 462, 1.1); bush(862, 468, 1.2); bush(450, 480, 0.8);
+  for (const p of [[150, 440], [740, 130], [300, 100]]) {
+    g.fillStyle = '#8c9aa0'; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(p[0], p[1], 11, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(p[0] - 3, p[1] - 2, 5, 2.6, 0, 0, Math.PI * 2); g.fill();
+  }
+}
+
+function paintRocks(g, rnd, W, H) {
+  let gr = g.createLinearGradient(0, 0, 0, HZ + 20);
+  gr.addColorStop(0, '#7289a6'); gr.addColorStop(1, '#cfd8e4');
+  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 20);
+  const ridge = (color, snow, base, amp, step) => {
+    g.fillStyle = color; g.beginPath(); g.moveTo(0, HZ + 24);
+    const pts = [];
+    for (let x = 0; x <= W + step; x += step) pts.push([x, base - rnd() * amp]);
+    pts.forEach(p => g.lineTo(p[0], p[1]));
+    g.lineTo(W + step, HZ + 24); g.closePath(); g.fill();
+    if (snow) {
+      g.fillStyle = 'rgba(255,255,255,.75)';
+      pts.forEach(p => { if (base - p[1] > amp * 0.7) { g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + 8, p[1] + 9); g.lineTo(p[0] - 8, p[1] + 9); g.closePath(); g.fill(); } });
+    }
+  };
+  ridge('#8696ad', true, HZ + 4, 54, 46);
+  ridge('#5d6a80', false, HZ + 12, 36, 30);
+
+  gr = g.createLinearGradient(0, HZ + 6, 0, H);
+  gr.addColorStop(0, '#858a93'); gr.addColorStop(1, '#6a6f78');
+  g.fillStyle = gr; g.fillRect(0, HZ + 10, W, H - HZ - 10);
+  const sh = g.createLinearGradient(0, HZ + 10, 0, HZ + 34);
+  sh.addColorStop(0, 'rgba(10,14,24,.35)'); sh.addColorStop(1, 'rgba(10,14,24,0)');
+  g.fillStyle = sh; g.fillRect(0, HZ + 10, W, 24);
+
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < 46; i++) {
+    let x = rnd() * W, y = HZ + 20 + rnd() * (H - HZ - 20);
+    const seg = 4 + Math.floor(rnd() * 3);
+    const pts = [[x, y]];
+    for (let k = 0; k < seg; k++) { x += (rnd() - 0.4) * 55; y += (rnd() - 0.5) * 30; pts.push([x, y]); }
+    g.strokeStyle = 'rgba(25,28,36,.5)'; g.lineWidth = 1.5;
+    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1;
+    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1] + 1.5) : g.moveTo(p[0], p[1] + 1.5)); g.stroke();
+  }
+  for (let i = 0; i < 1100; i++) {
+    g.fillStyle = rnd() > 0.5 ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.08)';
+    g.fillRect(rnd() * W, HZ + 12 + rnd() * (H - HZ - 12), 1.6, 1.6);
+  }
+  for (let i = 0; i < 18; i++) {
+    g.fillStyle = 'rgba(200,170,120,.07)';
+    g.beginPath(); g.ellipse(rnd() * W, HZ + 30 + rnd() * (H - HZ - 30), 30 + rnd() * 50, 8 + rnd() * 14, 0, 0, Math.PI * 2); g.fill();
+  }
+  const boulder = (x, y, r) => {
+    g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(x + r * 0.15, y + r * 0.8, r * 1.15, r * 0.34, 0, 0, Math.PI * 2); g.fill();
+    const pts = [];
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * Math.PI * 2, rr2 = r * (0.82 + rnd() * 0.3);
+      pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * 0.82]);
+    }
+    const bgr = g.createLinearGradient(x - r, y - r, x + r, y + r);
+    bgr.addColorStop(0, '#b3b9c4'); bgr.addColorStop(0.55, '#7d838e'); bgr.addColorStop(1, '#4d525c');
+    g.fillStyle = bgr; g.strokeStyle = 'rgba(15,18,26,.6)'; g.lineWidth = 1.3;
+    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(20,24,32,.5)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x - r * 0.2, y - r * 0.6); g.lineTo(x + r * 0.05, y - r * 0.05); g.lineTo(x - r * 0.25, y + r * 0.4); g.stroke();
+  };
+  for (const b of [[70, 96, 18], [200, 88, 11], [455, 94, 9], [760, 92, 20], [852, 104, 13], [30, 300, 15], [876, 290, 18], [60, 468, 22], [842, 470, 20], [330, 478, 12]]) boulder(b[0], b[1], b[2]);
+}
+
+// ======================================================================
+//  STAV APLIKACE
+// ======================================================================
 let selectedDevice = 'pc';
-let gameMode = 'ai';
+let gameMode = 'ai';              // 'ai' | 'pvp' | 'team'
 let aiDifficulty = 'medium';
 let isWebMatch = false;
 let isHost = false;
 let isOnlyRulesView = false;
 let gameRunning = false;
+let sceneActive = false;
 
 // PeerJS Networking
 let peer = null;
 let conn = null;
 const PEER_PREFIX = "KA-";
 
-// Společný start / restart přes web
 let hostReady = false;
 let clientReady = false;
+let clientLoadout = null;
 
-// Události (jiskry, texty), které host posílá klientovi
 let netEvents = [];
-
-// Vstup klienta (hráč 2 přes web) z tlačítek na displeji
 let pendingClientAttack = false;
 let clientTouchShield = false;
 
-// Klávesy (pouze podle e.code, aby to fungovalo na každé klávesnici)
 const keys = {};
 
-// Hráči & Objekty
-let player1, player2, medkits = [], particles = [], floatingTexts = [];
+// Hráči & Objekty (players = všichni bojovníci v aréně, player1/player2 = první dva)
+let players = [], player1, player2, medkits = [], particles = [], floatingTexts = [];
+const match = { bg: 0 };
 
-// Vstup z mobilního joysticku
 let touchInputP1 = { vx: 0, vy: 0 };
-let touchInputP2 = { vx: 0, vy: 0 };
 
+// ---------- týmové formáty (vždy férový počet v každém týmu) ----------
+const POS4 = [[130, 150], [130, 350], [770, 150], [770, 350]];
+const TEAM_FORMATS = {
+  '1v1':  { name: '1 proti 1',            cols: [1, 2],       grp: [1, 2],       pos: [[150, 250], [750, 250]] },
+  'ffa3': { name: '3 – všichni proti všem', cols: [1, 2, 3],    grp: [1, 2, 3],    pos: [[130, 250], [770, 150], [770, 350]] },
+  'ffa4': { name: '4 – všichni proti všem', cols: [1, 2, 3, 4], grp: [1, 2, 3, 4], pos: POS4 },
+  '2v2':  { name: '2 proti 2 (týmy)',      cols: [1, 3, 2, 4], grp: [1, 1, 2, 2], pos: POS4 }
+};
+const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai'], diff: 'medium' };
+let onlineSetup = false;   // team menu slouží k vytvoření online místnosti
+let myIdx = 0;             // který bojovník (index v players) je můj
+let peers = [];            // host: připojení kamarádi { c, slot, ready, loadout }
+let lobbyDone = false;     // host: všichni se připojili, jde se na výbavu
+
+// barva (1-4), kterou má lidský hráč h v právě chystané hře
+function hcolor(h) {
+  if (gameMode === 'team') {
+    const f = TEAM_FORMATS[teamCfg.fmt];
+    if (isWebMatch && !isHost) return f.cols[myIdx] || h;
+    const i = teamCfg.slots.indexOf('p' + h);
+    if (i >= 0 && i < f.cols.length) return f.cols[i];
+  }
+  return h;
+}
+function myColorName() { return TEAM[hcolor(isHost ? 1 : 2)].name.toLowerCase(); }
+
+// ======================================================================
+//  TŘÍDY
+// ======================================================================
 class Knight {
-  constructor(x, y, color, isP2 = false) {
+  constructor(x, y, team, style) {
     this.x = x;
     this.y = y;
+    this.team = team;                 // barva: 1 modrý, 2 červený, 3 žlutý, 4 zelený
+    this.group = team;                // tým (spoluhráči mají stejnou skupinu)
+    this.ctrl = null;                 // 'p1' | 'p2' | 'ai' | 'net'
+    this.style = style;
     this.radius = 22;
-    this.color = color;
     this.hp = 50;
     this.maxHp = 50;
     this.speed = 4;
-    this.facingRight = !isP2;
+    this.dmg = 5;           // poškození mého meče
+    this.dmgTaken = 1;      // násobek přijatého poškození (pevný štít = 0.6)
+    this.facingRight = team === 1;
     this.isShielding = false;
     this.isAttacking = false;
     this.attackCooldown = 0;
     this.attackSwing = 0;
-    this.isP2 = isP2;
     this.vx = 0;
     this.vy = 0;
     this.walkCycle = 0;
-    // Pro vizuální dopočet na klientovi (web hra)
     this.lastX = x;
     this.lastY = y;
     this.netAttacking = false;
@@ -513,7 +1872,7 @@ class Knight {
     this.y += this.vy;
 
     this.x = Math.max(35, Math.min(canvas.width - 35, this.x));
-    this.y = Math.max(35, Math.min(canvas.height - 35, this.y));
+    this.y = Math.max(64, Math.min(canvas.height - 35, this.y));
 
     if (this.attackCooldown > 0) this.attackCooldown--;
     if (this.isAttacking) {
@@ -525,7 +1884,6 @@ class Knight {
     }
   }
 
-  // Klient nic nepočítá, jen animuje chůzi a máchnutí mečem podle dat od hosta
   clientVisualUpdate() {
     const moved = Math.hypot(this.x - this.lastX, this.y - this.lastY) > 0.3;
     this.walkCycle = moved ? this.walkCycle + 0.25 : 0;
@@ -550,123 +1908,28 @@ class Knight {
   draw() {
     ctx.save();
     ctx.translate(this.x, this.y);
-    const dir = this.facingRight ? 1 : -1;
-
-    // Stín pod nohama
-    ctx.beginPath();
-    ctx.ellipse(0, 22, 16, 6, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fill();
-
-    // Nohy s animací chůze
-    const legOffset = Math.sin(this.walkCycle) * 8;
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-6, 10); ctx.lineTo(-6 - legOffset, 22);
-    ctx.moveTo(6, 10); ctx.lineTo(6 + legOffset, 22);
-    ctx.stroke();
-
-    // Boty
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(-9 - legOffset, 20, 6, 4);
-    ctx.fillRect(3 + legOffset, 20, 6, 4);
-
-    // Tělo
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.roundRect(-12, -8, 24, 20, 4);
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // Pásek
-    ctx.fillStyle = '#4a2e00';
-    ctx.fillRect(-12, 4, 24, 4);
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(-3, 3, 6, 6);
-
-    // Hlava / Přilba
-    ctx.fillStyle = '#7f8c8d';
-    ctx.beginPath();
-    ctx.arc(0, -14, 13, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Hledí přilby
-    ctx.fillStyle = '#111';
-    if (dir > 0) {
-      ctx.fillRect(2, -17, 10, 5);
-    } else {
-      ctx.fillRect(-12, -17, 10, 5);
-    }
-
-    // Chochol
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(0, -26, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Štít
-    if (this.isShielding) {
-      ctx.save();
-      ctx.translate(dir * 16, -2);
-      ctx.fillStyle = '#2980b9';
-      ctx.strokeStyle = '#f39c12';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 16, -Math.PI/2, Math.PI/2, dir < 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#f39c12';
-      ctx.fillRect(dir > 0 ? 4 : -8, -4, 4, 8);
-      ctx.restore();
-    }
-
-    // Meč a Ruka
-    ctx.save();
-    ctx.translate(dir * 8, 2);
-    let swordAngle = 0.2;
-    if (this.isAttacking) {
-      swordAngle = dir * Math.sin(this.attackSwing) * 1.8;
-    }
-    ctx.rotate(swordAngle);
-
-    ctx.fillStyle = '#ecf0f1';
-    ctx.strokeStyle = '#7f8c8d';
-    ctx.lineWidth = 1;
-    ctx.fillRect(0, -3, dir * 32, 6);
-    ctx.strokeRect(0, -3, dir * 32, 6);
-
-    ctx.beginPath();
-    ctx.moveTo(dir * 32, -3);
-    ctx.lineTo(dir * 38, 0);
-    ctx.lineTo(dir * 32, 3);
-    ctx.fillStyle = '#ecf0f1';
-    ctx.fill();
-
-    ctx.fillStyle = '#d35400';
-    ctx.fillRect(-dir * 2, -7, dir * 4, 14);
-    ctx.fillStyle = '#5e3d11';
-    ctx.fillRect(-dir * 6, -2, dir * 5, 4);
-
-    ctx.restore();
+    drawKnightFigure(ctx, this.team, this.style, this.facingRight ? 1 : -1,
+      this.walkCycle, this.isShielding, this.isAttacking ? this.attackSwing : null);
     ctx.restore();
 
-    // HP ukazatel
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(this.x - 25, this.y - 42, 50, 7);
-    ctx.fillStyle = this.hp > 20 ? '#2ecc71' : '#e74c3c';
-    ctx.fillRect(this.x - 25, this.y - 42, Math.max(0, (this.hp / this.maxHp) * 50), 7);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(this.x - 25, this.y - 42, 50, 7);
+    const T = TEAM[this.team];
+    const w = 46, h = 6, x = this.x - w / 2, y = this.y - 46;
+    ctx.fillStyle = 'rgba(6,9,16,.65)';
+    rr(ctx, x, y, w, h, 3); ctx.fill();
+    const f = Math.max(0, this.hp / this.maxHp);
+    if (f > 0) {
+      const gr = ctx.createLinearGradient(x, 0, x + w, 0);
+      gr.addColorStop(0, T.main); gr.addColorStop(1, T.light);
+      ctx.fillStyle = gr;
+      rr(ctx, x, y, Math.max(h, w * f), h, 3); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1;
+    rr(ctx, x, y, w, h, 3); ctx.stroke();
   }
 
-  attack(target) {
-    if (this.attackCooldown > 0 || this.isShielding) return;
+  // Seká na všechny protivníky (jiný tým), kteří jsou v dosahu meče
+  attack() {
+    if (this.attackCooldown > 0 || this.isShielding || this.hp <= 0) return;
 
     this.isAttacking = true;
     this.attackSwing = 0;
@@ -674,17 +1937,21 @@ class Knight {
 
     const dir = this.facingRight ? 1 : -1;
     const swordReachX = this.x + dir * 38;
-    const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
 
-    if (dist < target.radius + 18) {
-      if (target.isShielding) {
-        createSparks(swordReachX, this.y, '#3498db');
-        createFloatingText('ODRAŽENO!', target.x, target.y - 48, '#3498db');
-        this.x -= dir * 12;
-      } else {
-        target.hp = Math.max(0, target.hp - 5);
-        createSparks(target.x, target.y, '#e74c3c');
-        createFloatingText('-5 HP', target.x, target.y - 48, '#e74c3c');
+    for (const target of players) {
+      if (target === this || target.group === this.group || target.hp <= 0) continue;
+      const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
+      if (dist < target.radius + 18) {
+        if (target.isShielding) {
+          createSparks(swordReachX, this.y, '#60a5fa');
+          createFloatingText('ODRAŽENO!', target.x, target.y - 52, '#7dd3fc');
+          this.x -= dir * 12;
+        } else {
+          const d = Math.max(1, Math.round(this.dmg * target.dmgTaken));
+          target.hp = Math.max(0, target.hp - d);
+          createSparks(target.x, target.y, '#f87171');
+          createFloatingText('-' + d + ' HP', target.x, target.y - 52, '#fca5a5');
+        }
       }
     }
   }
@@ -694,7 +1961,7 @@ class Medkit {
   constructor(x, y) {
     this.x = x !== undefined ? x : (80 + Math.random() * (canvas.width - 160));
     this.y = -20;
-    this.targetY = y !== undefined ? y : (100 + Math.random() * (canvas.height - 200));
+    this.targetY = y !== undefined ? y : (110 + Math.random() * (canvas.height - 210));
     this.speed = 2;
     this.size = 14;
   }
@@ -706,27 +1973,33 @@ class Medkit {
   }
 
   draw() {
+    const bob = this.y >= this.targetY ? Math.sin(performance.now() / 260 + this.x) * 1.6 : 0;
     ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-this.size, -this.size, this.size*2, this.size*2);
-    ctx.strokeStyle = '#2ecc71';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(-this.size, -this.size, this.size*2, this.size*2);
-    ctx.fillStyle = '#e74c3c';
-    ctx.fillRect(-4, -10, 8, 20);
-    ctx.fillRect(-10, -4, 20, 8);
+    ctx.translate(this.x, this.y + bob);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath(); ctx.ellipse(0, this.size + 5 - bob, this.size * 0.9, 4, 0, 0, Math.PI * 2); ctx.fill();
+    const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, this.size * 2.4);
+    gl.addColorStop(0, 'rgba(74,222,128,.42)'); gl.addColorStop(1, 'rgba(74,222,128,0)');
+    ctx.fillStyle = gl; ctx.fillRect(-36, -36, 72, 72);
+    const s = this.size;
+    const gr = ctx.createLinearGradient(0, -s, 0, s);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#dbe4ee');
+    ctx.fillStyle = gr; ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2.5;
+    rr(ctx, -s, -s, s * 2, s * 2, 6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    rr(ctx, -3.5, -9, 7, 18, 2); ctx.fill();
+    rr(ctx, -9, -3.5, 18, 7, 2); ctx.fill();
     ctx.restore();
   }
 }
 
 function createSparks(x, y, color) {
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 9; i++) {
     particles.push({
       x: x, y: y,
-      vx: (Math.random() - 0.5) * 6,
-      vy: (Math.random() - 0.5) * 6,
-      life: 15,
+      vx: (Math.random() - 0.5) * 6.5,
+      vy: (Math.random() - 0.5) * 6.5,
+      life: 16,
       color: color
     });
   }
@@ -736,7 +2009,7 @@ function createSparks(x, y, color) {
 }
 
 function createFloatingText(text, x, y, color) {
-  floatingTexts.push({ text, x, y, life: 30, color });
+  floatingTexts.push({ text, x, y, life: 34, color });
   if (isWebMatch && isHost && netEvents.length < 50) {
     netEvents.push({ k: 't', t: text, x: x, y: y, c: color });
   }
@@ -747,9 +2020,12 @@ function faceByVelocity(p) {
   else if (p.vx < -0.5) p.facingRight = false;
 }
 
+// ======================================================================
+//  MENU A TOK HRY
+// ======================================================================
 function selectDevice(device) {
   selectedDevice = device;
-  showScreen('menu-mode');
+  openTeamMenu();
 }
 
 function showScreen(screenId) {
@@ -757,11 +2033,14 @@ function showScreen(screenId) {
   if (screenId) {
     document.getElementById(screenId).classList.remove('hidden');
   }
+  if (screenId === 'menu-main') updateShopLabel();
+  if (screenId !== 'customize-screen') stopPreviewLoop();
 }
 
 function setWaitText(show) {
-  document.getElementById('wait-text-instr').classList.toggle('hidden', !show);
-  document.getElementById('wait-text-over').classList.toggle('hidden', !show);
+  ['wait-text-cust', 'wait-text-over', 'wait-text-rules'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', !show);
+  });
 }
 
 function openDifficultyMenu() {
@@ -778,6 +2057,7 @@ function openPvPMenu() {
 }
 
 function setupLocalPvP() {
+  if (selectedDevice === 'mobile') return;
   gameMode = 'pvp';
   isWebMatch = false;
   isHost = false;
@@ -789,12 +2069,139 @@ function startSinglePlayer(diff) {
   isWebMatch = false;
   isHost = false;
   aiDifficulty = diff;
-  prepareInstructions();
+  goToCustomize('menu-difficulty');
+}
+
+// ---------- týmy a souboje ----------
+function openTeamMenu() {
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  myIdx = 0;
+  teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : ((s === 'p2' && selectedDevice === 'mobile') ? 'ai' : s));
+  renderTeamMenu();
+  showScreen('menu-team');
+}
+
+function openJoinFromTeam() {
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  document.getElementById('room-display').classList.add('hidden');
+  document.getElementById('room-input-zone').classList.remove('hidden');
+  document.getElementById('join-status-text').innerText = '';
+  showScreen('menu-web');
+}
+
+// Tlačítko "Vytvořit kód pro kamaráda": když ještě není nikdo přes internet, první volné místo se přepne na kamaráda
+function createCodeForFriend() {
+  if (netNeeded() < 1) {
+    const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+    for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'p2') teamCfg.slots[i] = 'ai';
+    teamCfg.slots[1] = 'net';
+    renderTeamMenu();
+  }
+  createRoom();
+}
+
+function teamBack() { showScreen('menu-main'); }
+function teamNext() { if (netNeeded() > 0) createRoom(); else startTeamGame(); }
+
+function renderTeamMenu() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  const online = netNeeded() > 0;
+  const fw = document.getElementById('team-formats');
+  fw.innerHTML = '';
+  Object.keys(TEAM_FORMATS).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (k === teamCfg.fmt ? '' : ' btn-secondary');
+    b.textContent = TEAM_FORMATS[k].name;
+    b.onclick = () => { teamCfg.fmt = k; renderTeamMenu(); };
+    fw.appendChild(b);
+  });
+
+  const sw = document.getElementById('team-slots');
+  sw.innerHTML = '';
+  f.cols.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-secondary slotbtn';
+    b.style.setProperty('--tc', TEAM[c].main);
+    const s = teamCfg.slots[i];
+    const who = s === 'p1' ? (online ? 'Ty (hostitel)' : 'Ty')
+      : (s === 'p2' ? 'Kamarád na této klávesnici'
+      : (s === 'net' ? 'Kamarád (připojí se přes internet)' : 'Počítač'));
+    const tm = teamCfg.fmt === '2v2' ? ' · tým ' + (f.grp[i] === 1 ? 'A' : 'B') : '';
+    b.textContent = TEAM[c].name + tm + ' – ' + who;
+    b.onclick = () => toggleSlot(i);
+    sw.appendChild(b);
+  });
+
+  let hint = teamCfg.fmt === '2v2'
+    ? 'Tým A: modrý + žlutý. Tým B: červený + zelený. Týmy mají vždy stejný počet bojovníků.'
+    : (teamCfg.fmt === '1v1' ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.');
+  hint += ' Klepáním na bojovníka střídáš: počítač → kamarád přes internet'
+    + (selectedDevice === 'mobile' ? '' : ' → kamarád na této klávesnici')
+    + '. Počítače můžeš mít libovolně, i žádný.';
+  if (selectedDevice !== 'mobile') hint += ' Kamarád na stejné klávesnici může být jen jeden a nejde kombinovat s kamarády přes internet.';
+  document.getElementById('team-hint').textContent = hint;
+  document.getElementById('team-diff').textContent =
+    'Počítač: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
+  document.getElementById('team-next').innerHTML =
+    (online ? 'Vytvořit místnost' : 'Dál') + '<svg class="ic"><use href="#i-next"/></svg>';
+}
+
+// Klepnutí mění jen tohoto jednoho bojovníka (počítač → internet → klávesnice → počítač); nic dalšího se nepřidává
+function toggleSlot(i) {
+  if (i === 0) return;
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  const others = teamCfg.slots.slice(0, n).filter((t, j) => j !== i);
+  const order = selectedDevice === 'mobile' ? ['ai', 'net'] : ['ai', 'net', 'p2'];
+  const ok = t => t === 'ai'
+    || (t === 'net' && !others.includes('p2'))
+    || (t === 'p2' && !others.includes('p2') && !others.includes('net'));
+  const k = order.indexOf(teamCfg.slots[i]);
+  for (let step = 1; step <= order.length; step++) {
+    const t = order[(k + step) % order.length];
+    if (ok(t)) { teamCfg.slots[i] = t; break; }
+  }
+  renderTeamMenu();
+}
+
+function cycleTeamDiff() {
+  const order = ['easy', 'medium', 'hard'];
+  teamCfg.diff = order[(order.indexOf(teamCfg.diff) + 1) % 3];
+  renderTeamMenu();
+}
+
+function startTeamGame() {
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  aiDifficulty = teamCfg.diff;
+  goToCustomize('menu-team');
+}
+
+function buildRoster() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  return f.cols.map((c, i) => {
+    const ctrl = teamCfg.slots[i];
+    return {
+      x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl,
+      style: ctrl === 'ai' ? randomLoadout() : cleanLoadout(settings.l[+ctrl[1]])
+    };
+  });
 }
 
 function showRulesOnly() {
   isOnlyRulesView = true;
   document.getElementById('start-battle-btn').classList.add('hidden');
+  setWaitText(false);
+  document.getElementById('controls-desc').innerHTML = getControlsHTML();
+  showScreen('instructions-screen');
+}
+
+function showRulesBeforeBattle() {
+  isOnlyRulesView = false;
   setWaitText(false);
   document.getElementById('controls-desc').innerHTML = getControlsHTML();
   showScreen('instructions-screen');
@@ -810,106 +2217,358 @@ function prepareInstructions() {
 
 function getControlsHTML() {
   if (selectedDevice === 'mobile') {
-    let html = '<p>📱 <strong>Ovládání na mobilu:</strong> Použij joystick vlevo pro pohyb a tlačítka MEČ / ŠTÍT vpravo.</p>';
-    if (gameMode === 'pvp' && !isWebMatch) {
-      html += '<p>👥 <strong>2 Hráči na 1 mobilu:</strong> Hráč 1 vlevo, Hráč 2 vpravo!</p>';
-    }
+    let html = '<p><strong>Ovládání na mobilu:</strong> joystick vlevo = pohyb, tlačítka MEČ a ŠTÍT vpravo.</p>';
     if (isWebMatch) {
-      html += `<p>🌐 <strong>Web Hra:</strong> Ovládáš svého rytíře na svém telefonu! ${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>`;
+      html += `<p><strong>Hra přes internet:</strong> ovládáš svého rytíře na svém telefonu. Ty jsi ${myColorName()} rytíř.</p>`;
     }
     return html;
   } else if (isWebMatch) {
     return `
-      <p>💻 <strong>Web hra – ovládání na klávesnici:</strong></p>
+      <p><strong>Hra přes internet – klávesnice:</strong></p>
       <p>Pohyb = [W, A, S, D] nebo [ŠIPKY] | Meč = [F] nebo [MEZERNÍK] | Štít = [G] nebo [SHIFT]</p>
-      <p>${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>
+      <p>Ty jsi ${myColorName()} rytíř.</p>
     `;
   } else {
     return `
-      <p>💻 <strong>Ovládání na klávesnici:</strong></p>
-      <p><strong>Hráč 1 (Modrý):</strong> Pohyb = [W, A, S, D] | Meč = [F] | Štít = [G]</p>
-      <p><strong>Hráč 2 (Červený):</strong> Pohyb = [ŠIPKY] | Meč = [MEZERNÍK] | Štít = [SHIFT]</p>
+      <p><strong>Ovládání na klávesnici:</strong></p>
+      <p><strong>Hráč 1:</strong> Pohyb = [W, A, S, D] | Meč = [F] | Štít = [G]</p>
+      <p><strong>Hráč 2 (jen když ho zapneš):</strong> Pohyb = [ŠIPKY] | Meč = [MEZERNÍK] | Štít = [SHIFT]</p>
     `;
   }
 }
 
-// Spuštění kola (lokálně)
-function startRound() {
+// ---------- výběr výbavy ----------
+let custReturn = 'instructions-screen';
+let previewRAF = 0;
+
+// vrací čísla lidských hráčů (1, 2), kteří si vybírají výbavu
+function customizeSlots() {
+  if (isWebMatch) return [isHost ? 1 : 2];
+  if (gameMode === 'team') return teamCfg.slots.slice(0, TEAM_FORMATS[teamCfg.fmt].cols.length).filter(s => s !== 'ai').map(s => +s[1]);
+  if (gameMode === 'pvp') return [1, 2];
+  return [1];
+}
+
+function slotTitle(team) {
+  const barva = TEAM[hcolor(team)].name.toLowerCase();
+  if (isWebMatch) return 'Ty · ' + barva;
+  if (gameMode === 'pvp' || gameMode === 'team') return 'Hráč ' + team + ' · ' + barva;
+  return 'Tvůj bojovník · ' + barva;
+}
+
+function makeChipCanvas(kind, i, team, gi) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 72;
+  const g = cv.getContext('2d');
+  const T = TEAM[team];
+  const st = { c: i, s: 0, h: 0, g: gi };
+  if (kind === 'c') {
+    g.translate(36, 47); g.scale(1.05, 1.05);
+    drawKnightFigure(g, team, st, 1, 0, false, null, { noSword: true, noShield: true, noShadow: true });
+  } else if (kind === 's') {
+    g.translate(14, 58); g.rotate(-Math.PI / 4); g.scale(1.35, 1.35);
+    drawSword(g, swordList(st)[i].id, T);
+  } else {
+    g.translate(36, 36); g.scale(1.5, 1.5);
+    drawShield(g, shieldList(st)[i].id, T, 1.6);
+  }
+  return cv;
+}
+
+function buildCustomize() {
+  const wrap = document.getElementById('cust-slots');
+  wrap.innerHTML = '';
+  customizeSlots().forEach(team => {
+    const C = hcolor(team);
+    const T = TEAM[C];
+    const el = document.createElement('div');
+    el.className = 'slot';
+    el.style.setProperty('--tc', T.main);
+    el.style.setProperty('--tc-l', T.light);
+    el.innerHTML =
+      '<div class="slot-head"><span class="dot"></span><span class="slot-title"></span></div>' +
+      '<div class="slot-body"><canvas class="slot-preview" width="224" height="280" data-team="' + team + '"></canvas>' +
+      '<div class="slot-rows"></div></div>';
+    el.querySelector('.slot-title').textContent = slotTitle(team);
+    const rows = el.querySelector('.slot-rows');
+    const me = settings.l[team];
+
+    // přepínač Kluk / Holka
+    const grow = document.createElement('div');
+    grow.className = 'row';
+    grow.innerHTML = '<div class="row-label">Typ</div><div class="chips"></div>';
+    ['Kluk', 'Holka'].forEach((nm, gi) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip gen' + (me.g === gi ? ' sel' : '');
+      b.textContent = nm;
+      b.addEventListener('click', () => {
+        me.g = gi;
+        saveSettings();
+        buildCustomize();
+      });
+      grow.querySelector('.chips').appendChild(b);
+    });
+    rows.appendChild(grow);
+
+    [['c', 'Postava', charList(me)], ['s', 'Meč', swordList(me)], ['h', 'Štít', shieldList(me)]].forEach(([k, label, list]) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="row-label"></div><div class="chips"></div>';
+      row.querySelector('.row-label').textContent = label;
+      const chips = row.querySelector('.chips');
+      list.forEach((item, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip' + (me[k] === i ? ' sel' : '');
+        b.appendChild(makeChipCanvas(k, i, C, me.g));
+        const sp = document.createElement('span');
+        sp.textContent = item.name;
+        b.appendChild(sp);
+        b.addEventListener('click', () => {
+          me[k] = i;
+          saveSettings();
+          chips.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('sel', j === i));
+        });
+        chips.appendChild(b);
+      });
+      rows.appendChild(row);
+    });
+    wrap.appendChild(el);
+  });
+
+  // pozadí arény
+  const box = document.getElementById('cust-arena');
+  box.innerHTML = '';
+  if (isWebMatch && !isHost) {
+    box.innerHTML = '<p class="hint" style="margin:0;text-align:center;">Pozadí arény vybírá hostitel hry.</p>';
+    return;
+  }
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = '<div class="row-label">Aréna</div><div class="chips"></div>';
+  const chips = row.querySelector('.chips');
+  BACKGROUNDS.forEach((item, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip bg' + (settings.bg === i ? ' sel' : '');
+    const cv = document.createElement('canvas');
+    cv.width = 140; cv.height = 72;
+    cv.getContext('2d').drawImage(getBackground(i), 0, 20, 900, 463, 0, 0, 140, 72);
+    b.appendChild(cv);
+    const sp = document.createElement('span');
+    sp.textContent = item.name;
+    b.appendChild(sp);
+    b.addEventListener('click', () => {
+      settings.bg = i;
+      saveSettings();
+      chips.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('sel', j === i));
+    });
+    chips.appendChild(b);
+  });
+  box.appendChild(row);
+  if (!isWebMatch && (gameMode === 'ai' || gameMode === 'team')) {
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent = 'Počítačoví bojovníci dostanou náhodnou výbavu.';
+    box.appendChild(hint);
+  }
+}
+
+function drawPreviews(ts) {
+  document.querySelectorAll('.slot-preview').forEach(cv => {
+    const hid = +cv.dataset.team;
+    const st = settings.l[hid];
+    const team = hcolor(hid);
+    const T = TEAM[team];
+    const g = cv.getContext('2d');
+    g.clearRect(0, 0, cv.width, cv.height);
+    const gl = g.createRadialGradient(cv.width * 0.45, cv.height * 0.76, 2, cv.width * 0.45, cv.height * 0.76, cv.width * 0.55);
+    gl.addColorStop(0, 'rgba(' + T.rgb + ',.38)'); gl.addColorStop(1, 'rgba(' + T.rgb + ',0)');
+    g.fillStyle = gl; g.fillRect(0, cv.height * 0.55, cv.width, cv.height * 0.45);
+    const s = cv.height / 122;
+    const phase = (ts % 2400) / 2400;
+    const swing = phase < 0.3 ? (phase / 0.3) * Math.PI : null;
+    g.save();
+    g.translate(cv.width * 0.40, cv.height * 0.56 + Math.sin(ts / 430) * 1.5 * s);
+    g.scale(s, s);
+    drawKnightFigure(g, team, st, 1, 0, true, swing);
+    g.restore();
+  });
+}
+
+function startPreviewLoop() {
+  if (previewRAF) return;
+  const loop = (ts) => {
+    if (document.getElementById('customize-screen').classList.contains('hidden')) { previewRAF = 0; return; }
+    drawPreviews(ts);
+    previewRAF = requestAnimationFrame(loop);
+  };
+  previewRAF = requestAnimationFrame(loop);
+}
+function stopPreviewLoop() {
+  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = 0; }
+}
+
+function goToCustomize(from) {
+  custReturn = from || 'instructions-screen';
+  sceneActive = false;
+  buildCustomize();
+  showScreen('customize-screen');
+  startPreviewLoop();
+}
+
+function custBack() {
+  showScreen(custReturn);
+  if (custReturn === 'game-over-screen') sceneActive = true;
+}
+
+// ---------- start kola ----------
+function resolveMatchSetup() {
+  const l1 = cleanLoadout(settings.l[1]);
+  let l2;
+  if (isWebMatch) l2 = cleanLoadout(clientLoadout || settings.l[2]);
+  else if (gameMode === 'ai') l2 = randomLoadout();
+  else l2 = cleanLoadout(settings.l[2]);
+  return { l1: l1, l2: l2, bg: settings.bg };
+}
+
+function startRound(l1, l2, bg, roster) {
   showScreen(null);
   setWaitText(false);
-  initGame();
+  initGame(l1, l2, bg, roster);
 }
 
 function confirmAndStartGame() {
   if (isWebMatch) {
     markReadyWeb();
+  } else if (gameMode === 'team') {
+    startRound(null, null, settings.bg, buildRoster());
   } else {
-    startRound();
+    const m = resolveMatchSetup();
+    startRound(m.l1, m.l2, m.bg);
   }
 }
 
 function restartCurrentGame() {
-  if (isWebMatch) {
-    markReadyWeb();
-  } else {
-    startRound();
-  }
+  confirmAndStartGame();
 }
 
-// --- Společný start přes web: hra začne, až kliknou oba ---
 function markReadyWeb() {
   if (isHost) {
     hostReady = true;
   } else {
     clientReady = true;
-    if (conn && conn.open) conn.send({ type: 'ready' });
+    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[2]), perks: activePerks() });
   }
   setWaitText(true);
   tryStartWebRound();
 }
 
 function tryStartWebRound() {
-  if (isHost && hostReady && clientReady) {
-    startWebRound();
-  }
+  if (isHost && hostReady && peers.length > 0 && peers.every(p => p.ready)) startWebRound();
+}
+
+function buildOnlineRoster() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  return f.cols.map((c, i) => {
+    const t = teamCfg.slots[i];
+    const pr = peers.find(q => q.slot === i);
+    let ctrl = 'ai', style;
+    if (t === 'p1') { ctrl = 'p1'; style = cleanLoadout(settings.l[1]); }
+    else if (t === 'net' && pr) { ctrl = 'net'; style = cleanLoadout(pr.loadout); }
+    else style = randomLoadout();
+    return { x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, style: style };
+  });
 }
 
 function startWebRound() {
   hostReady = false;
-  clientReady = false;
-  if (conn && conn.open) conn.send({ type: 'start' });
-  startRound();
+  peers.forEach(p => { p.ready = false; });
+  const roster = buildOnlineRoster();
+  const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style }));
+  peers.forEach(p => { if (p.c.open) p.c.send({ type: 'start', bg: settings.bg, roster: wire }); });
+  startRound(null, null, settings.bg, roster);
+  peers.forEach(q => applyPerks(players[q.slot], q.perks));
 }
 
 function closeNetwork() {
-  const oldConn = conn;
-  const oldPeer = peer;
-  conn = null;   // handler 'close' pozná, že jde o záměrné zavření
+  const oldConn = conn, oldPeer = peer, oldPeers = peers;
+  conn = null;     // handlery 'close' poznají, že jde o záměrné zavření
   peer = null;
+  peers = [];
+  oldPeers.forEach(p => { try { p.c.close(); } catch (e) {} });
   if (oldConn) { try { oldConn.close(); } catch (e) {} }
   if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
 }
 
-function returnToMainMenu() {
-  gameRunning = false;
-  closeNetwork();
+function resetNetState() {
   isWebMatch = false;
   isHost = false;
+  onlineSetup = false;
+  lobbyDone = false;
+  myIdx = 0;
   hostReady = false;
   clientReady = false;
+  clientLoadout = null;
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
+}
+
+function returnToMainMenu() {
+  gameRunning = false;
+  sceneActive = false;
+  closeNetwork();
+  resetNetState();
   touchInputP1.vx = 0; touchInputP1.vy = 0;
-  touchInputP2.vx = 0; touchInputP2.vy = 0;
   document.getElementById('touch-controls').classList.add('hidden');
   document.getElementById('pc-hud-guide').classList.add('hidden');
   setWaitText(false);
   showScreen('menu-main');
 }
 
-// --- PEERJS WEB MULTIPLAYER LOGIKA ---
+function backFromWeb() {
+  closeNetwork();
+  resetNetState();
+  document.getElementById('room-display').classList.add('hidden');
+  document.getElementById('room-input-zone').classList.add('hidden');
+  renderTeamMenu();
+  showScreen('menu-team');
+}
+
+// ======================================================================
+//  PEERJS WEB MULTIPLAYER (hostitel + až 3 kamarádi)
+// ======================================================================
+function netNeeded() {
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  let k = 0;
+  for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'net') k++;
+  return k;
+}
+
+function freeNetSlot() {
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  for (let i = 1; i < n; i++) {
+    if (teamCfg.slots[i] === 'net' && !peers.some(q => q.slot === i)) return i;
+  }
+  return -1;
+}
+
+function updateLobbyStatus() {
+  const need = netNeeded();
+  document.getElementById('room-status-text').innerText = peers.length >= need
+    ? 'Všichni připojeni! Jdeme na výbavu...'
+    : 'Připojeno ' + peers.length + ' z ' + need + ' kamarádů. Čekám na další...';
+}
+
 function createRoom() {
+  if (netNeeded() < 1) {
+    alert('Klepni na bojovníka a vyber aspoň jednoho kamaráda.');
+    return;
+  }
+  aiDifficulty = teamCfg.diff;
+  showScreen('menu-web');
   document.getElementById('room-display').classList.remove('hidden');
   document.getElementById('room-input-zone').classList.add('hidden');
   document.getElementById('room-status-text').innerText = "Vytvářím místnost...";
@@ -917,20 +2576,20 @@ function createRoom() {
   const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   document.getElementById('room-code-num').innerText = roomCode;
 
+  closeNetwork();
   isHost = true;
   isWebMatch = true;
-  gameMode = 'pvp';
+  gameMode = 'team';
+  myIdx = 0;
   hostReady = false;
   clientReady = false;
+  lobbyDone = false;
 
-  closeNetwork();
   const myPeer = new Peer(PEER_PREFIX + roomCode);
   peer = myPeer;
 
   myPeer.on('open', () => {
-    document.getElementById('room-status-text').innerText = "Čekám na připojení soupeře...";
-
-    // Vygenerovat QR kód s přímým odkazem
+    updateLobbyStatus();
     const joinUrl = window.location.href.split('?')[0] + '?room=' + roomCode;
     document.getElementById('qrcode-box').innerHTML = '';
     new QRCode(document.getElementById('qrcode-box'), {
@@ -941,14 +2600,60 @@ function createRoom() {
   });
 
   myPeer.on('connection', (c) => {
-    if (conn) { c.close(); return; }   // přijmeme jen jednoho soupeře
-    conn = c;
-    setupNetworkEvents(c);
+    const slot = freeNetSlot();
+    if (slot < 0) {                       // místnost je plná
+      c.on('open', () => { try { c.send({ type: 'full' }); } catch (e) {} setTimeout(() => { try { c.close(); } catch (e) {} }, 400); });
+      return;
+    }
+    const pr = { c: c, slot: slot, ready: false, loadout: null };
+    peers.push(pr);
+
     c.on('open', () => {
-      document.getElementById('room-status-text').innerText = "Soupeř připojen! Spouštím hru...";
-      setTimeout(() => {
-        if (conn === c) prepareInstructions();
-      }, 800);
+      c.send({ type: 'welcome', slot: slot, fmt: teamCfg.fmt, slots: teamCfg.slots.map(t => t === 'ai' ? 'ai' : 'net') });
+      updateLobbyStatus();
+      if (!lobbyDone && peers.length >= netNeeded()) {
+        lobbyDone = true;
+        setTimeout(() => { if (isHost && peer === myPeer) goToCustomize('menu-web'); }, 800);
+      }
+    });
+
+    c.on('data', (d) => {
+      if (!d) return;
+      if (d.type === 'ready') {
+        pr.loadout = cleanLoadout(d.loadout);
+        const pk = d.perks || {};
+        pr.perks = { sword: !!pk.sword, boots: !!pk.boots, armor: !!pk.armor };
+        pr.ready = true;
+        tryStartWebRound();
+      } else if (d.type === 'input') {
+        const p = players[pr.slot];
+        if (!gameRunning || !p || p.ctrl !== 'net' || p.hp <= 0) return;
+        const lim = v => Math.max(-p.speed, Math.min(p.speed, +v || 0));
+        p.vx = lim(d.vx);
+        p.vy = lim(d.vy);
+        p.facingRight = !!d.f;
+        p.isShielding = !!d.s;
+        if (d.a) p.attack();
+      }
+    });
+
+    c.on('close', () => {
+      const idx = peers.indexOf(pr);
+      if (idx < 0) return;                // záměrné zavření z naší strany
+      peers.splice(idx, 1);
+      if (lobbyDone) {
+        teamCfg.slots[pr.slot] = 'ai';
+        const p = players[pr.slot];
+        if (p && gameRunning) p.ctrl = 'ai';   // odpojený kamarád předá bojovníka počítači
+        if (peers.length === 0) {
+          alert('Všichni kamarádi se odpojili.');
+          returnToMainMenu();
+          return;
+        }
+        tryStartWebRound();
+      } else {
+        updateLobbyStatus();
+      }
     });
   });
 
@@ -972,24 +2677,75 @@ function joinRoom(autoCode) {
 
   document.getElementById('join-status-text').innerText = "Připojuji se k " + code + "...";
 
+  closeNetwork();
   isHost = false;
   isWebMatch = true;
-  gameMode = 'pvp';
+  gameMode = 'team';
   hostReady = false;
   clientReady = false;
 
-  closeNetwork();
   const myPeer = new Peer();
   peer = myPeer;
 
   myPeer.on('open', () => {
     const c = myPeer.connect(PEER_PREFIX + code, { reliable: true });
     conn = c;
-    setupNetworkEvents(c);
 
     c.on('open', () => {
-      document.getElementById('join-status-text').innerText = "";
-      prepareInstructions();
+      document.getElementById('join-status-text').innerText = "Připojeno, čekám na ostatní...";
+    });
+
+    c.on('data', (d) => {
+      if (!d) return;
+
+      if (d.type === 'welcome') {
+        teamCfg.fmt = TEAM_FORMATS[d.fmt] ? d.fmt : '1v1';
+        teamCfg.slots = Array.isArray(d.slots) ? d.slots.slice(0, 4) : ['net', 'net', 'net', 'net'];
+        myIdx = clampIdx(d.slot, 4);
+        document.getElementById('join-status-text').innerText = "";
+        goToCustomize('menu-web');
+      } else if (d.type === 'full') {
+        document.getElementById('join-status-text').innerText = "Místnost je už plná.";
+      } else if (d.type === 'start') {
+        clientReady = false;
+        const roster = (Array.isArray(d.roster) ? d.roster : []).slice(0, 4).map(r => ({
+          x: +r.x || 0, y: +r.y || 0,
+          team: Math.min(4, Math.max(1, (r.team | 0) || 1)),
+          group: (r.group | 0) || 1,
+          ctrl: r.ctrl === 'ai' ? 'ai' : 'net',
+          style: cleanLoadout(r.style)
+        }));
+        if (roster.length < 2) return;
+        startRound(null, null, clampIdx(d.bg, BACKGROUNDS.length), roster);
+      } else if (d.type === 'state') {
+        if (!gameRunning || !players.length || !Array.isArray(d.pl)) return;
+        d.pl.forEach((st, i) => {
+          const p = players[i];
+          if (!p || !st) return;
+          p.x = st.x; p.y = st.y; p.hp = st.hp;
+          p.netAttacking = !!st.a;
+          if (i !== myIdx) { p.facingRight = !!st.f; p.isShielding = !!st.s; }
+        });
+        if (d.medkits) {
+          medkits = d.medkits.map(m => {
+            const med = new Medkit(m.x, m.targetY);
+            med.y = m.y;
+            return med;
+          });
+        }
+        if (d.events) {
+          d.events.forEach(ev => {
+            if (ev.k === 's') createSparks(ev.x, ev.y, ev.c);
+            else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c);
+          });
+        }
+      }
+    });
+
+    c.on('close', () => {
+      if (c !== conn) return;
+      alert('Hostitel se odpojil.');
+      returnToMainMenu();
     });
 
     c.on('error', () => {
@@ -1007,110 +2763,35 @@ function joinRoom(autoCode) {
   });
 }
 
-function setupNetworkEvents(c) {
-  c.on('data', (data) => {
-    if (!data) return;
-
-    if (data.type === 'ready') {
-      if (isHost) {
-        clientReady = true;
-        tryStartWebRound();
-      }
-      return;
-    }
-
-    if (data.type === 'start') {
-      if (!isHost) {
-        clientReady = false;
-        startRound();
-      }
-      return;
-    }
-
-    if (data.type === 'sync') {
-      // Dokud hra neběží a hráči neexistují, data ignorujeme (dřív to způsobovalo pád)
-      if (!gameRunning || !player1 || !player2) return;
-
-      if (isHost) {
-        // Host přijímá pokyny od Hráče 2 (klienta)
-        if (!data.p2) return;
-        player2.vx = data.p2.vx;
-        player2.vy = data.p2.vy;
-        player2.facingRight = data.p2.facingRight;
-        player2.isShielding = data.p2.isShielding;
-        if (data.p2.attackTrigger) player2.attack(player1);
-      } else {
-        // Klient přijímá celkový stav hry od Hosta
-        if (!data.p1 || !data.p2) return;
-
-        player1.x = data.p1.x;
-        player1.y = data.p1.y;
-        player1.hp = data.p1.hp;
-        player1.facingRight = data.p1.facingRight;
-        player1.isShielding = data.p1.isShielding;
-        player1.netAttacking = data.p1.isAttacking;
-
-        // Svého rytíře (hráč 2) nechává klient otáčet a krýt štítem lokálně, ať to nebliká
-        player2.x = data.p2.x;
-        player2.y = data.p2.y;
-        player2.hp = data.p2.hp;
-        player2.netAttacking = data.p2.isAttacking;
-
-        if (data.medkits) {
-          medkits = data.medkits.map(m => {
-            const med = new Medkit(m.x, m.targetY);
-            med.y = m.y;
-            return med;
-          });
-        }
-
-        if (data.events) {
-          data.events.forEach(ev => {
-            if (ev.k === 's') createSparks(ev.x, ev.y, ev.c);
-            else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c);
-          });
-        }
-      }
-    }
-  });
-
-  c.on('close', () => {
-    if (c !== conn) return;   // záměrné zavření z naší strany
-    alert('Soupeř se odpojil.');
-    returnToMainMenu();
-  });
-}
-
 function sendNetworkSync(attackTriggered = false) {
-  if (!conn || !conn.open) return;
-
   if (isHost) {
-    conn.send({
-      type: 'sync',
-      p1: { x: player1.x, y: player1.y, hp: player1.hp, facingRight: player1.facingRight, isShielding: player1.isShielding, isAttacking: player1.isAttacking },
-      p2: { x: player2.x, y: player2.y, hp: player2.hp, facingRight: player2.facingRight, isShielding: player2.isShielding, isAttacking: player2.isAttacking },
+    if (!peers.length) return;
+    const msg = {
+      type: 'state',
+      pl: players.map(p => ({ x: p.x, y: p.y, hp: p.hp, f: p.facingRight, s: p.isShielding, a: p.isAttacking })),
       medkits: medkits.map(m => ({ x: m.x, y: m.y, targetY: m.targetY })),
       events: netEvents.splice(0)
-    });
+    };
+    peers.forEach(q => { if (q.c.open) q.c.send(msg); });
   } else {
-    conn.send({
-      type: 'sync',
-      p2: {
-        vx: player2.vx,
-        vy: player2.vy,
-        facingRight: player2.facingRight,
-        isShielding: player2.isShielding,
-        attackTrigger: attackTriggered
-      }
-    });
+    if (!conn || !conn.open) return;
+    const me = players[myIdx];
+    if (!me) return;
+    conn.send({ type: 'input', vx: me.vx, vy: me.vy, f: me.facingRight, s: me.isShielding, a: attackTriggered });
   }
 }
 
-// Načtení URL s kódem místnosti z QR kódu
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
-  if (roomParam) {
+  const takeParam = urlParams.get('take');
+  if (takeParam) {
+    selectedDevice = 'mobile';
+    openCode();
+    xferShowReceive();
+    document.getElementById('xfer-code-in').value = takeParam.toUpperCase();
+    xferReceive(takeParam);
+  } else if (roomParam) {
     selectedDevice = 'mobile';
     openPvPMenu();
     showScreen('menu-web');
@@ -1122,41 +2803,53 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // INICIALIZACE HRY
-function initGame() {
-  player1 = new Knight(150, canvas.height / 2, '#2980b9', false);
-  player2 = new Knight(canvas.width - 150, canvas.height / 2, '#c0392b', true);
+function initGame(l1, l2, bg, roster) {
+  match.bg = clampIdx(bg, BACKGROUNDS.length);
+  if (roster) {
+    players = roster.map(r => {
+      const k = new Knight(r.x, r.y, r.team, cleanLoadout(r.style));
+      k.group = r.group;
+      k.ctrl = r.ctrl;
+      k.facingRight = r.x < canvas.width / 2;
+      return k;
+    });
+    player1 = players[0];
+    player2 = players[1];
+  } else {
+    player1 = new Knight(150, canvas.height / 2, 1, cleanLoadout(l1));
+    player2 = new Knight(canvas.width - 150, canvas.height / 2, 2, cleanLoadout(l2));
+    player1.ctrl = 'p1';
+    player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
+    players = [player1, player2];
+  }
+  applyPerks(players[myIdx] || players[0], activePerks());
   medkits = [];
   particles = [];
   floatingTexts = [];
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
-  // Objekty se NESMÍ nahrazovat novými, joysticky drží odkaz na ty původní
   touchInputP1.vx = 0; touchInputP1.vy = 0;
-  touchInputP2.vx = 0; touchInputP2.vy = 0;
   gameRunning = true;
+  sceneActive = true;
 
   const touchUI = document.getElementById('touch-controls');
-  const p2Zone = document.getElementById('p2-joystick-zone');
-  const p2Btns = document.getElementById('p2-action-buttons');
   const pcHud = document.getElementById('pc-hud-guide');
+  const myTeam = (players[myIdx] || players[0]).team;
 
   if (selectedDevice === 'mobile') {
+    touchUI.style.setProperty('--team', TEAM[myTeam].main);
     touchUI.classList.remove('hidden');
     pcHud.classList.add('hidden');
-    if (gameMode === 'pvp' && !isWebMatch) {
-      p2Zone.classList.remove('hidden');
-      p2Btns.classList.remove('hidden');
-    } else {
-      p2Zone.classList.add('hidden');
-      p2Btns.classList.add('hidden');
-    }
   } else {
     touchUI.classList.add('hidden');
+    const sep = '<span class="sep">|</span>';
     if (isWebMatch) {
-      pcHud.innerHTML = 'Pohyb: [W A S D] / [ŠIPKY] &nbsp;|&nbsp; Meč: [F] / [MEZERNÍK] &nbsp;|&nbsp; Štít: [G] / [SHIFT]';
+      pcHud.innerHTML = 'Pohyb <b>W A S D</b> / <b>ŠIPKY</b>' + sep + 'Meč <b>F</b> / <b>MEZERNÍK</b>' + sep + 'Štít <b>G</b> / <b>SHIFT</b>';
+    } else if (players.some(p => p.ctrl === 'p2')) {
+      pcHud.innerHTML = 'Hráč 1: <b>W A S D</b> <b>F</b> <b>G</b>' + sep + 'Hráč 2: <b>ŠIPKY</b> <b>MEZERNÍK</b> <b>SHIFT</b>';
     } else {
-      pcHud.innerHTML = 'P1: [W A S D] Pohyb | [F] Meč | [G] Štít &nbsp;&nbsp;||&nbsp;&nbsp; P2: [ŠIPKY] Pohyb | [MEZERNÍK] Meč | [SHIFT] Štít';
+      pcHud.innerHTML = 'Pohyb <b>W A S D</b>' + sep + 'Meč <b>F</b>' + sep + 'Štít <b>G</b>';
     }
     pcHud.classList.remove('hidden');
   }
@@ -1171,7 +2864,9 @@ setInterval(() => {
   }
 }, 8000);
 
-// KLÁVESNICE INPUTS
+// ======================================================================
+//  VSTUPY
+// ======================================================================
 window.addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
     e.preventDefault();
@@ -1186,11 +2881,14 @@ window.addEventListener('keyup', e => {
     if (player1 && (!isWebMatch || isHost)) player1.isShielding = false;
   }
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-    if (player2 && !isWebMatch) player2.isShielding = false;
+    if (isWebMatch) {
+      if (isHost && player1) player1.isShielding = false;
+    } else {
+      players.forEach(p => { if (p.ctrl === 'p2') p.isShielding = false; });
+    }
   }
 });
 
-// Při přepnutí na jiné okno se uvolní všechny klávesy (aby nezůstaly "zaseknuté")
 window.addEventListener('blur', () => {
   for (const k in keys) keys[k] = false;
 });
@@ -1202,7 +2900,7 @@ function setupTouchListeners() {
     const knob = document.getElementById(knobId);
     let touchId = null;
 
-    const maxRadius = 40;
+    let maxRadius = 40;
 
     zone.addEventListener('touchstart', e => {
       e.preventDefault();
@@ -1242,6 +2940,7 @@ function setupTouchListeners() {
       const rect = zone.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
+      maxRadius = rect.width * 0.31;
 
       let dx = touch.clientX - centerX;
       let dy = touch.clientY - centerY;
@@ -1256,18 +2955,15 @@ function setupTouchListeners() {
 
       const normX = dx / maxRadius;
       const normY = dy / maxRadius;
-      const speed = 4;
+      const speed = (players[myIdx] && players[myIdx].speed) || 4;
 
       inputObj.vx = Math.abs(normX) > 0.2 ? normX * speed : 0;
       inputObj.vy = Math.abs(normY) > 0.2 ? normY * speed : 0;
-      // Natočení rytíře se řeší v update() podle rychlosti
     }
   }
 
   handleJoystick('p1-joystick-zone', 'p1-joystick-knob', touchInputP1);
-  handleJoystick('p2-joystick-zone', 'p2-joystick-knob', touchInputP2);
 
-  // Akční tlačítka
   const bindAction = (btnId, onPress, onRelease) => {
     const btn = document.getElementById(btnId);
     btn.addEventListener('touchstart', e => {
@@ -1287,10 +2983,9 @@ function setupTouchListeners() {
     }
   };
 
-  // Hráč 1 (nebo na webu: můj rytíř – host = modrý, klient = červený)
   bindAction('p1-btn-attack', () => {
-    if (!isWebMatch || isHost) player1.attack(player2);
-    else pendingClientAttack = true;   // klient pošle úder hostovi
+    if (!isWebMatch || isHost) player1.attack();
+    else pendingClientAttack = true;
   });
 
   bindAction('p1-btn-shield',
@@ -1303,84 +2998,100 @@ function setupTouchListeners() {
       else clientTouchShield = false;
     }
   );
-
-  // Hráč 2 (jen hra na 1 zařízení)
-  bindAction('p2-btn-attack', () => { player2.attack(player1); });
-  bindAction('p2-btn-shield',
-    () => { player2.isShielding = true; },
-    () => { if (player2) player2.isShielding = false; }
-  );
 }
 
 function finishGame() {
   gameRunning = false;
+  const alive = players.filter(p => p.hp > 0);
   let msg = '';
-  if (player1.hp > 0 && player2.hp <= 0) {
-    msg = 'Hráč 1 (Modrý) ovládl arénu!';
+  if (gameMode === 'team') {
+    if (alive.length === 0) msg = 'Všichni rytíři padli!';
+    else if (teamCfg.fmt === '2v2') msg = 'Vítězí tým ' + (alive[0].group === 1 ? 'A' : 'B') + ': ' + alive.map(p => TEAM[p.team].name).join(' + ') + '!';
+    else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
+  } else if (player1.hp > 0 && player2.hp <= 0) {
+    msg = 'Modrý rytíř ovládl arénu!';
   } else if (player2.hp > 0 && player1.hp <= 0) {
-    msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Hráč 2 (Červený) ovládl arénu!';
+    msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Červený rytíř ovládl arénu!';
   } else {
     msg = 'Oba rytíři padli!';
   }
   document.getElementById('winner-announcement').innerText = msg;
+  const rw = document.getElementById('key-reward');
+  const me = players[myIdx];
+  if (me && alive.length && alive[0].group === me.group) {
+    shop.keys++;
+    saveShop();
+    updateShopLabel();
+    rw.textContent = '🔑 +1 klíč za výhru! Máš jich ' + shop.keys + '.';
+    rw.classList.remove('hidden');
+  } else {
+    rw.classList.add('hidden');
+  }
   setWaitText(false);
   showScreen('game-over-screen');
 }
 
-// LOGIKA A SOUBOJ
+// ======================================================================
+//  LOGIKA A SOUBOJ
+// ======================================================================
 function update() {
   if (!gameRunning) return;
 
   if (!isWebMatch || isHost) {
-    // --- OVLÁDÁNÍ HRÁČE 1 ---
-    player1.vx = touchInputP1.vx;
-    player1.vy = touchInputP1.vy;
+    for (const p of players) {
+      if (p.hp <= 0) { p.vx = 0; p.vy = 0; p.isShielding = false; continue; }
 
-    if (keys['KeyA'] || (isWebMatch && keys['ArrowLeft'])) { player1.vx = -player1.speed; }
-    else if (keys['KeyD'] || (isWebMatch && keys['ArrowRight'])) { player1.vx = player1.speed; }
+      if (p.ctrl === 'p1') {
+        const W = isWebMatch;
+        p.vx = touchInputP1.vx;
+        p.vy = touchInputP1.vy;
 
-    if (keys['KeyW'] || (isWebMatch && keys['ArrowUp'])) { player1.vy = -player1.speed; }
-    else if (keys['KeyS'] || (isWebMatch && keys['ArrowDown'])) { player1.vy = player1.speed; }
+        if (keys['KeyA'] || (W && keys['ArrowLeft'])) { p.vx = -p.speed; }
+        else if (keys['KeyD'] || (W && keys['ArrowRight'])) { p.vx = p.speed; }
 
-    faceByVelocity(player1);
+        if (keys['KeyW'] || (W && keys['ArrowUp'])) { p.vy = -p.speed; }
+        else if (keys['KeyS'] || (W && keys['ArrowDown'])) { p.vy = p.speed; }
 
-    if (keys['KeyG'] || (isWebMatch && (keys['ShiftLeft'] || keys['ShiftRight']))) player1.isShielding = true;
-    if (keys['KeyF'] || (isWebMatch && keys['Space'])) { player1.attack(player2); }
+        faceByVelocity(p);
 
-    // --- OVLÁDÁNÍ HRÁČE 2 ---
-    if (gameMode === 'pvp' && !isWebMatch) {
-      player2.vx = touchInputP2.vx;
-      player2.vy = touchInputP2.vy;
+        if (keys['KeyG'] || (W && (keys['ShiftLeft'] || keys['ShiftRight']))) p.isShielding = true;
+        if (keys['KeyF'] || (W && keys['Space'])) p.attack();
+      } else if (p.ctrl === 'p2') {
+        p.vx = 0;
+        p.vy = 0;
 
-      if (keys['ArrowLeft']) { player2.vx = -player2.speed; }
-      else if (keys['ArrowRight']) { player2.vx = player2.speed; }
+        if (keys['ArrowLeft']) { p.vx = -p.speed; }
+        else if (keys['ArrowRight']) { p.vx = p.speed; }
 
-      if (keys['ArrowUp']) { player2.vy = -player2.speed; }
-      else if (keys['ArrowDown']) { player2.vy = player2.speed; }
+        if (keys['ArrowUp']) { p.vy = -p.speed; }
+        else if (keys['ArrowDown']) { p.vy = p.speed; }
 
-      faceByVelocity(player2);
+        faceByVelocity(p);
 
-      if (keys['ShiftLeft'] || keys['ShiftRight']) player2.isShielding = true;
-      if (keys['Space']) { player2.attack(player1); }
-    } else if (gameMode === 'ai') {
-      updateAI();
+        if (keys['ShiftLeft'] || keys['ShiftRight']) p.isShielding = true;
+        if (keys['Space']) p.attack();
+      } else if (p.ctrl === 'ai') {
+        updateAI(p);
+      }
+      // ctrl 'net' (hráč 2 přes web) řídí data od klienta
     }
-    // Při web hře řídí hráče 2 data od klienta (vx, vy, štít, útok)
 
-    checkShieldSolidBlock(player1, player2);
-    checkShieldSolidBlock(player2, player1);
+    for (const a of players) {
+      for (const d of players) {
+        if (a !== d && a.hp > 0 && d.hp > 0) checkShieldSolidBlock(a, d);
+      }
+    }
 
-    player1.update();
-    player2.update();
+    players.forEach(p => p.update());
 
-    // Lékárničky (procházíme odzadu, aby mazání nepřeskakovalo prvky)
     for (let i = medkits.length - 1; i >= 0; i--) {
       const m = medkits[i];
       m.update();
-      for (const p of [player1, player2]) {
+      for (const p of players) {
+        if (p.hp <= 0) continue;
         if (Math.hypot(p.x - m.x, p.y - m.y) < p.radius + m.size) {
           p.hp = Math.min(p.maxHp, p.hp + 10);
-          createFloatingText('+10 HP', p.x, p.y - 48, '#2ecc71');
+          createFloatingText('+10 HP', p.x, p.y - 52, '#86efac');
           medkits.splice(i, 1);
           break;
         }
@@ -1391,31 +3102,30 @@ function update() {
       sendNetworkSync();
     }
   } else {
-    // --- KLIENT (Hráč 2 přes Web) ---
-    player2.vx = touchInputP1.vx;
-    player2.vy = touchInputP1.vy;
+    // --- KLIENT (kamarád přes web): posílá vstupy, kreslí stav od hostitele ---
+    const me = players[myIdx];
+    if (me) {
+      me.vx = touchInputP1.vx;
+      me.vy = touchInputP1.vy;
 
-    if (keys['KeyA'] || keys['ArrowLeft']) { player2.vx = -player2.speed; }
-    else if (keys['KeyD'] || keys['ArrowRight']) { player2.vx = player2.speed; }
+      if (keys['KeyA'] || keys['ArrowLeft']) { me.vx = -me.speed; }
+      else if (keys['KeyD'] || keys['ArrowRight']) { me.vx = me.speed; }
 
-    if (keys['KeyW'] || keys['ArrowUp']) { player2.vy = -player2.speed; }
-    else if (keys['KeyS'] || keys['ArrowDown']) { player2.vy = player2.speed; }
+      if (keys['KeyW'] || keys['ArrowUp']) { me.vy = -me.speed; }
+      else if (keys['KeyS'] || keys['ArrowDown']) { me.vy = me.speed; }
 
-    faceByVelocity(player2);
+      faceByVelocity(me);
 
-    player2.isShielding = clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']);
+      me.isShielding = clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']);
 
-    const clientAttackTrigger = pendingClientAttack || !!(keys['KeyF'] || keys['Space']);
-    pendingClientAttack = false;
+      const clientAttackTrigger = pendingClientAttack || !!(keys['KeyF'] || keys['Space']);
+      pendingClientAttack = false;
 
-    sendNetworkSync(clientAttackTrigger);
-
-    // Jen animace (chůze nohou, máchnutí mečem)
-    player1.clientVisualUpdate();
-    player2.clientVisualUpdate();
+      sendNetworkSync(clientAttackTrigger);
+    }
+    players.forEach(p => p.clientVisualUpdate());
   }
 
-  // Částice & Texty (odzadu kvůli mazání)
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx; p.y += p.vy; p.life--;
@@ -1427,8 +3137,9 @@ function update() {
     if (t.life <= 0) floatingTexts.splice(i, 1);
   }
 
-  // KONTROLA VÍTĚZSTVÍ
-  if (player1.hp <= 0 || player2.hp <= 0) {
+  // KONTROLA VÍTĚZSTVÍ: končí, když zbude jen jeden tým (nebo nikdo)
+  const alive = players.filter(p => p.hp > 0);
+  if (alive.length === 0 || alive.every(p => p.group === alive[0].group)) {
     finishGame();
   }
 }
@@ -1446,75 +3157,137 @@ function checkShieldSolidBlock(attacker, defender) {
   }
 }
 
-function updateAI() {
-  const dx = player1.x - player2.x;
-  const dy = player1.y - player2.y;
-  const dist = Math.hypot(dx, dy);
+// AI: jde po nejbližším protivníkovi (spoluhráče nechává na pokoji)
+function updateAI(p) {
+  let target = null, best = Infinity;
+  for (const o of players) {
+    if (o.group === p.group || o.hp <= 0) continue;
+    const d = Math.hypot(o.x - p.x, o.y - p.y);
+    if (d < best) { best = d; target = o; }
+  }
+  if (!target) { p.vx = 0; p.vy = 0; return; }
 
-  player2.facingRight = dx > 0;
+  const dx = target.x - p.x;
+  const dy = target.y - p.y;
+  const dist = best;
+
+  p.facingRight = dx > 0;
   let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75 : 1);
 
   if (dist > 55) {
-    player2.vx = (dx / dist) * player2.speed * speedMod;
-    player2.vy = (dy / dist) * player2.speed * speedMod;
+    p.vx = (dx / dist) * p.speed * speedMod;
+    p.vy = (dy / dist) * p.speed * speedMod;
   } else {
-    player2.vx = 0;
-    player2.vy = 0;
+    p.vx = 0;
+    p.vy = 0;
   }
 
   if (dist < 70) {
-    if (player1.isAttacking && aiDifficulty !== 'easy') {
-      player2.isShielding = true;
+    if (target.isAttacking && aiDifficulty !== 'easy') {
+      p.isShielding = true;
     } else {
-      player2.isShielding = false;
-      player2.attack(player1);
+      p.isShielding = false;
+      p.attack();
     }
   } else {
-    player2.isShielding = false;
+    p.isShielding = false;
   }
+}
+
+// ======================================================================
+//  VYKRESLENÍ
+// ======================================================================
+function hudLabel(p) {
+  const nm = TEAM[p.team].name;
+  let t;
+  if (isWebMatch) t = players.indexOf(p) === myIdx ? 'TY' : (p.ctrl === 'ai' ? 'POČÍTAČ' : 'KAMARÁD');
+  else t = p.ctrl === 'p1' ? 'TY' : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
+  if (gameMode === 'team' && teamCfg.fmt === '2v2') t += ' · TÝM ' + (p.group === 1 ? 'A' : 'B');
+  return nm + ' · ' + t;
+}
+
+function drawHUD() {
+  const k = Math.min(1.45, Math.max(1, canvas.width / (canvas.clientWidth || canvas.width)));
+  const W = canvas.width / k;
+  const n = players.length;
+  const used = [0, 0];
+  ctx.save();
+  ctx.scale(k, k);
+  players.forEach((p, i) => {
+    const T = TEAM[p.team];
+    const side = n === 2 ? i : (n === 3 ? (i === 0 ? 0 : 1) : (i < 2 ? 0 : 1));
+    const left = side === 0;
+    const row = used[side]++;
+    const w = 220, h = 11, m = 16;
+    const x = left ? m : W - m - w;
+    const y = 27 + row * 27;
+
+    ctx.font = '800 11px ' + FONT;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = left ? 'left' : 'right';
+    const tx = left ? x : x + w;
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineJoin = 'round';
+    ctx.strokeText(hudLabel(p), tx, y - 6);
+    ctx.fillStyle = T.light;
+    ctx.fillText(hudLabel(p), tx, y - 6);
+
+    ctx.fillStyle = 'rgba(6,9,16,.6)';
+    rr(ctx, x, y, w, h, 6); ctx.fill();
+    const f = Math.max(0, p.hp / p.maxHp);
+    if (f > 0) {
+      const fw = Math.max(h, w * f);
+      const fx = left ? x : x + w - fw;
+      const gr = ctx.createLinearGradient(fx, 0, fx + fw, 0);
+      if (left) { gr.addColorStop(0, T.dark); gr.addColorStop(1, T.main); }
+      else { gr.addColorStop(0, T.main); gr.addColorStop(1, T.dark); }
+      ctx.fillStyle = gr;
+      rr(ctx, fx, y, fw, h, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.22)';
+      rr(ctx, fx + 2, y + 1.5, Math.max(0, fw - 4), 3, 1.5); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.2;
+    rr(ctx, x, y, w, h, 6); ctx.stroke();
+
+    ctx.font = '800 10px ' + FONT;
+    ctx.textAlign = left ? 'right' : 'left';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(String(Math.ceil(p.hp)), left ? x + w - 7 : x + 7, y + 8.5);
+  });
+  ctx.restore();
 }
 
 function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const bgIdx = sceneActive ? match.bg : settings.bg;
+  ctx.drawImage(getBackground(bgIdx), 0, 0);
+  if (!sceneActive || !player1 || !player2) return;
 
-  // Dlážděná aréna
-  ctx.fillStyle = '#221c16';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#332920';
-  ctx.lineWidth = 2;
-  for (let x = 0; x < canvas.width; x += 50) {
-    for (let y = 0; y < canvas.height; y += 50) {
-      ctx.strokeRect(x, y, 50, 50);
-    }
-  }
+  drawHUD();
 
-  // Okraj arény
-  ctx.strokeStyle = '#8c6f4d';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-  // Vykreslení herních prvků
   medkits.forEach(m => m.draw());
-  if (player1) player1.draw();
-  if (player2) player2.draw();
+  players.filter(p => p.hp > 0).sort((a, b) => a.y - b.y).forEach(p => p.draw());
 
-  // Částice (Jiskry)
   particles.forEach(p => {
+    const a = Math.max(0, p.life / 16);
+    ctx.globalAlpha = a;
     ctx.fillStyle = p.color;
-    ctx.fillRect(p.x, p.y, 4, 4);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2 + 2 * a, 0, Math.PI * 2); ctx.fill();
   });
+  ctx.globalAlpha = 1;
 
-  // Plovoucí texty (-5 HP, ODRAŽENO...)
+  ctx.font = '800 16px ' + FONT;
+  ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
   floatingTexts.forEach(t => {
+    ctx.globalAlpha = Math.min(1, t.life / 14);
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.6)';
+    ctx.strokeText(t.text, t.x, t.y);
     ctx.fillStyle = t.color;
-    ctx.font = 'bold 16px "Segoe UI", sans-serif';
-    ctx.textAlign = 'center';
     ctx.fillText(t.text, t.x, t.y);
   });
+  ctx.globalAlpha = 1;
 }
 
 // HERNÍ SMYČKA – pevných 60 kroků za sekundu bez ohledu na obnovovací frekvenci displeje
-// (na telefonu se 120 Hz by jinak hra a hlavně host běžel dvakrát rychleji)
 const STEP_MS = 1000 / 60;
 let lastTime = 0;
 let accumulator = 0;
@@ -1536,7 +3309,6 @@ function gameLoop(ts) {
   requestAnimationFrame(gameLoop);
 }
 
-// Spuštění smyčky
 requestAnimationFrame(gameLoop);
 </script>
 </body>
