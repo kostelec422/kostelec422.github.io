@@ -334,6 +334,22 @@ input[type="text"]:focus { border-color: var(--accent); }
 .arena .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 .cust-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 
+input[type="password"] {
+  padding: 10px; font: 700 16px var(--font); letter-spacing: 3px; text-align: center;
+  border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
+  color: #fff; width: 100%; max-width: 260px; margin: 4px 0; outline: none;
+  user-select: text; -webkit-user-select: text;
+}
+input[type="password"]:focus, textarea:focus { border-color: var(--accent); outline: none; }
+textarea#code-text {
+  width: 100%; height: 84px; margin: 6px 0; padding: 8px; border-radius: 12px; resize: none;
+  border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35); color: #cbd5e1;
+  font: 11px/1.3 monospace; user-select: text; -webkit-user-select: text;
+}
+.code-box { text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); margin-top: 10px; }
+.code-box h2 { text-align: center; margin-top: 0; }
+#code-msg { text-align: center; font-weight: 700; min-height: 20px; margin: 10px 0 0; }
+
 /* obchod */
 .shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
 .shop-row span { color: var(--muted); font-size: 13px; }
@@ -508,6 +524,7 @@ input[type="text"]:focus { border-color: var(--accent); }
         <button class="choice" onclick="selectDevice('pc')"><svg class="ic"><use href="#i-monitor"/></svg>Notebook / PC<small>ovládání klávesnicí</small></button>
         <button class="choice" onclick="selectDevice('mobile')"><svg class="ic"><use href="#i-phone"/></svg>Mobil / Tablet<small>dotykové ovládání</small></button>
         <button class="choice" onclick="openShop()"><svg class="ic"><use href="#i-key"/></svg>Obchod<small id="shop-keys-label">0 klíčů</small></button>
+        <button class="choice" onclick="openCode()"><svg class="ic"><use href="#i-refresh"/></svg>Můj kód<small>přenos klíčů na jiné zařízení</small></button>
         <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
       </div>
       <p class="version">VERZE 7</p>
@@ -546,6 +563,71 @@ input[type="text"]:focus { border-color: var(--accent); }
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MŮJ KÓD A PŘENOS -->
+  <div id="menu-code" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Můj kód</h1>
+      <div class="scroll">
+        <p id="code-status" class="lead" style="font-weight:800;color:var(--accent)"></p>
+        <p class="lead">Kód chrání tvoje klíče. Bez něj se postup nedá uložit do textu, načíst ani změnit kód.</p>
+
+        <div class="code-box">
+          <h2>Přenést klíče na jiné zařízení</h2>
+          <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
+          <div class="btn-group" style="margin-top:6px">
+            <button class="btn" onclick="xferStartSend()">Poslat klíče</button>
+            <button class="btn btn-secondary" onclick="xferShowReceive()">Přijmout klíče</button>
+          </div>
+          <div id="xfer-send" class="hidden">
+            <p class="lead" style="margin:10px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
+            <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
+            <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
+            <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
+          </div>
+          <div id="xfer-recv" class="hidden">
+            <p class="lead" style="margin:10px 0 0">Zadej kód z prvního zařízení:</p>
+            <input type="text" id="xfer-code-in" maxlength="6" placeholder="KÓD"><br>
+            <button class="btn" onclick="xferReceive()">Přijmout</button>
+            <p id="xfer-recv-status" class="lead" style="margin-top:6px;font-weight:700"></p>
+          </div>
+        </div>
+
+        <details style="margin-top:12px">
+        <summary style="cursor:pointer;color:var(--muted);font-weight:700;text-align:center;padding:6px">Kód a záloha textem (pro pokročilé)</summary>
+        <div id="code-make-box" class="code-box">
+          <h2>Udělat kód</h2>
+          <input type="password" id="code-new1" placeholder="Vymysli si kód" autocomplete="off"><br>
+          <input type="password" id="code-new2" placeholder="Kód ještě jednou" autocomplete="off"><br>
+          <button class="btn" onclick="uiCodeMake()">Udělat kód</button>
+        </div>
+
+        <div id="code-change-box" class="code-box hidden">
+          <h2>Změnit kód</h2>
+          <input type="password" id="code-old" placeholder="Starý kód" autocomplete="off"><br>
+          <input type="password" id="code-chg1" placeholder="Nový kód" autocomplete="off"><br>
+          <input type="password" id="code-chg2" placeholder="Nový kód ještě jednou" autocomplete="off"><br>
+          <button class="btn" onclick="uiCodeChange()">Změnit kód</button>
+        </div>
+
+        <div class="code-box">
+          <h2>Přenos na jiné zařízení</h2>
+          <p class="lead" style="font-size:12px">Na notebooku klikni na <b>Uložit postup do textu</b>, text zkopíruj a na mobilu ho vlož sem a klikni na <b>Načíst postup</b>. Na obou zařízeních zadej stejný kód. Postup se přenáší ručně a nahraje se jen to, co bylo v textu. Nehraj proto s klíči na obou zařízeních zároveň.</p>
+          <input type="password" id="code-xfer" placeholder="Tvůj kód" autocomplete="off"><br>
+          <textarea id="code-text" placeholder="Sem se vypíše nebo vlož text s postupem" spellcheck="false"></textarea>
+          <div class="btn-group" style="margin-top:6px">
+            <button class="btn" onclick="uiExport()">Uložit postup do textu</button>
+            <button class="btn btn-secondary" onclick="uiImport()">Načíst postup</button>
+          </div>
+        </div>
+        <p id="code-msg"></p>
+        </details>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="closeXfer();showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
@@ -826,6 +908,198 @@ function timeLeft(t) {
   const days = Math.floor(d / 86400000), h = Math.floor(d % 86400000 / 3600000), m = Math.floor(d % 3600000 / 60000);
   return days ? days + ' d ' + h + ' h' : (h ? h + ' h ' + m + ' min' : Math.max(1, m) + ' min');
 }
+// ======================================================================
+//  MŮJ KÓD A PŘENOS POSTUPU (šifrováno kódem; bez serveru se přenáší ručně textem)
+// ======================================================================
+const CODE_KEY = 'ka-code';
+let codeRec = null;                       // { salt, hash } – kód samotný se neukládá
+function loadCodeRec() { try { codeRec = JSON.parse(localStorage.getItem(CODE_KEY) || 'null'); } catch (e) { codeRec = null; } }
+function saveCodeRec() { try { if (codeRec) localStorage.setItem(CODE_KEY, JSON.stringify(codeRec)); } catch (e) {} }
+loadCodeRec();
+const _enc = new TextEncoder(), _dec = new TextDecoder();
+function b64e(u) { let t = ''; u.forEach(c => { t += String.fromCharCode(c); }); return btoa(t); }
+function b64d(t) { const x = atob(t); const u = new Uint8Array(x.length); for (let i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u; }
+function cryptoOk() { return typeof crypto !== 'undefined' && !!crypto.subtle; }
+const NOCRYPTO = 'Tento prohlížeč (nebo způsob otevření souboru) šifrování neumí.';
+async function pbBase(code) { return crypto.subtle.importKey('raw', _enc.encode(code), 'PBKDF2', false, ['deriveBits', 'deriveKey']); }
+async function hashCode(code, salt) {
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code), 256);
+  return b64e(new Uint8Array(bits));
+}
+async function aesKeyFor(code, salt) {
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code),
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function verifyCode(code) { return !!codeRec && (await hashCode(code, b64d(codeRec.salt))) === codeRec.hash; }
+async function setCodeRec(code) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  codeRec = { salt: b64e(salt), hash: await hashCode(code, salt) };
+  saveCodeRec();
+}
+async function codeMakeCore(c1, c2) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (codeRec) return { ok: false, msg: 'Kód už máš. Použij Změnit kód.' };
+  if (c1.length < 4) return { ok: false, msg: 'Kód musí mít aspoň 4 znaky.' };
+  if (c1 !== c2) return { ok: false, msg: 'Kódy se neshodují.' };
+  await setCodeRec(c1);
+  return { ok: true, msg: 'Kód je hotový.' };
+}
+async function codeChangeCore(old, n1, n2) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
+  if (!(await verifyCode(old))) return { ok: false, msg: 'Starý kód nesedí.' };
+  if (n1.length < 4) return { ok: false, msg: 'Nový kód musí mít aspoň 4 znaky.' };
+  if (n1 !== n2) return { ok: false, msg: 'Nové kódy se neshodují.' };
+  await setCodeRec(n1);
+  return { ok: true, msg: 'Kód je změněný.' };
+}
+async function exportCore(code) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
+  if (!(await verifyCode(code))) return { ok: false, msg: 'Kód nesedí.' };
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = JSON.stringify({ v: 1, t: Date.now(), keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor });
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await aesKeyFor(code, salt), _enc.encode(data));
+  return { ok: true, msg: 'Hotovo. Text zkopíruj a vlož ho na druhém zařízení.', text: 'KA1.' + b64e(salt) + '.' + b64e(iv) + '.' + b64e(new Uint8Array(ct)) };
+}
+async function importCore(text, code) {
+  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
+  const parts = String(text || '').trim().split('.');
+  if (parts.length !== 4 || parts[0] !== 'KA1') return { ok: false, msg: 'Tohle není text s postupem.' };
+  if (codeRec && !(await verifyCode(code))) return { ok: false, msg: 'Na tomto zařízení je jiný kód. Zadej ten, který tu už máš.' };
+  let o;
+  try {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(parts[2]) }, await aesKeyFor(code, b64d(parts[1])), b64d(parts[3]));
+    o = JSON.parse(_dec.decode(pt));
+  } catch (e) { return { ok: false, msg: 'Špatný kód, nebo je text poškozený.' }; }
+  shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
+  shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
+  ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
+  saveShop();
+  if (!codeRec) await setCodeRec(code);
+  updateShopLabel();
+  return { ok: true, msg: 'Postup načtený: ' + keysText(shop.keys) + ' v peněžence, ' + keysText(shop.bank) + ' v bance.' };
+}
+function codeMsg(r) {
+  const el = document.getElementById('code-msg');
+  el.textContent = r.msg;
+  el.style.color = r.ok ? '#86efac' : '#fca5a5';
+}
+function renderCode() {
+  document.getElementById('code-status').textContent = codeRec ? '✔ Kód je nastavený' : 'Zatím nemáš kód';
+  document.getElementById('code-make-box').classList.toggle('hidden', !!codeRec);
+  document.getElementById('code-change-box').classList.toggle('hidden', !codeRec);
+}
+function openCode() {
+  document.getElementById('code-msg').textContent = '';
+  closeXfer();
+  document.getElementById('xfer-send').classList.add('hidden');
+  document.getElementById('xfer-recv').classList.add('hidden');
+  renderCode();
+  showScreen('menu-code');
+}
+
+// ---------- přenos klíčů přímo mezi dvěma zařízeními (PeerJS) ----------
+let xferPeer = null;
+function closeXfer() { if (xferPeer) { try { xferPeer.destroy(); } catch (e) {} xferPeer = null; } }
+function hasStuff() { return shop.keys > 0 || shop.bank > 0 || perkActive('sword') || perkActive('boots') || perkActive('armor'); }
+function setSt(id, t, ok) { const el = document.getElementById(id); el.textContent = t; el.style.color = ok === true ? '#86efac' : (ok === false ? '#fca5a5' : ''); }
+
+function xferStartSend() {
+  closeXfer();
+  document.getElementById('xfer-send').classList.remove('hidden');
+  document.getElementById('xfer-recv').classList.add('hidden');
+  if (!hasStuff()) { document.getElementById('xfer-code').textContent = ''; document.getElementById('xfer-qr').innerHTML = ''; setSt('xfer-send-status', 'Nemáš co přenášet.', false); return; }
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
+  document.getElementById('xfer-code').textContent = code;
+  setSt('xfer-send-status', 'Připravuji spojení...');
+  const pr = new Peer('KAX-' + code);
+  xferPeer = pr;
+  let used = false;
+  pr.on('open', () => {
+    setSt('xfer-send-status', 'Čekám na druhé zařízení...');
+    document.getElementById('xfer-qr').innerHTML = '';
+    new QRCode(document.getElementById('xfer-qr'), { text: window.location.href.split('?')[0] + '?take=' + code, width: 120, height: 120 });
+  });
+  pr.on('connection', (c) => {
+    if (used) { try { c.close(); } catch (e) {} return; }
+    used = true;
+    const sent = { keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor };
+    c.on('open', () => { c.send({ type: 'xfer', data: sent }); setSt('xfer-send-status', 'Posílám...'); });
+    c.on('data', (d) => {
+      if (!d || d.type !== 'ack') return;
+      shop.keys = Math.max(0, shop.keys - sent.keys);
+      shop.bank = Math.max(0, shop.bank - sent.bank);
+      ['sword', 'boots', 'armor'].forEach(k => { if (shop[k] === sent[k]) shop[k] = 0; });
+      saveShop(); updateShopLabel();
+      setSt('xfer-send-status', '✔ Hotovo! Klíče jsou teď na druhém zařízení.', true);
+      setTimeout(closeXfer, 800);
+    });
+  });
+  pr.on('error', () => setSt('xfer-send-status', 'Chyba spojení. Zkus to znovu.', false));
+}
+
+function xferShowReceive() {
+  closeXfer();
+  document.getElementById('xfer-recv').classList.remove('hidden');
+  document.getElementById('xfer-send').classList.add('hidden');
+  setSt('xfer-recv-status', '');
+}
+
+function xferReceive(auto) {
+  const code = String(typeof auto === 'string' ? auto : val('xfer-code-in')).trim().toUpperCase();
+  if (code.length < 4) { setSt('xfer-recv-status', 'Zadej kód z prvního zařízení.', false); return; }
+  closeXfer();
+  setSt('xfer-recv-status', 'Připojuji se...');
+  const pr = new Peer();
+  xferPeer = pr;
+  let done = false;
+  const num = v => Math.min(1000000, Math.max(0, parseInt(v, 10) || 0));
+  pr.on('open', () => {
+    const c = pr.connect('KAX-' + code, { reliable: true });
+    c.on('data', (d) => {
+      if (done || !d || d.type !== 'xfer' || !d.data) return;
+      done = true;
+      const o = d.data;
+      shop.keys += num(o.keys);
+      shop.bank += num(o.bank);
+      ['sword', 'boots', 'armor'].forEach(k => { shop[k] = Math.max(shop[k], +o[k] || 0); });
+      saveShop(); updateShopLabel();
+      try { c.send({ type: 'ack' }); } catch (e) {}
+      setSt('xfer-recv-status', '✔ Přijato: ' + keysText(num(o.keys)) + ' v peněžence a ' + keysText(num(o.bank)) + ' v bance. Teď máš ' + keysText(shop.keys) + ' + ' + keysText(shop.bank) + ' v bance.', true);
+      setTimeout(closeXfer, 1000);
+    });
+    c.on('error', () => setSt('xfer-recv-status', 'Chyba spojení. Zkus to znovu.', false));
+  });
+  pr.on('error', (err) => setSt('xfer-recv-status', err && err.type === 'peer-unavailable' ? 'Kód nesedí nebo už vypršel.' : 'Nedaří se připojit k internetu.', false));
+}
+const val = id => document.getElementById(id).value;
+async function uiCodeMake() {
+  const r = await codeMakeCore(val('code-new1'), val('code-new2'));
+  if (r.ok) { document.getElementById('code-new1').value = ''; document.getElementById('code-new2').value = ''; }
+  renderCode(); codeMsg(r);
+}
+async function uiCodeChange() {
+  const r = await codeChangeCore(val('code-old'), val('code-chg1'), val('code-chg2'));
+  if (r.ok) ['code-old', 'code-chg1', 'code-chg2'].forEach(i => { document.getElementById(i).value = ''; });
+  codeMsg(r);
+}
+async function uiExport() {
+  const r = await exportCore(val('code-xfer'));
+  if (r.ok) {
+    const ta = document.getElementById('code-text');
+    ta.value = r.text; ta.focus(); ta.select();
+    try { await navigator.clipboard.writeText(r.text); r.msg += ' (Text je zkopírovaný.)'; } catch (e) {}
+  }
+  codeMsg(r);
+}
+async function uiImport() {
+  if (!confirm('Načtení přepíše klíče, banku a vylepšení na tomto zařízení. Pokračovat?')) return;
+  codeMsg(await importCore(val('code-text'), val('code-xfer')));
+}
+
 function openShop() { renderShop(); showScreen('menu-shop'); }
 
 // ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
@@ -2539,7 +2813,14 @@ function sendNetworkSync(attackTriggered = false) {
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
-  if (roomParam) {
+  const takeParam = urlParams.get('take');
+  if (takeParam) {
+    selectedDevice = 'mobile';
+    openCode();
+    xferShowReceive();
+    document.getElementById('xfer-code-in').value = takeParam.toUpperCase();
+    xferReceive(takeParam);
+  } else if (roomParam) {
     selectedDevice = 'mobile';
     openPvPMenu();
     showScreen('menu-web');
