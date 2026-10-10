@@ -506,20 +506,6 @@ input[type="text"]:focus { border-color: var(--accent); }
     </div>
   </div>
 
-  <!-- MENU REŽIMŮ -->
-  <div id="menu-mode" class="overlay hidden">
-    <div class="panel">
-      <h1 class="title">Vyber režim hry</h1>
-      <div class="choices">
-        <button class="choice" onclick="openTeamMenu()"><svg class="ic"><use href="#i-swords"/></svg>Týmy a souboje<small>až 4 bojovníci</small></button>
-        <button class="choice" onclick="openWebMenu()"><svg class="ic"><use href="#i-globe"/></svg>Hra přes internet<small>kamarádi na svých zařízeních</small></button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
   <!-- OBTÍŽNOST AI -->
   <div id="menu-difficulty" class="overlay hidden">
     <div class="panel">
@@ -549,6 +535,8 @@ input[type="text"]:focus { border-color: var(--accent); }
       <div class="btn-group foot">
         <button class="btn btn-secondary" onclick="teamBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
         <button class="btn btn-secondary" id="team-diff" onclick="cycleTeamDiff()"></button>
+        <button class="btn" onclick="createCodeForFriend()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit kód pro kamaráda</button>
+        <button class="btn btn-secondary" onclick="openJoinFromTeam()"><svg class="ic"><use href="#i-key"/></svg>Mám kód od kamaráda</button>
         <button class="btn" id="team-next" onclick="teamNext()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
       </div>
     </div>
@@ -570,13 +558,8 @@ input[type="text"]:focus { border-color: var(--accent); }
   <!-- WEB MULTIPLAYER (PeerJS + QR) -->
   <div id="menu-web" class="overlay hidden">
     <div class="panel">
-      <h1 class="title">Hra přes internet</h1>
-      <p class="lead">Jeden hráč vytvoří místnost a vybere formát. Ostatní se připojí kódem nebo QR kódem na svých zařízeních.</p>
-      <div class="btn-group" id="web-choice-btns">
-        <button class="btn" onclick="openOnlineSetup()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit místnost</button>
-        <button class="btn btn-secondary" onclick="showJoinRoom()"><svg class="ic"><use href="#i-key"/></svg>Zadat kód od kamaráda</button>
-      </div>
-
+      <h1 class="title">Hra s kamarády</h1>
+      <p class="lead">Zadej kód místnosti od kamaráda, nebo naskenuj jeho QR kód.</p>
       <div id="room-display" class="hidden" style="margin-top:12px;">
         <p style="text-align:center;margin-bottom:0;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:var(--accent); letter-spacing:.12em;">---</strong></p>
         <div id="qrcode-box"></div>
@@ -1651,7 +1634,7 @@ function faceByVelocity(p) {
 // ======================================================================
 function selectDevice(device) {
   selectedDevice = device;
-  showScreen('menu-mode');
+  openTeamMenu();
 }
 
 function showScreen(screenId) {
@@ -1699,44 +1682,42 @@ function startSinglePlayer(diff) {
 
 // ---------- týmy a souboje ----------
 function openTeamMenu() {
-  onlineSetup = false;
   gameMode = 'team';
   isWebMatch = false;
   isHost = false;
   myIdx = 0;
-  teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : ((s === 'net' || (s === 'p2' && selectedDevice === 'mobile')) ? 'ai' : s));
+  teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : ((s === 'p2' && selectedDevice === 'mobile') ? 'ai' : s));
   renderTeamMenu();
   showScreen('menu-team');
 }
 
-function openOnlineSetup() {
-  onlineSetup = true;
+function openJoinFromTeam() {
   gameMode = 'team';
   isWebMatch = false;
   isHost = false;
-  myIdx = 0;
-  teamCfg.slots = ['p1', 'net', 'net', 'net'];
-  renderTeamMenu();
-  showScreen('menu-team');
-}
-
-function openWebMenu() {
-  onlineSetup = false;
-  gameMode = 'team';
-  isWebMatch = false;
-  isHost = false;
-  document.getElementById('web-choice-btns').classList.remove('hidden');
   document.getElementById('room-display').classList.add('hidden');
-  document.getElementById('room-input-zone').classList.add('hidden');
+  document.getElementById('room-input-zone').classList.remove('hidden');
   document.getElementById('join-status-text').innerText = '';
   showScreen('menu-web');
 }
 
-function teamBack() { showScreen(onlineSetup ? 'menu-web' : 'menu-mode'); }
-function teamNext() { if (onlineSetup) createRoom(); else startTeamGame(); }
+// Tlačítko "Vytvořit kód pro kamaráda": když ještě není nikdo přes internet, první volné místo se přepne na kamaráda
+function createCodeForFriend() {
+  if (netNeeded() < 1) {
+    const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+    for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'p2') teamCfg.slots[i] = 'ai';
+    teamCfg.slots[1] = 'net';
+    renderTeamMenu();
+  }
+  createRoom();
+}
+
+function teamBack() { showScreen('menu-main'); }
+function teamNext() { if (netNeeded() > 0) createRoom(); else startTeamGame(); }
 
 function renderTeamMenu() {
   const f = TEAM_FORMATS[teamCfg.fmt];
+  const online = netNeeded() > 0;
   const fw = document.getElementById('team-formats');
   fw.innerHTML = '';
   Object.keys(TEAM_FORMATS).forEach(k => {
@@ -1754,8 +1735,8 @@ function renderTeamMenu() {
     b.className = 'btn btn-secondary slotbtn';
     b.style.setProperty('--tc', TEAM[c].main);
     const s = teamCfg.slots[i];
-    const who = s === 'p1' ? 'Ty' + (onlineSetup ? ' (hostitel)' : ' (Hráč 1)')
-      : (s === 'p2' ? 'Kamarád (Hráč 2, stejná klávesnice)'
+    const who = s === 'p1' ? (online ? 'Ty (hostitel)' : 'Ty')
+      : (s === 'p2' ? 'Kamarád na této klávesnici'
       : (s === 'net' ? 'Kamarád (připojí se přes internet)' : 'Počítač'));
     const tm = teamCfg.fmt === '2v2' ? ' · tým ' + (f.grp[i] === 1 ? 'A' : 'B') : '';
     b.textContent = TEAM[c].name + tm + ' – ' + who;
@@ -1766,29 +1747,30 @@ function renderTeamMenu() {
   let hint = teamCfg.fmt === '2v2'
     ? 'Tým A: modrý + žlutý. Tým B: červený + zelený. Týmy mají vždy stejný počet bojovníků.'
     : (teamCfg.fmt === '1v1' ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.');
-  if (onlineSetup) hint += ' Každý kamarád se připojí na svém zařízení. Klepnutím na bojovníka ho přepneš mezi kamarádem a počítačem.';
-  else hint += selectedDevice === 'mobile'
-    ? ' Na mobilu hraješ jen ty, ostatní řídí počítač.'
-    : ' Klepnutím na bojovníka ho předáš kamarádovi (stejná klávesnice) nebo zpět počítači.';
+  hint += ' Klepáním na bojovníka střídáš: počítač → kamarád přes internet'
+    + (selectedDevice === 'mobile' ? '' : ' → kamarád na této klávesnici')
+    + '. Počítače můžeš mít libovolně, i žádný.';
+  if (selectedDevice !== 'mobile') hint += ' Kamarád na stejné klávesnici může být jen jeden a nejde kombinovat s kamarády přes internet.';
   document.getElementById('team-hint').textContent = hint;
   document.getElementById('team-diff').textContent =
     'Počítač: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
   document.getElementById('team-next').innerHTML =
-    (onlineSetup ? 'Vytvořit místnost' : 'Dál') + '<svg class="ic"><use href="#i-next"/></svg>';
+    (online ? 'Vytvořit místnost' : 'Dál') + '<svg class="ic"><use href="#i-next"/></svg>';
 }
 
+// Klepnutí mění jen tohoto jednoho bojovníka (počítač → internet → klávesnice → počítač); nic dalšího se nepřidává
 function toggleSlot(i) {
   if (i === 0) return;
-  if (onlineSetup) {
-    teamCfg.slots[i] = teamCfg.slots[i] === 'net' ? 'ai' : 'net';
-  } else {
-    if (selectedDevice === 'mobile') return;
-    if (teamCfg.slots[i] === 'p2') {
-      teamCfg.slots[i] = 'ai';
-    } else {
-      teamCfg.slots = teamCfg.slots.map(s => s === 'p2' ? 'ai' : s);
-      teamCfg.slots[i] = 'p2';
-    }
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  const others = teamCfg.slots.slice(0, n).filter((t, j) => j !== i);
+  const order = selectedDevice === 'mobile' ? ['ai', 'net'] : ['ai', 'net', 'p2'];
+  const ok = t => t === 'ai'
+    || (t === 'net' && !others.includes('p2'))
+    || (t === 'p2' && !others.includes('p2') && !others.includes('net'));
+  const k = order.indexOf(teamCfg.slots[i]);
+  for (let step = 1; step <= order.length; step++) {
+    const t = order[(k + step) % order.length];
+    if (ok(t)) { teamCfg.slots[i] = t; break; }
   }
   renderTeamMenu();
 }
@@ -2156,10 +2138,10 @@ function returnToMainMenu() {
 function backFromWeb() {
   closeNetwork();
   resetNetState();
-  document.getElementById('web-choice-btns').classList.remove('hidden');
   document.getElementById('room-display').classList.add('hidden');
   document.getElementById('room-input-zone').classList.add('hidden');
-  showScreen('menu-mode');
+  renderTeamMenu();
+  showScreen('menu-team');
 }
 
 // ======================================================================
@@ -2194,7 +2176,6 @@ function createRoom() {
   }
   aiDifficulty = teamCfg.diff;
   showScreen('menu-web');
-  document.getElementById('web-choice-btns').classList.add('hidden');
   document.getElementById('room-display').classList.remove('hidden');
   document.getElementById('room-input-zone').classList.add('hidden');
   document.getElementById('room-status-text').innerText = "Vytvářím místnost...";
