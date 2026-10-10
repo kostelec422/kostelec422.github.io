@@ -572,9 +572,6 @@ textarea#code-text {
     <div class="panel flexcol">
       <h1 class="title">Můj kód</h1>
       <div class="scroll">
-        <p id="code-status" class="lead" style="font-weight:800;color:var(--accent)"></p>
-        <p class="lead">Kód chrání tvoje klíče. Bez něj se postup nedá uložit do textu, načíst ani změnit kód.</p>
-
         <div class="code-box">
           <h2>Přenést klíče na jiné zařízení</h2>
           <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
@@ -596,35 +593,6 @@ textarea#code-text {
           </div>
         </div>
 
-        <details style="margin-top:12px">
-        <summary style="cursor:pointer;color:var(--muted);font-weight:700;text-align:center;padding:6px">Kód a záloha textem (pro pokročilé)</summary>
-        <div id="code-make-box" class="code-box">
-          <h2>Udělat kód</h2>
-          <input type="password" id="code-new1" placeholder="Vymysli si kód" autocomplete="off"><br>
-          <input type="password" id="code-new2" placeholder="Kód ještě jednou" autocomplete="off"><br>
-          <button class="btn" onclick="uiCodeMake()">Udělat kód</button>
-        </div>
-
-        <div id="code-change-box" class="code-box hidden">
-          <h2>Změnit kód</h2>
-          <input type="password" id="code-old" placeholder="Starý kód" autocomplete="off"><br>
-          <input type="password" id="code-chg1" placeholder="Nový kód" autocomplete="off"><br>
-          <input type="password" id="code-chg2" placeholder="Nový kód ještě jednou" autocomplete="off"><br>
-          <button class="btn" onclick="uiCodeChange()">Změnit kód</button>
-        </div>
-
-        <div class="code-box">
-          <h2>Přenos na jiné zařízení</h2>
-          <p class="lead" style="font-size:12px">Na notebooku klikni na <b>Uložit postup do textu</b>, text zkopíruj a na mobilu ho vlož sem a klikni na <b>Načíst postup</b>. Na obou zařízeních zadej stejný kód. Postup se přenáší ručně a nahraje se jen to, co bylo v textu. Nehraj proto s klíči na obou zařízeních zároveň.</p>
-          <input type="password" id="code-xfer" placeholder="Tvůj kód" autocomplete="off"><br>
-          <textarea id="code-text" placeholder="Sem se vypíše nebo vlož text s postupem" spellcheck="false"></textarea>
-          <div class="btn-group" style="margin-top:6px">
-            <button class="btn" onclick="uiExport()">Uložit postup do textu</button>
-            <button class="btn btn-secondary" onclick="uiImport()">Načíst postup</button>
-          </div>
-        </div>
-        <p id="code-msg"></p>
-        </details>
       </div>
       <div class="btn-group foot">
         <button class="btn btn-secondary" onclick="closeXfer();showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
@@ -784,7 +752,11 @@ const TEAM = {
   1: { name: 'MODRÝ',   main: '#3b82f6', dark: '#1e4fb8', light: '#9cc3ff', rgb: '59,130,246' },
   2: { name: 'ČERVENÝ', main: '#ef4444', dark: '#a81f1f', light: '#ffa3a3', rgb: '239,68,68' },
   3: { name: 'ŽLUTÝ',   main: '#eab308', dark: '#a16207', light: '#fde047', rgb: '234,179,8' },
-  4: { name: 'ZELENÝ',  main: '#22c55e', dark: '#15803d', light: '#86efac', rgb: '34,197,94' }
+  4: { name: 'ZELENÝ',  main: '#22c55e', dark: '#15803d', light: '#86efac', rgb: '34,197,94' },
+  5: { name: 'ORANŽOVÝ', main: '#f97316', dark: '#b4500a', light: '#fdba74', rgb: '249,115,22' },
+  6: { name: 'FIALOVÝ', main: '#a855f7', dark: '#6b21a8', light: '#d8b4fe', rgb: '168,85,247' },
+  7: { name: 'RŮŽOVÝ',  main: '#ec4899', dark: '#9d174d', light: '#f9a8d4', rgb: '236,72,153' },
+  8: { name: 'TYRKYSOVÝ', main: '#14b8a6', dark: '#0f766e', light: '#99f6e4', rgb: '20,184,166' }
 };
 const CHARACTERS = [
   { id: 'knight',  name: 'Rytíř' },
@@ -908,94 +880,12 @@ function timeLeft(t) {
   const days = Math.floor(d / 86400000), h = Math.floor(d % 86400000 / 3600000), m = Math.floor(d % 3600000 / 60000);
   return days ? days + ' d ' + h + ' h' : (h ? h + ' h ' + m + ' min' : Math.max(1, m) + ' min');
 }
-// ======================================================================
-//  MŮJ KÓD A PŘENOS POSTUPU (šifrováno kódem; bez serveru se přenáší ručně textem)
-// ======================================================================
-const CODE_KEY = 'ka-code';
-let codeRec = null;                       // { salt, hash } – kód samotný se neukládá
-function loadCodeRec() { try { codeRec = JSON.parse(localStorage.getItem(CODE_KEY) || 'null'); } catch (e) { codeRec = null; } }
-function saveCodeRec() { try { if (codeRec) localStorage.setItem(CODE_KEY, JSON.stringify(codeRec)); } catch (e) {} }
-loadCodeRec();
-const _enc = new TextEncoder(), _dec = new TextDecoder();
-function b64e(u) { let t = ''; u.forEach(c => { t += String.fromCharCode(c); }); return btoa(t); }
-function b64d(t) { const x = atob(t); const u = new Uint8Array(x.length); for (let i = 0; i < x.length; i++) u[i] = x.charCodeAt(i); return u; }
-function cryptoOk() { return typeof crypto !== 'undefined' && !!crypto.subtle; }
-const NOCRYPTO = 'Tento prohlížeč (nebo způsob otevření souboru) šifrování neumí.';
-async function pbBase(code) { return crypto.subtle.importKey('raw', _enc.encode(code), 'PBKDF2', false, ['deriveBits', 'deriveKey']); }
-async function hashCode(code, salt) {
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code), 256);
-  return b64e(new Uint8Array(bits));
-}
-async function aesKeyFor(code, salt) {
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' }, await pbBase(code),
-    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-}
-async function verifyCode(code) { return !!codeRec && (await hashCode(code, b64d(codeRec.salt))) === codeRec.hash; }
-async function setCodeRec(code) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  codeRec = { salt: b64e(salt), hash: await hashCode(code, salt) };
-  saveCodeRec();
-}
-async function codeMakeCore(c1, c2) {
-  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
-  if (codeRec) return { ok: false, msg: 'Kód už máš. Použij Změnit kód.' };
-  if (c1.length < 4) return { ok: false, msg: 'Kód musí mít aspoň 4 znaky.' };
-  if (c1 !== c2) return { ok: false, msg: 'Kódy se neshodují.' };
-  await setCodeRec(c1);
-  return { ok: true, msg: 'Kód je hotový.' };
-}
-async function codeChangeCore(old, n1, n2) {
-  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
-  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
-  if (!(await verifyCode(old))) return { ok: false, msg: 'Starý kód nesedí.' };
-  if (n1.length < 4) return { ok: false, msg: 'Nový kód musí mít aspoň 4 znaky.' };
-  if (n1 !== n2) return { ok: false, msg: 'Nové kódy se neshodují.' };
-  await setCodeRec(n1);
-  return { ok: true, msg: 'Kód je změněný.' };
-}
-async function exportCore(code) {
-  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
-  if (!codeRec) return { ok: false, msg: 'Nejdřív si udělej kód.' };
-  if (!(await verifyCode(code))) return { ok: false, msg: 'Kód nesedí.' };
-  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = JSON.stringify({ v: 1, t: Date.now(), keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor });
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await aesKeyFor(code, salt), _enc.encode(data));
-  return { ok: true, msg: 'Hotovo. Text zkopíruj a vlož ho na druhém zařízení.', text: 'KA1.' + b64e(salt) + '.' + b64e(iv) + '.' + b64e(new Uint8Array(ct)) };
-}
-async function importCore(text, code) {
-  if (!cryptoOk()) return { ok: false, msg: NOCRYPTO };
-  const parts = String(text || '').trim().split('.');
-  if (parts.length !== 4 || parts[0] !== 'KA1') return { ok: false, msg: 'Tohle není text s postupem.' };
-  if (codeRec && !(await verifyCode(code))) return { ok: false, msg: 'Na tomto zařízení je jiný kód. Zadej ten, který tu už máš.' };
-  let o;
-  try {
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(parts[2]) }, await aesKeyFor(code, b64d(parts[1])), b64d(parts[3]));
-    o = JSON.parse(_dec.decode(pt));
-  } catch (e) { return { ok: false, msg: 'Špatný kód, nebo je text poškozený.' }; }
-  shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
-  shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
-  ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
-  saveShop();
-  if (!codeRec) await setCodeRec(code);
-  updateShopLabel();
-  return { ok: true, msg: 'Postup načtený: ' + keysText(shop.keys) + ' v peněžence, ' + keysText(shop.bank) + ' v bance.' };
-}
-function codeMsg(r) {
-  const el = document.getElementById('code-msg');
-  el.textContent = r.msg;
-  el.style.color = r.ok ? '#86efac' : '#fca5a5';
-}
-function renderCode() {
-  document.getElementById('code-status').textContent = codeRec ? '✔ Kód je nastavený' : 'Zatím nemáš kód';
-  document.getElementById('code-make-box').classList.toggle('hidden', !!codeRec);
-  document.getElementById('code-change-box').classList.toggle('hidden', !codeRec);
-}
+const val = id => document.getElementById(id).value;
+
 function openCode() {
-  document.getElementById('code-msg').textContent = '';
   closeXfer();
   document.getElementById('xfer-send').classList.add('hidden');
   document.getElementById('xfer-recv').classList.add('hidden');
-  renderCode();
   showScreen('menu-code');
 }
 
@@ -1075,31 +965,6 @@ function xferReceive(auto) {
   });
   pr.on('error', (err) => setSt('xfer-recv-status', err && err.type === 'peer-unavailable' ? 'Kód nesedí nebo už vypršel.' : 'Nedaří se připojit k internetu.', false));
 }
-const val = id => document.getElementById(id).value;
-async function uiCodeMake() {
-  const r = await codeMakeCore(val('code-new1'), val('code-new2'));
-  if (r.ok) { document.getElementById('code-new1').value = ''; document.getElementById('code-new2').value = ''; }
-  renderCode(); codeMsg(r);
-}
-async function uiCodeChange() {
-  const r = await codeChangeCore(val('code-old'), val('code-chg1'), val('code-chg2'));
-  if (r.ok) ['code-old', 'code-chg1', 'code-chg2'].forEach(i => { document.getElementById(i).value = ''; });
-  codeMsg(r);
-}
-async function uiExport() {
-  const r = await exportCore(val('code-xfer'));
-  if (r.ok) {
-    const ta = document.getElementById('code-text');
-    ta.value = r.text; ta.focus(); ta.select();
-    try { await navigator.clipboard.writeText(r.text); r.msg += ' (Text je zkopírovaný.)'; } catch (e) {}
-  }
-  codeMsg(r);
-}
-async function uiImport() {
-  if (!confirm('Načtení přepíše klíče, banku a vylepšení na tomto zařízení. Pokračovat?')) return;
-  codeMsg(await importCore(val('code-text'), val('code-xfer')));
-}
-
 function openShop() { renderShop(); showScreen('menu-shop'); }
 
 // ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
@@ -1834,14 +1699,43 @@ const match = { bg: 0 };
 let touchInputP1 = { vx: 0, vy: 0 };
 
 // ---------- týmové formáty (vždy férový počet v každém týmu) ----------
-const POS4 = [[130, 150], [130, 350], [770, 150], [770, 350]];
+const MAX_FIGHTERS = 8;
+// sizes = velikosti týmů, např. [2,2,2] = tři týmy po dvou; [1,1,1,1,1] = pět všichni proti všem
+function makeFmt(name, sizes) {
+  const n = sizes.reduce((a, b) => a + b, 0);
+  const cols = [], grp = [];
+  let k = 0;
+  const teamed = sizes.some(sz => sz > 1);     // v týmových hrách má celý tým jednu barvu
+  sizes.forEach((sz, t) => { for (let j = 0; j < sz; j++) { cols.push(teamed ? t + 1 : ++k); grp.push(t + 1); } });
+  const pos = [];
+  if (sizes.length === 2) {                       // dva týmy: každý na jedné straně arény
+    sizes.forEach((sz, t) => {
+      for (let j = 0; j < sz; j++) pos.push([t === 0 ? 130 : 770, sz === 1 ? 270 : 120 + j * (300 / (sz - 1))]);
+    });
+  } else {                                        // víc týmů / všichni proti všem: kruh kolem středu
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI + i / n * Math.PI * 2;
+      pos.push([450 + 330 * Math.cos(a), 270 + 150 * Math.sin(a)]);
+    }
+  }
+  return { name: name, cols: cols, grp: grp, pos: pos, sizes: sizes };
+}
 const TEAM_FORMATS = {
-  '1v1':  { name: '1 proti 1',            cols: [1, 2],       grp: [1, 2],       pos: [[150, 250], [750, 250]] },
-  'ffa3': { name: '3 – všichni proti všem', cols: [1, 2, 3],    grp: [1, 2, 3],    pos: [[130, 250], [770, 150], [770, 350]] },
-  'ffa4': { name: '4 – všichni proti všem', cols: [1, 2, 3, 4], grp: [1, 2, 3, 4], pos: POS4 },
-  '2v2':  { name: '2 proti 2 (týmy)',      cols: [1, 3, 2, 4], grp: [1, 1, 2, 2], pos: POS4 }
+  '1v1':     makeFmt('1 proti 1', [1, 1]),
+  '2v2':     makeFmt('2 proti 2', [2, 2]),
+  '3v3':     makeFmt('3 proti 3', [3, 3]),
+  '4v4':     makeFmt('4 proti 4', [4, 4]),
+  '2v2v2':   makeFmt('3 týmy po 2', [2, 2, 2]),
+  '2v2v2v2': makeFmt('4 týmy po 2', [2, 2, 2, 2]),
+  'ffa3':    makeFmt('3 všichni proti všem', [1, 1, 1]),
+  'ffa4':    makeFmt('4 všichni proti všem', [1, 1, 1, 1]),
+  'ffa5':    makeFmt('5 všichni proti všem', [1, 1, 1, 1, 1]),
+  'ffa6':    makeFmt('6 všichni proti všem', [1, 1, 1, 1, 1, 1]),
+  'ffa7':    makeFmt('7 všichni proti všem', [1, 1, 1, 1, 1, 1, 1]),
+  'ffa8':    makeFmt('8 všichni proti všem', [1, 1, 1, 1, 1, 1, 1, 1])
 };
-const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai'], diff: 'medium' };
+const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai', 'ai', 'ai', 'ai', 'ai'], diff: 'medium' };
+function teamTagged() { return TEAM_FORMATS[teamCfg.fmt].sizes.some(sz => sz > 1); }
 let onlineSetup = false;   // team menu slouží k vytvoření online místnosti
 let myIdx = 0;             // který bojovník (index v players) je můj
 let peers = [];            // host: připojení kamarádi { c, slot, ready, loadout }
@@ -1869,6 +1763,7 @@ class Knight {
     this.team = team;                 // barva: 1 modrý, 2 červený, 3 žlutý, 4 zelený
     this.group = team;                // tým (spoluhráči mají stejnou skupinu)
     this.ctrl = null;                 // 'p1' | 'p2' | 'ai' | 'net'
+    this.tag = '';                    // písmeno týmu (A, B, ...)
     this.style = style;
     this.radius = 22;
     this.hp = 50;
@@ -1954,6 +1849,12 @@ class Knight {
     }
     ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1;
     rr(ctx, x, y, w, h, 3); ctx.stroke();
+    if (this.tag) {
+      ctx.font = '800 11px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineJoin = 'round';
+      ctx.strokeText(this.tag, x + w + 4, y + 7);
+      ctx.fillStyle = T.light; ctx.fillText(this.tag, x + w + 4, y + 7);
+    }
   }
 
   // Seká na všechny protivníky (jiný tým), kteří jsou v dosahu meče
@@ -2159,15 +2060,23 @@ function renderTeamMenu() {
     const who = s === 'p1' ? (online ? 'Ty (hostitel)' : 'Ty')
       : (s === 'p2' ? 'Kamarád na této klávesnici'
       : (s === 'net' ? 'Kamarád (připojí se přes internet)' : 'Počítač'));
-    const tm = teamCfg.fmt === '2v2' ? ' · tým ' + (f.grp[i] === 1 ? 'A' : 'B') : '';
-    b.textContent = TEAM[c].name + tm + ' – ' + who;
+    const tm = teamTagged() ? ' · tým ' + String.fromCharCode(64 + f.grp[i]) : '';
+    const mem = teamTagged() ? ' ' + f.grp.slice(0, i + 1).filter(g => g === f.grp[i]).length : '';
+    b.textContent = TEAM[c].name + mem + tm + ' – ' + who;
     b.onclick = () => toggleSlot(i);
     sw.appendChild(b);
   });
 
-  let hint = teamCfg.fmt === '2v2'
-    ? 'Tým A: modrý + žlutý. Tým B: červený + zelený. Týmy mají vždy stejný počet bojovníků.'
-    : (teamCfg.fmt === '1v1' ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.');
+  let hint;
+  if (teamTagged()) {
+    const parts = [];
+    f.sizes.forEach((sz, t) => {
+      parts.push('Tým ' + String.fromCharCode(65 + t) + ': ' + TEAM[t + 1].name.toLowerCase() + ' (' + sz + ' bojovníci)');
+    });
+    hint = parts.join('. ') + '. Týmy mají vždy stejný počet bojovníků.';
+  } else {
+    hint = f.cols.length === 2 ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.';
+  }
   hint += ' Klepáním na bojovníka střídáš: počítač → kamarád přes internet'
     + (selectedDevice === 'mobile' ? '' : ' → kamarád na této klávesnici')
     + '. Počítače můžeš mít libovolně, i žádný.';
@@ -2215,7 +2124,7 @@ function buildRoster() {
   return f.cols.map((c, i) => {
     const ctrl = teamCfg.slots[i];
     return {
-      x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl,
+      x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, tag: teamTagged() ? String.fromCharCode(64 + f.grp[i]) : '',
       style: ctrl === 'ai' ? randomLoadout() : cleanLoadout(settings.l[+ctrl[1]])
     };
   });
@@ -2507,7 +2416,7 @@ function buildOnlineRoster() {
     if (t === 'p1') { ctrl = 'p1'; style = cleanLoadout(settings.l[1]); }
     else if (t === 'net' && pr) { ctrl = 'net'; style = cleanLoadout(pr.loadout); }
     else style = randomLoadout();
-    return { x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, style: style };
+    return { x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, style: style, tag: teamTagged() ? String.fromCharCode(64 + f.grp[i]) : '' };
   });
 }
 
@@ -2515,7 +2424,7 @@ function startWebRound() {
   hostReady = false;
   peers.forEach(p => { p.ready = false; });
   const roster = buildOnlineRoster();
-  const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style }));
+  const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style, tag: r.tag }));
   peers.forEach(p => { if (p.c.open) p.c.send({ type: 'start', bg: settings.bg, roster: wire }); });
   startRound(null, null, settings.bg, roster);
   peers.forEach(q => applyPerks(players[q.slot], q.perks));
@@ -2729,19 +2638,20 @@ function joinRoom(autoCode) {
 
       if (d.type === 'welcome') {
         teamCfg.fmt = TEAM_FORMATS[d.fmt] ? d.fmt : '1v1';
-        teamCfg.slots = Array.isArray(d.slots) ? d.slots.slice(0, 4) : ['net', 'net', 'net', 'net'];
-        myIdx = clampIdx(d.slot, 4);
+        teamCfg.slots = Array.isArray(d.slots) ? d.slots.slice(0, MAX_FIGHTERS) : TEAM_FORMATS[teamCfg.fmt].cols.map(() => 'net');
+        myIdx = clampIdx(d.slot, MAX_FIGHTERS);
         document.getElementById('join-status-text').innerText = "";
         goToCustomize('menu-web');
       } else if (d.type === 'full') {
         document.getElementById('join-status-text').innerText = "Místnost je už plná.";
       } else if (d.type === 'start') {
         clientReady = false;
-        const roster = (Array.isArray(d.roster) ? d.roster : []).slice(0, 4).map(r => ({
+        const roster = (Array.isArray(d.roster) ? d.roster : []).slice(0, MAX_FIGHTERS).map(r => ({
           x: +r.x || 0, y: +r.y || 0,
-          team: Math.min(4, Math.max(1, (r.team | 0) || 1)),
+          team: Math.min(MAX_FIGHTERS, Math.max(1, (r.team | 0) || 1)),
           group: (r.group | 0) || 1,
           ctrl: r.ctrl === 'ai' ? 'ai' : 'net',
+          tag: String(r.tag || '').slice(0, 1),
           style: cleanLoadout(r.style)
         }));
         if (roster.length < 2) return;
@@ -2839,6 +2749,7 @@ function initGame(l1, l2, bg, roster) {
       const k = new Knight(r.x, r.y, r.team, cleanLoadout(r.style));
       k.group = r.group;
       k.ctrl = r.ctrl;
+      k.tag = r.tag || '';
       k.facingRight = r.x < canvas.width / 2;
       return k;
     });
@@ -2851,6 +2762,8 @@ function initGame(l1, l2, bg, roster) {
     player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
     players = [player1, player2];
   }
+  let hk = 0;
+  players.forEach(q => { if (q.ctrl === 'ai') q.hunter = (hk++ % 2 === 0); });   // každý druhý počítač loví hráče
   applyPerks(players[myIdx] || players[0], activePerks());
   medkits = [];
   particles = [];
@@ -2886,7 +2799,7 @@ function initGame(l1, l2, bg, roster) {
 
 // SPAD LÉKÁRNIČEK
 setInterval(() => {
-  if (gameRunning && medkits.length < 2) {
+  if (gameRunning && medkits.length < Math.max(2, Math.ceil(players.length / 3))) {
     if (!isWebMatch || isHost) {
       medkits.push(new Medkit());
     }
@@ -3035,7 +2948,7 @@ function finishGame() {
   let msg = '';
   if (gameMode === 'team') {
     if (alive.length === 0) msg = 'Všichni rytíři padli!';
-    else if (teamCfg.fmt === '2v2') msg = 'Vítězí tým ' + (alive[0].group === 1 ? 'A' : 'B') + ': ' + alive.map(p => TEAM[p.team].name).join(' + ') + '!';
+    else if (teamTagged()) msg = 'Vítězí tým ' + String.fromCharCode(64 + alive[0].group) + ' – ' + TEAM[alive[0].team].name + '!';
     else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
   } else if (player1.hp > 0 && player2.hp <= 0) {
     msg = 'Modrý rytíř ovládl arénu!';
@@ -3189,30 +3102,42 @@ function checkShieldSolidBlock(attacker, defender) {
 // AI: jde po nejbližším protivníkovi (spoluhráče nechává na pokoji)
 function updateAI(p) {
   let target = null, best = Infinity;
-  for (const o of players) {
-    if (o.group === p.group || o.hp <= 0) continue;
+  // "Lovci" jdou hned po živých lidech; ostatní počítače bojují s nejbližším soupeřem
+  const foes = players.filter(o => o.group !== p.group && o.hp > 0);
+  const humans = foes.filter(o => o.ctrl !== 'ai');
+  const pool = (p.hunter && humans.length) ? humans : foes;
+  for (const o of pool) {
     const d = Math.hypot(o.x - p.x, o.y - p.y);
     if (d < best) { best = d; target = o; }
   }
   if (!target) { p.vx = 0; p.vy = 0; return; }
 
   const dx = target.x - p.x;
-  const dy = target.y - p.y;
   const dist = best;
 
-  p.facingRight = dx > 0;
+  // Postaví se vedle soupeře (na stranu, kam míří meč). Díky tomu se nezasekne, když stojí přímo nad ním.
+  const side = dx > 0 ? -1 : (dx < 0 ? 1 : (p.team % 2 ? -1 : 1));
+  p.facingRight = side < 0;
   let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75 : 1);
+  const gx = target.x + side * 45, gy = target.y;
+  const gdx = gx - p.x, gdy = gy - p.y, gd = Math.hypot(gdx, gdy);
 
-  if (dist > 55) {
-    p.vx = (dx / dist) * p.speed * speedMod;
-    p.vy = (dy / dist) * p.speed * speedMod;
+  if (gd > 6) {
+    p.vx = (gdx / gd) * p.speed * speedMod;
+    p.vy = (gdy / gd) * p.speed * speedMod;
   } else {
     p.vx = 0;
     p.vy = 0;
   }
 
+  // Počítač nezablokuje každý útok (jinak by se dva počítače donekonečna střídavě kryly štítem)
+  if (target.isAttacking) {
+    if (!p.aiSeen) { p.aiSeen = true; p.aiBlock = Math.random() < (aiDifficulty === 'hard' ? 0.8 : 0.55); }
+  } else {
+    p.aiSeen = false;
+  }
   if (dist < 70) {
-    if (target.isAttacking && aiDifficulty !== 'easy') {
+    if (target.isAttacking && aiDifficulty !== 'easy' && p.aiBlock) {
       p.isShielding = true;
     } else {
       p.isShielding = false;
@@ -3227,11 +3152,13 @@ function updateAI(p) {
 //  VYKRESLENÍ
 // ======================================================================
 function hudLabel(p) {
-  const nm = TEAM[p.team].name;
+  let nm = TEAM[p.team].name;
+  const mates = players.filter(q => q.group === p.group);
+  if (mates.length > 1) nm += ' ' + (mates.indexOf(p) + 1);
   let t;
   if (isWebMatch) t = players.indexOf(p) === myIdx ? 'TY' : (p.ctrl === 'ai' ? 'POČÍTAČ' : 'KAMARÁD');
   else t = p.ctrl === 'p1' ? 'TY' : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
-  if (gameMode === 'team' && teamCfg.fmt === '2v2') t += ' · TÝM ' + (p.group === 1 ? 'A' : 'B');
+  if (gameMode === 'team' && teamTagged()) t += ' · TÝM ' + String.fromCharCode(64 + p.group);
   return nm + ' · ' + t;
 }
 
@@ -3239,29 +3166,39 @@ function drawHUD() {
   const k = Math.min(1.45, Math.max(1, canvas.width / (canvas.clientWidth || canvas.width)));
   const W = canvas.width / k;
   const n = players.length;
+  const big = n > 4;                    // 5–8 bojovníků: ukazatele ve dvou řadách přes celou šířku
   const used = [0, 0];
   ctx.save();
   ctx.scale(k, k);
   players.forEach((p, i) => {
     const T = TEAM[p.team];
-    const side = n === 2 ? i : (n === 3 ? (i === 0 ? 0 : 1) : (i < 2 ? 0 : 1));
-    const left = side === 0;
-    const row = used[side]++;
-    const w = 220, h = 11, m = 16;
-    const x = left ? m : W - m - w;
-    const y = 27 + row * 27;
+    let x, y, w, h, left;
+    if (big) {
+      const m = 12, gap = 8, cols = 4;
+      w = (W - 2 * m - (cols - 1) * gap) / cols; h = 9; left = true;
+      x = m + (i % cols) * (w + gap);
+      y = 22 + Math.floor(i / cols) * 26;
+    } else {
+      const side = n === 2 ? i : (n === 3 ? (i === 0 ? 0 : 1) : (i < 2 ? 0 : 1));
+      left = side === 0;
+      const row = used[side]++;
+      w = 220; h = 11;
+      x = left ? 16 : W - 16 - w;
+      y = 27 + row * 27;
+    }
+    const lab = hudLabel(p);
 
-    ctx.font = '800 11px ' + FONT;
+    ctx.font = '800 ' + (big ? 9 : 11) + 'px ' + FONT;
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = left ? 'left' : 'right';
     const tx = left ? x : x + w;
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineJoin = 'round';
-    ctx.strokeText(hudLabel(p), tx, y - 6);
+    ctx.strokeText(lab, tx, y - 5);
     ctx.fillStyle = T.light;
-    ctx.fillText(hudLabel(p), tx, y - 6);
+    ctx.fillText(lab, tx, y - 5);
 
     ctx.fillStyle = 'rgba(6,9,16,.6)';
-    rr(ctx, x, y, w, h, 6); ctx.fill();
+    rr(ctx, x, y, w, h, h / 2); ctx.fill();
     const f = Math.max(0, p.hp / p.maxHp);
     if (f > 0) {
       const fw = Math.max(h, w * f);
@@ -3270,17 +3207,17 @@ function drawHUD() {
       if (left) { gr.addColorStop(0, T.dark); gr.addColorStop(1, T.main); }
       else { gr.addColorStop(0, T.main); gr.addColorStop(1, T.dark); }
       ctx.fillStyle = gr;
-      rr(ctx, fx, y, fw, h, 6); ctx.fill();
+      rr(ctx, fx, y, fw, h, h / 2); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,.22)';
       rr(ctx, fx + 2, y + 1.5, Math.max(0, fw - 4), 3, 1.5); ctx.fill();
     }
     ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.2;
-    rr(ctx, x, y, w, h, 6); ctx.stroke();
+    rr(ctx, x, y, w, h, h / 2); ctx.stroke();
 
-    ctx.font = '800 10px ' + FONT;
+    ctx.font = '800 ' + (big ? 8 : 10) + 'px ' + FONT;
     ctx.textAlign = left ? 'right' : 'left';
     ctx.fillStyle = '#fff';
-    ctx.fillText(String(Math.ceil(p.hp)), left ? x + w - 7 : x + 7, y + 8.5);
+    ctx.fillText(String(Math.ceil(p.hp)), left ? x + w - 6 : x + 7, y + h - 1.5);
   });
   ctx.restore();
 }
