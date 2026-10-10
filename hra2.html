@@ -577,7 +577,7 @@ textarea#code-text {
 
         <div class="code-box">
           <h2>Přenést klíče na jiné zařízení</h2>
-          <p class="lead" style="f;;ont-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
+          <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
           <div class="btn-group" style="margin-top:6px">
             <button class="btn" onclick="xferStartSend()">Poslat klíče</button>
             <button class="btn btn-secondary" onclick="xferShowReceive()">Přijmout klíče</button>
@@ -596,12 +596,38 @@ textarea#code-text {
           </div>
         </div>
 
-        
+        <details style="margin-top:12px">
+        <summary style="cursor:pointer;color:var(--muted);font-weight:700;text-align:center;padding:6px">Kód a záloha textem (pro pokročilé)</summary>
+        <div id="code-make-box" class="code-box">
+          <h2>Udělat kód</h2>
+          <input type="password" id="code-new1" placeholder="Vymysli si kód" autocomplete="off"><br>
+          <input type="password" id="code-new2" placeholder="Kód ještě jednou" autocomplete="off"><br>
+          <button class="btn" onclick="uiCodeMake()">Udělat kód</button>
         </div>
-  
+
+        <div id="code-change-box" class="code-box hidden">
+          <h2>Změnit kód</h2>
+          <input type="password" id="code-old" placeholder="Starý kód" autocomplete="off"><br>
+          <input type="password" id="code-chg1" placeholder="Nový kód" autocomplete="off"><br>
+          <input type="password" id="code-chg2" placeholder="Nový kód ještě jednou" autocomplete="off"><br>
+          <button class="btn" onclick="uiCodeChange()">Změnit kód</button>
+        </div>
+
+        <div class="code-box">
+          <h2>Přenos na jiné zařízení</h2>
+          <p class="lead" style="font-size:12px">Na notebooku klikni na <b>Uložit postup do textu</b>, text zkopíruj a na mobilu ho vlož sem a klikni na <b>Načíst postup</b>. Na obou zařízeních zadej stejný kód. Postup se přenáší ručně a nahraje se jen to, co bylo v textu. Nehraj proto s klíči na obou zařízeních zároveň.</p>
+          <input type="password" id="code-xfer" placeholder="Tvůj kód" autocomplete="off"><br>
+          <textarea id="code-text" placeholder="Sem se vypíše nebo vlož text s postupem" spellcheck="false"></textarea>
+          <div class="btn-group" style="margin-top:6px">
+            <button class="btn" onclick="uiExport()">Uložit postup do textu</button>
+            <button class="btn btn-secondary" onclick="uiImport()">Načíst postup</button>
+          </div>
+        </div>
+        <p id="code-msg"></p>
         </details>
       </div>
-        Zpět</button>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="closeXfer();showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
