@@ -511,11 +511,26 @@ input[type="text"]:focus { border-color: var(--accent); }
     <div class="panel">
       <h1 class="title">Vyber režim hry</h1>
       <div class="choices">
-        <button class="choice" onclick="openTeamMenu()"><svg class="ic"><use href="#i-swords"/></svg>Týmy a souboje<small>až 4 bojovníci, počítač i kamarádi u jednoho zařízení</small></button>
-        <button class="choice" onclick="openPvPMenu()"><svg class="ic"><use href="#i-globe"/></svg>Hrát přes internet<small>pozvi kamarády pomocí kódu místnosti</small></button>
+        <button class="choice" onclick="openTeamMenu()"><svg class="ic"><use href="#i-swords"/></svg>Týmy a souboje<small>až 4 bojovníci</small></button>
+        <button class="choice" onclick="openWebMenu()"><svg class="ic"><use href="#i-globe"/></svg>Hra přes internet<small>kamarádi na svých zařízeních</small></button>
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBTÍŽNOST AI -->
+  <div id="menu-difficulty" class="overlay hidden">
+    <div class="panel">
+      <h1 class="title">Obtížnost počítače</h1>
+      <div class="choices">
+        <button class="choice" onclick="startSinglePlayer('easy')"><span class="dotlvl" style="background:#4ade80"></span>Nejlehčí</button>
+        <button class="choice" onclick="startSinglePlayer('medium')"><span class="dotlvl" style="background:#fbbf24"></span>Střední</button>
+        <button class="choice" onclick="startSinglePlayer('hard')"><span class="dotlvl" style="background:#f87171"></span>Nejtěžší</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
       </div>
     </div>
   </div>
@@ -532,9 +547,9 @@ input[type="text"]:focus { border-color: var(--accent); }
         <p id="team-hint" class="lead" style="margin-top:10px"></p>
       </div>
       <div class="btn-group foot">
-        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn btn-secondary" onclick="teamBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
         <button class="btn btn-secondary" id="team-diff" onclick="cycleTeamDiff()"></button>
-        <button class="btn" onclick="startTeamGame()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
+        <button class="btn" id="team-next" onclick="teamNext()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
       </div>
     </div>
   </div>
@@ -544,7 +559,7 @@ input[type="text"]:focus { border-color: var(--accent); }
     <div class="panel">
       <h1 class="title">Kde budete hrát?</h1>
       <div class="choices">
-        <button class="choice" onclick="showScreen('menu-web')"><svg class="ic"><use href="#i-globe"/></svg>Přes internet<small>připoj se ke kamarádovi</small></button>
+        <button class="choice" onclick="showScreen('menu-web')"><svg class="ic"><use href="#i-globe"/></svg>Na 2 zařízeních<small>přes internet</small></button>
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
@@ -556,9 +571,9 @@ input[type="text"]:focus { border-color: var(--accent); }
   <div id="menu-web" class="overlay hidden">
     <div class="panel">
       <h1 class="title">Hra přes internet</h1>
-      <p class="lead">Připojte se až 4 kamarádi pomocí QR kódu nebo kódu místnosti.</p>
-      <div class="btn-group">
-        <button class="btn" onclick="createRoom()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit místnost</button>
+      <p class="lead">Jeden hráč vytvoří místnost a vybere formát. Ostatní se připojí kódem nebo QR kódem na svých zařízeních.</p>
+      <div class="btn-group" id="web-choice-btns">
+        <button class="btn" onclick="openOnlineSetup()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit místnost</button>
         <button class="btn btn-secondary" onclick="showJoinRoom()"><svg class="ic"><use href="#i-key"/></svg>Zadat kód od kamaráda</button>
       </div>
 
@@ -713,7 +728,7 @@ const isGirlShield = k => GIRL_SHIELDS.some(x => x.id === k);
 //  NASTAVENÍ (pamatuje se v prohlížeči, když to jde)
 // ======================================================================
 const STORE_KEY = 'ka-v5';
-const settings = { l: { 1: { c: 0, s: 0, h: 0, g: 0 }, 2: { c: 0, s: 0, h: 0, g: 0 }, 3: { c: 0, s: 0, h: 0, g: 0 }, 4: { c: 0, s: 0, h: 0, g: 0 } }, bg: 0 };
+const settings = { l: { 1: { c: 0, s: 0, h: 0, g: 0 }, 2: { c: 0, s: 0, h: 0, g: 0 } }, bg: 0 };
 
 function clampIdx(v, n) {
   v = parseInt(v, 10);
@@ -1399,11 +1414,7 @@ let sceneActive = false;
 
 // PeerJS Networking
 let peer = null;
-let conn = null; // klientské spojení; host používá hostConnections
-let hostConnections = [];
-let localNetSlot = 1;
-let netInputs = {};
-let roomStarted = false;
+let conn = null;
 const PEER_PREFIX = "KA-";
 
 let hostReady = false;
@@ -1431,16 +1442,22 @@ const TEAM_FORMATS = {
   '2v2':  { name: '2 proti 2 (týmy)',      cols: [1, 3, 2, 4], grp: [1, 1, 2, 2], pos: POS4 }
 };
 const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai'], diff: 'medium' };
+let onlineSetup = false;   // team menu slouží k vytvoření online místnosti
+let myIdx = 0;             // který bojovník (index v players) je můj
+let peers = [];            // host: připojení kamarádi { c, slot, ready, loadout }
+let lobbyDone = false;     // host: všichni se připojili, jde se na výbavu
 
 // barva (1-4), kterou má lidský hráč h v právě chystané hře
 function hcolor(h) {
-  if (!isWebMatch && gameMode === 'team') {
+  if (gameMode === 'team') {
     const f = TEAM_FORMATS[teamCfg.fmt];
+    if (isWebMatch && !isHost) return f.cols[myIdx] || h;
     const i = teamCfg.slots.indexOf('p' + h);
     if (i >= 0 && i < f.cols.length) return f.cols[i];
   }
   return h;
 }
+function myColorName() { return TEAM[hcolor(isHost ? 1 : 2)].name.toLowerCase(); }
 
 // ======================================================================
 //  TŘÍDY
@@ -1651,6 +1668,13 @@ function setWaitText(show) {
   });
 }
 
+function openDifficultyMenu() {
+  gameMode = 'ai';
+  isWebMatch = false;
+  isHost = false;
+  showScreen('menu-difficulty');
+}
+
 function openPvPMenu() {
   gameMode = 'pvp';
   isWebMatch = false;
@@ -1665,15 +1689,51 @@ function setupLocalPvP() {
   prepareInstructions();
 }
 
+function startSinglePlayer(diff) {
+  gameMode = 'ai';
+  isWebMatch = false;
+  isHost = false;
+  aiDifficulty = diff;
+  goToCustomize('menu-difficulty');
+}
+
 // ---------- týmy a souboje ----------
 function openTeamMenu() {
+  onlineSetup = false;
   gameMode = 'team';
   isWebMatch = false;
   isHost = false;
-  if (selectedDevice === 'mobile') teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : 'ai');
+  myIdx = 0;
+  teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : ((s === 'net' || (s === 'p2' && selectedDevice === 'mobile')) ? 'ai' : s));
   renderTeamMenu();
   showScreen('menu-team');
 }
+
+function openOnlineSetup() {
+  onlineSetup = true;
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  myIdx = 0;
+  teamCfg.slots = ['p1', 'net', 'net', 'net'];
+  renderTeamMenu();
+  showScreen('menu-team');
+}
+
+function openWebMenu() {
+  onlineSetup = false;
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  document.getElementById('web-choice-btns').classList.remove('hidden');
+  document.getElementById('room-display').classList.add('hidden');
+  document.getElementById('room-input-zone').classList.add('hidden');
+  document.getElementById('join-status-text').innerText = '';
+  showScreen('menu-web');
+}
+
+function teamBack() { showScreen(onlineSetup ? 'menu-web' : 'menu-mode'); }
+function teamNext() { if (onlineSetup) createRoom(); else startTeamGame(); }
 
 function renderTeamMenu() {
   const f = TEAM_FORMATS[teamCfg.fmt];
@@ -1694,7 +1754,9 @@ function renderTeamMenu() {
     b.className = 'btn btn-secondary slotbtn';
     b.style.setProperty('--tc', TEAM[c].main);
     const s = teamCfg.slots[i];
-    const who = s === 'p1' ? 'Ty (Hráč 1)' : (s === 'p2' ? 'Kamarád (Hráč 2)' : 'Počítač');
+    const who = s === 'p1' ? 'Ty' + (onlineSetup ? ' (hostitel)' : ' (Hráč 1)')
+      : (s === 'p2' ? 'Kamarád (Hráč 2, stejná klávesnice)'
+      : (s === 'net' ? 'Kamarád (připojí se přes internet)' : 'Počítač'));
     const tm = teamCfg.fmt === '2v2' ? ' · tým ' + (f.grp[i] === 1 ? 'A' : 'B') : '';
     b.textContent = TEAM[c].name + tm + ' – ' + who;
     b.onclick = () => toggleSlot(i);
@@ -1704,21 +1766,29 @@ function renderTeamMenu() {
   let hint = teamCfg.fmt === '2v2'
     ? 'Tým A: modrý + žlutý. Tým B: červený + zelený. Týmy mají vždy stejný počet bojovníků.'
     : (teamCfg.fmt === '1v1' ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.');
-  hint += selectedDevice === 'mobile'
+  if (onlineSetup) hint += ' Každý kamarád se připojí na svém zařízení. Klepnutím na bojovníka ho přepneš mezi kamarádem a počítačem.';
+  else hint += selectedDevice === 'mobile'
     ? ' Na mobilu hraješ jen ty, ostatní řídí počítač.'
     : ' Klepnutím na bojovníka ho předáš kamarádovi (stejná klávesnice) nebo zpět počítači.';
   document.getElementById('team-hint').textContent = hint;
   document.getElementById('team-diff').textContent =
-    'Obtížnost počítače: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
+    'Počítač: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
+  document.getElementById('team-next').innerHTML =
+    (onlineSetup ? 'Vytvořit místnost' : 'Dál') + '<svg class="ic"><use href="#i-next"/></svg>';
 }
 
 function toggleSlot(i) {
-  if (i === 0 || selectedDevice === 'mobile') return;
-  if (teamCfg.slots[i] === 'p2') {
-    teamCfg.slots[i] = 'ai';
+  if (i === 0) return;
+  if (onlineSetup) {
+    teamCfg.slots[i] = teamCfg.slots[i] === 'net' ? 'ai' : 'net';
   } else {
-    teamCfg.slots = teamCfg.slots.map(s => s === 'p2' ? 'ai' : s);
-    teamCfg.slots[i] = 'p2';
+    if (selectedDevice === 'mobile') return;
+    if (teamCfg.slots[i] === 'p2') {
+      teamCfg.slots[i] = 'ai';
+    } else {
+      teamCfg.slots = teamCfg.slots.map(s => s === 'p2' ? 'ai' : s);
+      teamCfg.slots[i] = 'p2';
+    }
   }
   renderTeamMenu();
 }
@@ -1775,14 +1845,14 @@ function getControlsHTML() {
   if (selectedDevice === 'mobile') {
     let html = '<p><strong>Ovládání na mobilu:</strong> joystick vlevo = pohyb, tlačítka MEČ a ŠTÍT vpravo.</p>';
     if (isWebMatch) {
-      html += `<p><strong>Hra přes internet:</strong> ovládáš svého rytíře na svém telefonu. ${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>`;
+      html += `<p><strong>Hra přes internet:</strong> ovládáš svého rytíře na svém telefonu. Ty jsi ${myColorName()} rytíř.</p>`;
     }
     return html;
   } else if (isWebMatch) {
     return `
       <p><strong>Hra přes internet – klávesnice:</strong></p>
       <p>Pohyb = [W, A, S, D] nebo [ŠIPKY] | Meč = [F] nebo [MEZERNÍK] | Štít = [G] nebo [SHIFT]</p>
-      <p>${isHost ? 'Ty jsi modrý rytíř.' : 'Ty jsi červený rytíř.'}</p>
+      <p>Ty jsi ${myColorName()} rytíř.</p>
     `;
   } else {
     return `
@@ -1799,7 +1869,7 @@ let previewRAF = 0;
 
 // vrací čísla lidských hráčů (1, 2), kteří si vybírají výbavu
 function customizeSlots() {
-  if (isWebMatch) return [isHost ? 1 : localNetSlot];
+  if (isWebMatch) return [isHost ? 1 : 2];
   if (gameMode === 'team') return teamCfg.slots.slice(0, TEAM_FORMATS[teamCfg.fmt].cols.length).filter(s => s !== 'ai').map(s => +s[1]);
   if (gameMode === 'pvp') return [1, 2];
   return [1];
@@ -2011,65 +2081,61 @@ function restartCurrentGame() {
 }
 
 function markReadyWeb() {
-  if (!isWebMatch) return;
   if (isHost) {
     hostReady = true;
-    hostConnections.forEach(entry => {
-      if (entry.conn && entry.conn.open) entry.conn.send({ type: 'host-ready' });
-    });
   } else {
     clientReady = true;
-    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[localNetSlot]) });
+    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[2]) });
   }
   setWaitText(true);
   tryStartWebRound();
 }
 
 function tryStartWebRound() {
-  if (!isHost || !hostReady || roomStarted) return;
-  const connected = hostConnections.filter(e => e.conn && e.conn.open);
-  if (!connected.length || connected.some(e => !e.ready)) return;
-  startWebRound();
+  if (isHost && hostReady && peers.length > 0 && peers.every(p => p.ready)) startWebRound();
+}
+
+function buildOnlineRoster() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  return f.cols.map((c, i) => {
+    const t = teamCfg.slots[i];
+    const pr = peers.find(q => q.slot === i);
+    let ctrl = 'ai', style;
+    if (t === 'p1') { ctrl = 'p1'; style = cleanLoadout(settings.l[1]); }
+    else if (t === 'net' && pr) { ctrl = 'net'; style = cleanLoadout(pr.loadout); }
+    else style = randomLoadout();
+    return { x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, style: style };
+  });
 }
 
 function startWebRound() {
-  if (!isHost || roomStarted) return;
-  roomStarted = true;
   hostReady = false;
-  clientReady = false;
-  const connected = hostConnections.filter(e => e.conn && e.conn.open).sort((a,b) => a.slot-b.slot);
-  const styles = [cleanLoadout(settings.l[1]), ...connected.map(e => cleanLoadout(e.loadout || settings.l[e.slot]))];
-  const positions = [[150,250],[750,150],[750,350],[450,100]];
-  const roster = styles.map((style, i) => ({
-    x: positions[i][0], y: positions[i][1], team: i + 1, group: i + 1,
-    slot: i === 0 ? 1 : connected[i - 1].slot, ctrl: i === 0 ? 'p1' : 'net', style
-  }));
-  const payload = { type: 'start', bg: settings.bg, roster };
-  connected.forEach(e => { if (e.conn.open) e.conn.send(payload); });
+  peers.forEach(p => { p.ready = false; });
+  const roster = buildOnlineRoster();
+  const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style }));
+  peers.forEach(p => { if (p.c.open) p.c.send({ type: 'start', bg: settings.bg, roster: wire }); });
   startRound(null, null, settings.bg, roster);
 }
 
 function closeNetwork() {
-  const oldConn = conn;
-  const oldPeer = peer;
-  const oldHostConnections = hostConnections.slice();
-  conn = null;
+  const oldConn = conn, oldPeer = peer, oldPeers = peers;
+  conn = null;     // handlery 'close' poznají, že jde o záměrné zavření
   peer = null;
-  hostConnections = [];
+  peers = [];
+  oldPeers.forEach(p => { try { p.c.close(); } catch (e) {} });
   if (oldConn) { try { oldConn.close(); } catch (e) {} }
-  oldHostConnections.forEach(e => { try { e.conn.close(); } catch (err) {} });
   if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
 }
 
 function resetNetState() {
   isWebMatch = false;
   isHost = false;
+  onlineSetup = false;
+  lobbyDone = false;
+  myIdx = 0;
   hostReady = false;
   clientReady = false;
   clientLoadout = null;
-  localNetSlot = 1;
-  netInputs = {};
-  roomStarted = false;
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
@@ -2090,72 +2156,135 @@ function returnToMainMenu() {
 function backFromWeb() {
   closeNetwork();
   resetNetState();
+  document.getElementById('web-choice-btns').classList.remove('hidden');
   document.getElementById('room-display').classList.add('hidden');
   document.getElementById('room-input-zone').classList.add('hidden');
-  showScreen('menu-pvp');
+  showScreen('menu-mode');
 }
 
 // ======================================================================
-//  PEERJS MULTIPLAYER: hostitel + až tři připojení (celkem 4 hráči)
+//  PEERJS WEB MULTIPLAYER (hostitel + až 3 kamarádi)
 // ======================================================================
+function netNeeded() {
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  let k = 0;
+  for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'net') k++;
+  return k;
+}
+
+function freeNetSlot() {
+  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
+  for (let i = 1; i < n; i++) {
+    if (teamCfg.slots[i] === 'net' && !peers.some(q => q.slot === i)) return i;
+  }
+  return -1;
+}
+
+function updateLobbyStatus() {
+  const need = netNeeded();
+  document.getElementById('room-status-text').innerText = peers.length >= need
+    ? 'Všichni připojeni! Jdeme na výbavu...'
+    : 'Připojeno ' + peers.length + ' z ' + need + ' kamarádů. Čekám na další...';
+}
+
 function createRoom() {
+  if (netNeeded() < 1) {
+    alert('Klepni na bojovníka a vyber aspoň jednoho kamaráda.');
+    return;
+  }
+  aiDifficulty = teamCfg.diff;
+  showScreen('menu-web');
+  document.getElementById('web-choice-btns').classList.add('hidden');
   document.getElementById('room-display').classList.remove('hidden');
   document.getElementById('room-input-zone').classList.add('hidden');
-  document.getElementById('room-status-text').innerText = 'Vytvářím místnost...';
+  document.getElementById('room-status-text').innerText = "Vytvářím místnost...";
+
   const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
   document.getElementById('room-code-num').innerText = roomCode;
+
   closeNetwork();
-  isHost = true; isWebMatch = true; gameMode = 'pvp';
-  hostReady = false; clientReady = false; roomStarted = false; hostConnections = []; localNetSlot = 1;
+  isHost = true;
+  isWebMatch = true;
+  gameMode = 'team';
+  myIdx = 0;
+  hostReady = false;
+  clientReady = false;
+  lobbyDone = false;
+
   const myPeer = new Peer(PEER_PREFIX + roomCode);
   peer = myPeer;
+
   myPeer.on('open', () => {
-    document.getElementById('room-status-text').innerText = 'Čekám na kamarády (max. 3 připojení)...';
+    updateLobbyStatus();
     const joinUrl = window.location.href.split('?')[0] + '?room=' + roomCode;
     document.getElementById('qrcode-box').innerHTML = '';
-    new QRCode(document.getElementById('qrcode-box'), { text: joinUrl, width: 140, height: 140 });
-  });
-  myPeer.on('connection', c => {
-    if (roomStarted || hostConnections.length >= 3) { c.on('open', () => c.send({type:'full'})); setTimeout(() => c.close(), 300); return; }
-    const used = [1, ...hostConnections.map(e => e.slot)];
-    const slot = [2,3,4].find(n => !used.includes(n));
-    if (!slot) { c.close(); return; }
-    const entry = { conn:c, slot, ready:false, loadout:null };
-    hostConnections.push(entry);
-    c.on('open', () => {
-      c.send({type:'welcome', slot});
-      updateRoomStatus();
-      if (!document.getElementById('customize-screen').classList.contains('hidden')) return;
-      goToCustomize('menu-web');
+    new QRCode(document.getElementById('qrcode-box'), {
+      text: joinUrl,
+      width: 140,
+      height: 140
     });
-    c.on('data', data => {
-      if (!data) return;
-      if (data.type === 'ready') {
-        entry.loadout = cleanLoadout(data.loadout || settings.l[slot]);
-        entry.ready = true;
-        updateRoomStatus();
-        tryStartWebRound();
-      } else if (data.type === 'input') {
-        netInputs[slot] = data;
+  });
+
+  myPeer.on('connection', (c) => {
+    const slot = freeNetSlot();
+    if (slot < 0) {                       // místnost je plná
+      c.on('open', () => { try { c.send({ type: 'full' }); } catch (e) {} setTimeout(() => { try { c.close(); } catch (e) {} }, 400); });
+      return;
+    }
+    const pr = { c: c, slot: slot, ready: false, loadout: null };
+    peers.push(pr);
+
+    c.on('open', () => {
+      c.send({ type: 'welcome', slot: slot, fmt: teamCfg.fmt, slots: teamCfg.slots.map(t => t === 'ai' ? 'ai' : 'net') });
+      updateLobbyStatus();
+      if (!lobbyDone && peers.length >= netNeeded()) {
+        lobbyDone = true;
+        setTimeout(() => { if (isHost && peer === myPeer) goToCustomize('menu-web'); }, 800);
       }
     });
+
+    c.on('data', (d) => {
+      if (!d) return;
+      if (d.type === 'ready') {
+        pr.loadout = cleanLoadout(d.loadout);
+        pr.ready = true;
+        tryStartWebRound();
+      } else if (d.type === 'input') {
+        const p = players[pr.slot];
+        if (!gameRunning || !p || p.ctrl !== 'net' || p.hp <= 0) return;
+        const lim = v => Math.max(-p.speed, Math.min(p.speed, +v || 0));
+        p.vx = lim(d.vx);
+        p.vy = lim(d.vy);
+        p.facingRight = !!d.f;
+        p.isShielding = !!d.s;
+        if (d.a) p.attack();
+      }
+    });
+
     c.on('close', () => {
-      hostConnections = hostConnections.filter(e => e !== entry);
-      delete netInputs[slot];
-      if (!roomStarted) updateRoomStatus();
+      const idx = peers.indexOf(pr);
+      if (idx < 0) return;                // záměrné zavření z naší strany
+      peers.splice(idx, 1);
+      if (lobbyDone) {
+        teamCfg.slots[pr.slot] = 'ai';
+        const p = players[pr.slot];
+        if (p && gameRunning) p.ctrl = 'ai';   // odpojený kamarád předá bojovníka počítači
+        if (peers.length === 0) {
+          alert('Všichni kamarádi se odpojili.');
+          returnToMainMenu();
+          return;
+        }
+        tryStartWebRound();
+      } else {
+        updateLobbyStatus();
+      }
     });
   });
-  myPeer.on('error', err => {
-    console.error(err);
-    document.getElementById('room-status-text').innerText = 'Chyba při vytváření místnosti. Zkus jiný kód.';
-  });
-}
 
-function updateRoomStatus() {
-  const status = document.getElementById('room-status-text');
-  if (!status) return;
-  const count = 1 + hostConnections.filter(e => e.conn && e.conn.open).length;
-  status.innerText = `Připojeno ${count}/4 hráčů. ${hostReady ? 'Čekám, až budou všichni připraveni…' : 'Až budou kamarádi připojeni, pokračuj do výběru výbavy.'}`;
+  myPeer.on('error', (err) => {
+    console.error(err);
+    document.getElementById('room-status-text').innerText = "Chyba při vytváření místnosti!";
+  });
 }
 
 function showJoinRoom() {
@@ -2165,96 +2294,144 @@ function showJoinRoom() {
 
 function joinRoom(autoCode) {
   const code = (typeof autoCode === 'string' ? autoCode : document.getElementById('join-code-input').value).trim().toUpperCase();
-  if (!code) { alert('Zadej kód místnosti!'); return; }
-  document.getElementById('join-status-text').innerText = 'Připojuji se k ' + code + '...';
-  isHost = false; isWebMatch = true; gameMode = 'pvp';
-  hostReady = false; clientReady = false; roomStarted = false; localNetSlot = 2;
+  if (!code) {
+    alert('Zadej kód místnosti!');
+    return;
+  }
+
+  document.getElementById('join-status-text').innerText = "Připojuji se k " + code + "...";
+
   closeNetwork();
-  const myPeer = new Peer(); peer = myPeer;
+  isHost = false;
+  isWebMatch = true;
+  gameMode = 'team';
+  hostReady = false;
+  clientReady = false;
+
+  const myPeer = new Peer();
+  peer = myPeer;
+
   myPeer.on('open', () => {
-    const c = myPeer.connect(PEER_PREFIX + code, { reliable:true });
+    const c = myPeer.connect(PEER_PREFIX + code, { reliable: true });
     conn = c;
-    c.on('data', data => {
-      if (!data) return;
-      if (data.type === 'welcome') {
-        localNetSlot = data.slot;
-        document.getElementById('join-status-text').innerText = '';
+
+    c.on('open', () => {
+      document.getElementById('join-status-text').innerText = "Připojeno, čekám na ostatní...";
+    });
+
+    c.on('data', (d) => {
+      if (!d) return;
+
+      if (d.type === 'welcome') {
+        teamCfg.fmt = TEAM_FORMATS[d.fmt] ? d.fmt : '1v1';
+        teamCfg.slots = Array.isArray(d.slots) ? d.slots.slice(0, 4) : ['net', 'net', 'net', 'net'];
+        myIdx = clampIdx(d.slot, 4);
+        document.getElementById('join-status-text').innerText = "";
         goToCustomize('menu-web');
-      } else if (data.type === 'full') {
-        document.getElementById('join-status-text').innerText = 'Místnost už má 4 hráče.';
-      } else if (data.type === 'host-ready') {
-        // Host potvrdil, že čeká na připravené hráče.
-      } else if (data.type === 'start') {
-        roomStarted = true;
-        startRound(null, null, clampIdx(data.bg, BACKGROUNDS.length), data.roster);
-      } else if (data.type === 'snapshot') {
-        applyNetworkSnapshot(data);
-      } else if (data.type === 'end') {
-        document.getElementById('winner-announcement').innerText = data.msg || 'Konec hry';
-        gameRunning = false;
-        setWaitText(false);
-        showScreen('game-over-screen');
+      } else if (d.type === 'full') {
+        document.getElementById('join-status-text').innerText = "Místnost je už plná.";
+      } else if (d.type === 'start') {
+        clientReady = false;
+        const roster = (Array.isArray(d.roster) ? d.roster : []).slice(0, 4).map(r => ({
+          x: +r.x || 0, y: +r.y || 0,
+          team: Math.min(4, Math.max(1, (r.team | 0) || 1)),
+          group: (r.group | 0) || 1,
+          ctrl: r.ctrl === 'ai' ? 'ai' : 'net',
+          style: cleanLoadout(r.style)
+        }));
+        if (roster.length < 2) return;
+        startRound(null, null, clampIdx(d.bg, BACKGROUNDS.length), roster);
+      } else if (d.type === 'state') {
+        if (!gameRunning || !players.length || !Array.isArray(d.pl)) return;
+        d.pl.forEach((st, i) => {
+          const p = players[i];
+          if (!p || !st) return;
+          p.x = st.x; p.y = st.y; p.hp = st.hp;
+          p.netAttacking = !!st.a;
+          if (i !== myIdx) { p.facingRight = !!st.f; p.isShielding = !!st.s; }
+        });
+        if (d.medkits) {
+          medkits = d.medkits.map(m => {
+            const med = new Medkit(m.x, m.targetY);
+            med.y = m.y;
+            return med;
+          });
+        }
+        if (d.events) {
+          d.events.forEach(ev => {
+            if (ev.k === 's') createSparks(ev.x, ev.y, ev.c);
+            else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c);
+          });
+        }
       }
     });
-    c.on('open', () => { document.getElementById('join-status-text').innerText = 'Připojeno, připrav si výbavu…'; });
-    c.on('error', () => { document.getElementById('join-status-text').innerText = 'Chyba připojení k místnosti.'; });
-    c.on('close', () => { if (isWebMatch) { alert('Spojení s hostitelem bylo přerušeno.'); returnToMainMenu(); } });
-  });
-  myPeer.on('error', err => {
-    console.error(err);
-    document.getElementById('join-status-text').innerText = err && err.type === 'peer-unavailable' ? 'Místnost s tímto kódem neexistuje.' : 'Nedaří se připojit k síti.';
-  });
-}
 
-function applyNetworkSnapshot(data) {
-  if (!gameRunning || !Array.isArray(data.players)) return;
-  data.players.forEach((state, i) => {
-    const p = players[i]; if (!p || !state) return;
-    p.x = state.x; p.y = state.y; p.hp = state.hp;
-    p.facingRight = state.facingRight; p.isShielding = state.isShielding;
-    p.netAttacking = state.isAttacking;
+    c.on('close', () => {
+      if (c !== conn) return;
+      alert('Hostitel se odpojil.');
+      returnToMainMenu();
+    });
+
+    c.on('error', () => {
+      document.getElementById('join-status-text').innerText = "Chyba připojení k danému kódu!";
+    });
   });
-  if (data.medkits) medkits = data.medkits.map(m => { const med = new Medkit(m.x, m.targetY); med.y = m.y; return med; });
-  if (data.events) data.events.forEach(ev => { if (ev.k === 's') createSparks(ev.x, ev.y, ev.c); else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c); });
+
+  myPeer.on('error', (err) => {
+    console.error(err);
+    if (err && err.type === 'peer-unavailable') {
+      document.getElementById('join-status-text').innerText = "Místnost s tímto kódem neexistuje.";
+    } else {
+      document.getElementById('join-status-text').innerText = "Nedaří se připojit k serveru!";
+    }
+  });
 }
 
 function sendNetworkSync(attackTriggered = false) {
-  if (!isWebMatch) return;
   if (isHost) {
-    const snapshot = {
-      type:'snapshot',
-      players: players.map(p => ({x:p.x,y:p.y,hp:p.hp,facingRight:p.facingRight,isShielding:p.isShielding,isAttacking:p.isAttacking})),
-      medkits: medkits.map(m => ({x:m.x,y:m.y,targetY:m.targetY})),
+    if (!peers.length) return;
+    const msg = {
+      type: 'state',
+      pl: players.map(p => ({ x: p.x, y: p.y, hp: p.hp, f: p.facingRight, s: p.isShielding, a: p.isAttacking })),
+      medkits: medkits.map(m => ({ x: m.x, y: m.y, targetY: m.targetY })),
       events: netEvents.splice(0)
     };
-    hostConnections.forEach(e => { if (e.conn && e.conn.open) e.conn.send(snapshot); });
-  } else if (conn && conn.open) {
-    conn.send({ type:'input', slot:localNetSlot, vx:touchInputP1.vx, vy:touchInputP1.vy,
-      left:!!(keys['KeyA'] || keys['ArrowLeft']), right:!!(keys['KeyD'] || keys['ArrowRight']),
-      up:!!(keys['KeyW'] || keys['ArrowUp']), down:!!(keys['KeyS'] || keys['ArrowDown']),
-      shield:clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']),
-      attack:attackTriggered || !!(keys['KeyF'] || keys['Space']) });
+    peers.forEach(q => { if (q.c.open) q.c.send(msg); });
+  } else {
+    if (!conn || !conn.open) return;
+    const me = players[myIdx];
+    if (!me) return;
+    conn.send({ type: 'input', vx: me.vx, vy: me.vy, f: me.facingRight, s: me.isShielding, a: attackTriggered });
   }
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomParam = urlParams.get('room');
+  if (roomParam) {
+    selectedDevice = 'mobile';
+    openPvPMenu();
+    showScreen('menu-web');
+    showJoinRoom();
+    document.getElementById('join-code-input').value = roomParam;
+    joinRoom(roomParam);
+  }
+  setupTouchListeners();
+});
 
 // INICIALIZACE HRY
 function initGame(l1, l2, bg, roster) {
   match.bg = clampIdx(bg, BACKGROUNDS.length);
   if (roster) {
-    players = roster.map((r, i) => {
+    players = roster.map(r => {
       const k = new Knight(r.x, r.y, r.team, cleanLoadout(r.style));
-      k.group = r.group || r.team;
-      k.ctrl = r.ctrl || 'net';
-      k.netSlot = r.slot || (i + 1);
+      k.group = r.group;
+      k.ctrl = r.ctrl;
       k.facingRight = r.x < canvas.width / 2;
-      if (isWebMatch) {
-        if (isHost) k.ctrl = i === 0 ? 'p1' : 'net';
-        else k.ctrl = (i + 1) === localNetSlot ? 'localnet' : 'remoteview';
-      }
       return k;
     });
     player1 = players[0];
-    player2 = players[1] || players[0];
+    player2 = players[1];
   } else {
     player1 = new Knight(150, canvas.height / 2, 1, cleanLoadout(l1));
     player2 = new Knight(canvas.width - 150, canvas.height / 2, 2, cleanLoadout(l2));
@@ -2262,33 +2439,36 @@ function initGame(l1, l2, bg, roster) {
     player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
     players = [player1, player2];
   }
-  if (isWebMatch && !isHost) {
-    const me = players.find(p => p.netSlot === localNetSlot) || players[localNetSlot - 1];
-    if (me) { player1 = me; player2 = me; }
-  }
-  medkits = []; particles = []; floatingTexts = []; netEvents = [];
-  pendingClientAttack = false; clientTouchShield = false;
+  medkits = [];
+  particles = [];
+  floatingTexts = [];
+  netEvents = [];
+  pendingClientAttack = false;
+  clientTouchShield = false;
   touchInputP1.vx = 0; touchInputP1.vy = 0;
-  gameRunning = true; sceneActive = true;
-  const myTeam = isWebMatch ? localNetSlot : (roster ? players[0].team : 1);
+  gameRunning = true;
+  sceneActive = true;
+
+  const touchUI = document.getElementById('touch-controls');
+  const pcHud = document.getElementById('pc-hud-guide');
+  const myTeam = (players[myIdx] || players[0]).team;
+
   if (selectedDevice === 'mobile') {
-    touchUISetTeam(myTeam);
-    document.getElementById('touch-controls').classList.remove('hidden');
-    document.getElementById('pc-hud-guide').classList.add('hidden');
+    touchUI.style.setProperty('--team', TEAM[myTeam].main);
+    touchUI.classList.remove('hidden');
+    pcHud.classList.add('hidden');
   } else {
-    document.getElementById('touch-controls').classList.add('hidden');
+    touchUI.classList.add('hidden');
     const sep = '<span class="sep">|</span>';
-    const pcHud = document.getElementById('pc-hud-guide');
-    if (isWebMatch) pcHud.innerHTML = 'Pohyb <b>W A S D</b> / <b>ŠIPKY</b>' + sep + 'Meč <b>F</b> / <b>MEZERNÍK</b>' + sep + 'Štít <b>G</b> / <b>SHIFT</b>';
-    else if (players.some(p => p.ctrl === 'p2')) pcHud.innerHTML = 'Hráč 1: <b>W A S D</b> <b>F</b> <b>G</b>' + sep + 'Hráč 2: <b>ŠIPKY</b> <b>MEZERNÍK</b> <b>SHIFT</b>';
-    else pcHud.innerHTML = 'Pohyb <b>W A S D</b>' + sep + 'Meč <b>F</b>' + sep + 'Štít <b>G</b>';
+    if (isWebMatch) {
+      pcHud.innerHTML = 'Pohyb <b>W A S D</b> / <b>ŠIPKY</b>' + sep + 'Meč <b>F</b> / <b>MEZERNÍK</b>' + sep + 'Štít <b>G</b> / <b>SHIFT</b>';
+    } else if (players.some(p => p.ctrl === 'p2')) {
+      pcHud.innerHTML = 'Hráč 1: <b>W A S D</b> <b>F</b> <b>G</b>' + sep + 'Hráč 2: <b>ŠIPKY</b> <b>MEZERNÍK</b> <b>SHIFT</b>';
+    } else {
+      pcHud.innerHTML = 'Pohyb <b>W A S D</b>' + sep + 'Meč <b>F</b>' + sep + 'Štít <b>G</b>';
+    }
     pcHud.classList.remove('hidden');
   }
-}
-
-function touchUISetTeam(team) {
-  const safeTeam = Math.max(1, Math.min(4, team || 1));
-  document.getElementById('touch-controls').style.setProperty('--team', TEAM[safeTeam].main);
 }
 
 // SPAD LÉKÁRNIČEK
@@ -2437,14 +2617,10 @@ function setupTouchListeners() {
 }
 
 function finishGame() {
-  if (isWebMatch && !isHost) return;
   gameRunning = false;
   const alive = players.filter(p => p.hp > 0);
   let msg = '';
-  if (isWebMatch) {
-    if (alive.length === 0) msg = 'Všichni rytíři padli!';
-    else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
-  } else if (gameMode === 'team') {
+  if (gameMode === 'team') {
     if (alive.length === 0) msg = 'Všichni rytíři padli!';
     else if (teamCfg.fmt === '2v2') msg = 'Vítězí tým ' + (alive[0].group === 1 ? 'A' : 'B') + ': ' + alive.map(p => TEAM[p.team].name).join(' + ') + '!';
     else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
@@ -2456,7 +2632,6 @@ function finishGame() {
     msg = 'Oba rytíři padli!';
   }
   document.getElementById('winner-announcement').innerText = msg;
-  if (isWebMatch && isHost) hostConnections.forEach(e => { if (e.conn && e.conn.open) e.conn.send({type:'end', msg}); });
   setWaitText(false);
   showScreen('game-over-screen');
 }
@@ -2503,19 +2678,7 @@ function update() {
       } else if (p.ctrl === 'ai') {
         updateAI(p);
       }
-      else if (p.ctrl === 'net') {
-        const input = netInputs[p.netSlot || (players.indexOf(p) + 1)];
-        if (input) {
-          p.vx = (input.left ? -p.speed : 0) + (input.right ? p.speed : 0);
-          p.vy = (input.up ? -p.speed : 0) + (input.down ? p.speed : 0);
-          if (Math.abs(p.vx) > p.speed) p.vx = Math.sign(p.vx) * p.speed;
-          if (Math.abs(p.vy) > p.speed) p.vy = Math.sign(p.vy) * p.speed;
-          if (input.vx) p.vx = input.vx; if (input.vy) p.vy = input.vy;
-          faceByVelocity(p); p.isShielding = !!input.shield;
-          if (input.attack && !p._lastNetAttack) p.attack();
-          p._lastNetAttack = !!input.attack;
-        } else { p.vx = 0; p.vy = 0; p.isShielding = false; }
-      }
+      // ctrl 'net' (hráč 2 přes web) řídí data od klienta
     }
 
     for (const a of players) {
@@ -2544,20 +2707,27 @@ function update() {
       sendNetworkSync();
     }
   } else {
-    // Klient posílá vstupy hostiteli; stav boje přijímá v autoritativních snapshotech.
-    const me = players.find(p => p.netSlot === localNetSlot) || players[localNetSlot - 1];
+    // --- KLIENT (kamarád přes web): posílá vstupy, kreslí stav od hostitele ---
+    const me = players[myIdx];
     if (me) {
-      me.vx = touchInputP1.vx; me.vy = touchInputP1.vy;
-      if (keys['KeyA'] || keys['ArrowLeft']) me.vx = -me.speed;
-      else if (keys['KeyD'] || keys['ArrowRight']) me.vx = me.speed;
-      if (keys['KeyW'] || keys['ArrowUp']) me.vy = -me.speed;
-      else if (keys['KeyS'] || keys['ArrowDown']) me.vy = me.speed;
+      me.vx = touchInputP1.vx;
+      me.vy = touchInputP1.vy;
+
+      if (keys['KeyA'] || keys['ArrowLeft']) { me.vx = -me.speed; }
+      else if (keys['KeyD'] || keys['ArrowRight']) { me.vx = me.speed; }
+
+      if (keys['KeyW'] || keys['ArrowUp']) { me.vy = -me.speed; }
+      else if (keys['KeyS'] || keys['ArrowDown']) { me.vy = me.speed; }
+
       faceByVelocity(me);
+
       me.isShielding = clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']);
+
+      const clientAttackTrigger = pendingClientAttack || !!(keys['KeyF'] || keys['Space']);
+      pendingClientAttack = false;
+
+      sendNetworkSync(clientAttackTrigger);
     }
-    const clientAttackTrigger = pendingClientAttack;
-    pendingClientAttack = false;
-    sendNetworkSync(clientAttackTrigger);
     players.forEach(p => p.clientVisualUpdate());
   }
 
@@ -2634,8 +2804,9 @@ function updateAI(p) {
 // ======================================================================
 function hudLabel(p) {
   const nm = TEAM[p.team].name;
-  if (isWebMatch) return nm + (((p.team === 1) === isHost) ? ' · TY' : '');
-  let t = p.ctrl === 'p1' ? (gameMode === 'pvp' ? 'HRÁČ 1' : 'TY') : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
+  let t;
+  if (isWebMatch) t = players.indexOf(p) === myIdx ? 'TY' : (p.ctrl === 'ai' ? 'POČÍTAČ' : 'KAMARÁD');
+  else t = p.ctrl === 'p1' ? 'TY' : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
   if (gameMode === 'team' && teamCfg.fmt === '2v2') t += ' · TÝM ' + (p.group === 1 ? 'A' : 'B');
   return nm + ' · ' + t;
 }
