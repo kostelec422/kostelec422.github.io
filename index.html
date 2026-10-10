@@ -195,6 +195,49 @@
             background: #dc2626;
         }
 
+        /* OSOBNÍ STRÁNKA ONDRA KLEŠTĚ */
+
+        .card-personal {
+            background:
+                radial-gradient(
+                    ellipse at top right,
+                    rgba(52, 211, 153, 0.22),
+                    transparent 65%
+                ),
+                linear-gradient(145deg, #12261f, #111827 80%);
+            border-color: #14532d;
+        }
+
+        .card-personal .card-icon {
+            background: rgba(52, 211, 153, 0.15);
+            box-shadow: inset 0 0 15px rgba(52, 211, 153, 0.08);
+        }
+
+        .card-personal .card-title {
+            color: #a7f3d0;
+        }
+
+        .card-personal .badge {
+            background: #047857;
+            color: #ecfdf5;
+            transition: background 0.25s ease;
+        }
+
+        .card-personal:hover {
+            border-color: #34d399;
+            box-shadow:
+                0 10px 30px -5px rgba(52, 211, 153, 0.3),
+                inset 0 0 20px rgba(4, 120, 87, 0.08);
+        }
+
+        .card-personal:hover .card-icon {
+            background: rgba(52, 211, 153, 0.25);
+        }
+
+        .card-personal:hover .badge {
+            background: #059669;
+        }
+
         /* PUZZLE / PEXESO */
 
         .card-pexeso {
@@ -274,6 +317,7 @@
         @media (prefers-reduced-motion: reduce) {
             .card,
             .card-horror .badge,
+            .card-personal .badge,
             .card-pexeso .badge {
                 transition: none;
             }
@@ -312,7 +356,7 @@
 
             <!-- ODKAZ 2: ONDRA KLEŠTĚ -->
 
-            <a href="Heslo.html" class="card">
+            <a href="Heslo.html" class="card card-personal">
                 <div class="card-header">
                     <div class="card-icon">🧪</div>
                     <div class="card-title">Ondra kleště</div>
@@ -322,7 +366,7 @@
                     Moje stránka.
                 </p>
 
-                <span class="badge" style="background-color: #475569;">
+                <span class="badge">
                     Zde ➔
                 </span>
             </a>
@@ -330,10 +374,10 @@
 
             <!-- HRA 3: PŘÍŠERA -->
 
-            <a href="prisera.html" class="card card-horror">
+            <a href="puzzle.html" class="card card-horror">
                 <div class="card-header">
                     <div class="card-icon">👹</div>
-                    <div class="card-title">Příšera</div>
+                    <div class="card-title">puzzle</div>
                 </div>
 
                 <p class="card-desc">
@@ -348,7 +392,7 @@
 
             <!-- HRA 4: PUZZLE / PEXESO -->
 
-            <a href="puzzle.html" class="card card-pexeso">
+            <a href="pexeso.html" class="card card-pexeso">
                 <div class="card-header">
                     <div class="card-icon">🧩</div>
                     <div class="card-title">Puzzle / Pexeso</div>
