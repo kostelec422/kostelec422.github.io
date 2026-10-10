@@ -195,6 +195,49 @@
             background: #dc2626;
         }
 
+        /* PUZZLE / PEXESO */
+
+        .card-pexeso {
+            background:
+                radial-gradient(
+                    ellipse at top right,
+                    rgba(129, 140, 248, 0.25),
+                    transparent 65%
+                ),
+                linear-gradient(145deg, #1e1b3a, #111827 80%);
+            border-color: #3730a3;
+        }
+
+        .card-pexeso .card-icon {
+            background: rgba(129, 140, 248, 0.15);
+            box-shadow: inset 0 0 15px rgba(129, 140, 248, 0.08);
+        }
+
+        .card-pexeso .card-title {
+            color: #c7d2fe;
+        }
+
+        .card-pexeso .badge {
+            background: #4f46e5;
+            color: #eef2ff;
+            transition: background 0.25s ease;
+        }
+
+        .card-pexeso:hover {
+            border-color: #818cf8;
+            box-shadow:
+                0 10px 30px -5px rgba(129, 140, 248, 0.35),
+                inset 0 0 20px rgba(79, 70, 229, 0.08);
+        }
+
+        .card-pexeso:hover .card-icon {
+            background: rgba(129, 140, 248, 0.25);
+        }
+
+        .card-pexeso:hover .badge {
+            background: #6366f1;
+        }
+
         /* Připravované nebo uzamčené projekty */
 
         .card.disabled {
@@ -230,7 +273,8 @@
 
         @media (prefers-reduced-motion: reduce) {
             .card,
-            .card-horror .badge {
+            .card-horror .badge,
+            .card-pexeso .badge {
                 transition: none;
             }
         }
@@ -286,10 +330,10 @@
 
             <!-- HRA 3: PŘÍŠERA -->
 
-            <a href="puzzle.html" class="card card-horror">
+            <a href="prisera.html" class="card card-horror">
                 <div class="card-header">
                     <div class="card-icon">👹</div>
-                    <div class="card-title">puzzle</div>
+                    <div class="card-title">Příšera</div>
                 </div>
 
                 <p class="card-desc">
@@ -299,6 +343,24 @@
                 </p>
 
                 <span class="badge">☠ Vstoupit do hororu ➔</span>
+            </a>
+
+
+            <!-- HRA 4: PUZZLE / PEXESO -->
+
+            <a href="puzzle.html" class="card card-pexeso">
+                <div class="card-header">
+                    <div class="card-icon">🧩</div>
+                    <div class="card-title">Puzzle / Pexeso</div>
+                </div>
+
+                <p class="card-desc">
+                    Otáčej kartičky, hledej stejné dvojice
+                    a trénuj svou paměť. Zvládneš najít všechny
+                    páry na co nejméně tahů?
+                </p>
+
+                <span class="badge">Hrát pexeso ➔</span>
             </a>
 
         </div>
@@ -311,4 +373,3 @@
 
 </body>
 </html>
-
