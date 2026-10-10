@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Domeček a příšera</title>
+<style>
+:root{--bg:#0e1424;--ink:#f3ecd8;--win:#f2c14e;--mon:#d9435f;--ok:#5fd0a0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+*{box-sizing:border-box}
+#v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--mon);transition:box-shadow .4s}
+#vig.warn{animation:pulse .6s infinite alternate}
+@keyframes pulse{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;padding:28px;text-align:center;background:var(--bg);z-index:5}
+.screen h1{font-size:2.2rem;margin:0;line-height:1.1}
+.screen p{max-width:34ch;margin:0;line-height:1.5;opacity:.85}
+button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:14px 28px;background:var(--win);color:#241a05;cursor:pointer}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+#hud{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:3;text-shadow:0 1px 6px #000}
+#hud img{width:52px;height:39px;object-fit:cover;border:2px solid var(--win);border-radius:6px}
+#msg{position:fixed;left:16px;right:16px;bottom:calc(120px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;font-size:1.15rem;text-shadow:0 1px 8px #000;z-index:3}
+#bar{position:fixed;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));height:10px;background:#0008;border-radius:9px;overflow:hidden;z-index:3;display:none}
+#bar i{display:block;height:100%;width:100%;background:var(--mon);transition:width .1s linear}
+#shutter{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:3}
+#shutter[hidden]{display:none}
+#match{position:fixed;left:16px;bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:3;font-weight:700;text-shadow:0 1px 6px #000;display:none}
+#mon{position:fixed;left:50%;top:38%;width:min(70vw,320px);transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
+#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#tune{position:fixed;left:16px;right:16px;top:calc(74px + env(safe-area-inset-top,0px));z-index:3;display:flex;align-items:center;gap:10px;font-weight:700;text-shadow:0 1px 6px #000}#tune input{flex:1;accent-color:var(--win)}#tune span{min-width:3ch;text-align:right}
+.bad{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@media (prefers-reduced-motion:reduce){#vig.warn{animation:none;box-shadow:inset 0 0 90px 20px var(--mon)}}
+</style></head>
+<body>
+<video id="v" playsinline muted autoplay></video>
+<div id="vig"></div>
+
+<svg id="mon" viewBox="0 0 200 200" aria-hidden="true">
+  <path d="M30 170 C10 90 40 20 100 20 C160 20 190 90 170 170 L150 150 L130 175 L100 150 L70 175 L50 150 Z" fill="#6b2a5c" stroke="#1a0a18" stroke-width="5"/>
+  <circle cx="72" cy="82" r="22" fill="#f3ecd8"/><circle cx="130" cy="82" r="22" fill="#f3ecd8"/>
+  <circle cx="76" cy="86" r="9" fill="#d9435f"/><circle cx="126" cy="86" r="9" fill="#d9435f"/>
+  <path d="M58 120 Q100 150 142 120 L136 134 L124 122 L112 140 L100 124 L88 140 L76 122 L64 134 Z" fill="#f3ecd8" stroke="#1a0a18" stroke-width="3"/>
+</svg>
+
+<div id="hud" hidden><span id="score">Přežito: 0</span><img id="thumb" alt="Fotka domečku"></div>
+<div id="msg"></div>
+<div id="bar"><i></i></div>
+<div id="match"></div>
+<div id="tune" hidden><label for="sens">Citlivost</label><input id="sens" type="range" min="35" max="90" step="1" value="60"><span id="thr">60 %</span></div>
+<button id="shutter" aria-label="Vyfotit" hidden></button>
+
+<div class="screen" id="intro">
+  <h1>Domeček a příšera</h1>
+  <p>Nejdřív vyfoť svůj domeček. Pak se pohybuj po domě. Když tě příšera najde, máš 4 sekundy, aby ses vrátil k domečku a vyfotil ho znovu.</p>
+  <button id="go">Zapnout kameru</button>
+  <p id="err" style="color:var(--mon)"></p>
+</div>
+
+<div class="screen" id="over" hidden>
+  <h1>Příšera tě dostala</h1>
+  <p id="final"></p>
+  <button id="again">Hrát znovu</button>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const v=$('#v'),cv=document.createElement('canvas');cv.width=32;cv.height=24;
+const cx=cv.getContext('2d',{willReadFrequently:true});
+let ref=null,state='intro',thr=.6,score=0,timers=[],tick=null,left=4,live=null;
+
+// Zmenšený šedotónový snímek, normalizovaný (nezávislý na jasu a kontrastu)
+function grab(){
+  const w=v.videoWidth,h=v.videoHeight;if(!w)return null;
+  let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
+  cx.drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,32,24);
+  const d=cx.getImageData(0,0,32,24).data,g=new Float32Array(768);let m=0;
+  for(let i=0;i<768;i++){g[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];m+=g[i]}
+  m/=768;let s=0;for(let i=0;i<768;i++){g[i]-=m;s+=g[i]*g[i]}
+  s=Math.sqrt(s/768)||1;for(let i=0;i<768;i++)g[i]/=s;return g;
+}
+function sim(a,b){let s=0;for(let i=0;i<768;i++)s+=a[i]*b[i];return Math.max(0,s/768)}
+
+// Zvuk a vibrace
+let ac;function beep(f,d,t='sine',g=.15){try{ac=ac||new AudioContext();const o=ac.createOscillator(),k=ac.createGain();o.type=t;o.frequency.value=f;k.gain.value=g;o.connect(k);k.connect(ac.destination);o.start();k.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+
+function clearAll(){timers.forEach(clearTimeout);timers=[];clearInterval(tick);tick=null}
+function say(t){$('#msg').textContent=t}
+
+$('#go').onclick=async()=>{
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    v.srcObject=s;await v.play();
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    $('#intro').hidden=true;setup();
+  }catch(e){$('#err').textContent='Kamera se nespustila. Povol přístup ke kameře a otevři hru přes https.'}
+};
+
+function setup(){
+  state='setup';score=0;ref=null;clearAll();
+  $('#hud').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+  say('Zaměř domeček a vyfoť ho');
+}
+
+function startPlay(){
+  state='play';
+  $('#hud').hidden=false;$('#shutter').hidden=true;
+  clearInterval(window.mt);window.mt=setInterval(()=>{if(!ref||state==='over')return;const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %'},300);
+  $('#score').textContent='Přežito: 0';
+  schedule();
+}
+
+function schedule(){
+  state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+  say('Schovej se. Příšera tě hledá…');
+  const f=Math.max(.55,1-score*.06);              // s každým kolem se příšera objeví dřív
+  const delay=(10+Math.random()*10)*1000*f;       // 10–20 s, pokaždé jinak
+  timers.push(setTimeout(warn,Math.max(delay-2000,3000)));
+  timers.push(setTimeout(attack,Math.max(delay,5000)));
+}
+
+function warn(){ // varování ~2 s předem: vibrace, zvuk, červené okraje
+  $('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2);
+}
+
+function attack(){
+  state='attack';left=4;
+  $('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);
+  $('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';$('#tune').hidden=true;
+  say('Najdi domeček a vyfoť ho!');
+  const t0=performance.now();
+  tick=setInterval(()=>{
+    left=4-(performance.now()-t0)/1000;
+    $('#bar i').style.width=Math.max(0,left/4*100)+'%';
+    const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %';
+    if(left<=0)lose();
+  },100);
+}
+
+function lose(){
+  clearAll();state='over';
+  $('#mon').style.transform='translate(-50%,-50%) scale(2.2)';buzz(600);beep(60,.9,'sawtooth',.3);
+  setTimeout(()=>{
+    $('#mon').style.transform='';$('#mon').classList.remove('on');
+    $('#hud').hidden=true;$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);$('#vig').classList.remove('warn');say('');
+    $('#final').textContent='Přežil jsi příšer: '+score;$('#over').hidden=false;
+  },900);
+}
+
+$('#shutter').onclick=()=>{
+  const g=grab();if(!g)return;
+  if(state==='setup'){
+    ref=g;
+    const t=document.createElement('canvas');t.width=104;t.height=78;
+    const w=v.videoWidth,h=v.videoHeight;let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
+    t.getContext('2d').drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,104,78);
+    $('#thumb').src=t.toDataURL();beep(660,.15);startPlay();return;
+  }
+  if(state==='attack'){
+    const s=sim(g,ref);
+    if(s>=thr){
+      clearAll();score++;$('#score').textContent='Přežito: '+score;
+      beep(880,.25);buzz(60);say('Zachráněn! Příšera zmizela.');
+      $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+      $('#bar').style.display='none';$('#match').style.display='none';$('#shutter').hidden=true;
+      timers.push(setTimeout(schedule,1800));
+    }else{
+      const m=$('#msg');m.textContent='Nesedí ('+Math.round(s*100)+' %). Zkus to znovu!';
+      m.classList.remove('bad');void m.offsetWidth;m.classList.add('bad');beep(200,.2,'square');
+    }
+  }
+};
+
+$('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
+$('#again').onclick=()=>{$('#over').hidden=true;setup()};
+</script>
+</body></html>
