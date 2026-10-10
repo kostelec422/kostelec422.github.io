@@ -334,6 +334,12 @@ input[type="text"]:focus { border-color: var(--accent); }
 .arena .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 .cust-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 
+/* obchod */
+.shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+.shop-row span { color: var(--muted); font-size: 13px; }
+.shop-row .btn { min-width: 150px; }
+.btn:disabled { opacity: .55; cursor: default; transform: none; filter: none; }
+
 /* týmové menu */
 .slotbtn { border-left: 8px solid var(--tc); min-width: 230px; }
 
@@ -501,8 +507,46 @@ input[type="text"]:focus { border-color: var(--accent); }
       <div class="choices">
         <button class="choice" onclick="selectDevice('pc')"><svg class="ic"><use href="#i-monitor"/></svg>Notebook / PC<small>ovládání klávesnicí</small></button>
         <button class="choice" onclick="selectDevice('mobile')"><svg class="ic"><use href="#i-phone"/></svg>Mobil / Tablet<small>dotykové ovládání</small></button>
+        <button class="choice" onclick="openShop()"><svg class="ic"><use href="#i-key"/></svg>Obchod<small id="shop-keys-label">0 klíčů</small></button>
+        <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
       </div>
       <p class="version">VERZE 7</p>
+    </div>
+  </div>
+
+  <!-- OBCHOD -->
+  <div id="menu-shop" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Obchod</h1>
+      <div class="scroll">
+        <p id="shop-keys" class="lead" style="font-size:18px;color:var(--accent);font-weight:800"></p>
+        <p class="lead">Za výhru kola dostaneš 1 klíč. Vylepšení platí 2 dny od koupě, i když zrovna nehraješ.</p>
+        <div id="shop-items" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANKA -->
+  <div id="menu-bank" class="overlay hidden">
+    <div class="panel">
+      <h1 class="title">Banka</h1>
+      <p class="lead">Klíče v bance jsou v bezpečí a v obchodě je nemůžeš utratit. Dokud je nevybereš, nic za ně nekoupíš ani omylem.</p>
+      <p id="bank-wallet" class="lead" style="font-size:18px;color:var(--accent);font-weight:800;margin-top:12px"></p>
+      <p id="bank-safe" class="lead" style="font-size:18px;color:#7dd3fc;font-weight:800"></p>
+      <div class="btn-group">
+        <button class="btn" id="bank-in-1" onclick="bankMove('in', false)">Vložit 1</button>
+        <button class="btn" id="bank-in-all" onclick="bankMove('in', true)">Vložit všechny</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="bank-out-1" onclick="bankMove('out', false)">Vybrat 1</button>
+        <button class="btn btn-secondary" id="bank-out-all" onclick="bankMove('out', true)">Vybrat všechny</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+      </div>
     </div>
   </div>
 
@@ -586,7 +630,7 @@ input[type="text"]:focus { border-color: var(--accent); }
       <h2>Pravidla hry</h2>
       <ul>
         <li>Každý hráč začíná s <strong>50 životy (HP)</strong>.</li>
-        <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
+        <li>Zásah mečem odebere <strong>5 HP</strong> (s vylepšeními z obchodu se to mění).</li>
         <li><strong>ŠTÍT:</strong> když ho držíš, <strong>odrazíš každý útok</strong>. Při držení štítu ale nemůžeš sekat.</li>
         <li><strong>LÉKÁRNIČKY</strong> padají z nebe a doplní <strong>+10 HP</strong>.</li>
         <li>V týmové hře spoluhráče neraníš. Vyhrává poslední tým, který zůstane stát.</li>
@@ -622,6 +666,7 @@ input[type="text"]:focus { border-color: var(--accent); }
   <div id="game-over-screen" class="overlay hidden">
     <div class="panel">
       <h1 id="winner-announcement" class="title" style="font-size:26px;">---</h1>
+      <p id="key-reward" class="lead hidden" style="color:var(--accent);font-weight:800;font-size:16px;text-align:center"></p>
       <div class="btn-group">
         <button class="btn" onclick="restartCurrentGame()"><svg class="ic"><use href="#i-refresh"/></svg>Hrát znovu</button>
         <button class="btn btn-secondary" onclick="goToCustomize('game-over-screen')"><svg class="ic"><use href="#i-shield"/></svg>Změnit výbavu</button>
@@ -739,6 +784,104 @@ function saveSettings() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {}
 }
 loadSettings();
+
+// ======================================================================
+//  OBCHOD A KLÍČE (ukládá se v prohlížeči; vylepšení vyprší po 2 dnech reálného času)
+// ======================================================================
+const SHOP_KEY = 'ka-shop';
+const PERK_MS = 2 * 24 * 3600 * 1000;
+const SHOP_ITEMS = [
+  { id: 'sword', name: 'Ostrý meč',    cost: 10, desc: 'Každý zásah dává 10 poškození místo 5.' },
+  { id: 'boots', name: 'Rychlé boty',  cost: 5,  desc: 'Běháš rychleji.' },
+  { id: 'armor', name: 'Pancíř',       cost: 7,  desc: 'Dostáváš menší poškození: zásah tě bolí jen za 3 životy místo 5. Štít dál odrazí útok na 100 %.' }
+];
+const shop = { keys: 0, bank: 0, sword: 0, boots: 0, armor: 0 };   // keys = peněženka, bank = klíče v bezpečí v bance
+function loadShop() {
+  try {
+    const o = JSON.parse(localStorage.getItem(SHOP_KEY) || 'null');
+    if (!o) return;
+    shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
+    shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
+    ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
+  } catch (e) {}
+}
+function saveShop() { try { localStorage.setItem(SHOP_KEY, JSON.stringify(shop)); } catch (e) {} }
+function perkActive(k) { return shop[k] > Date.now(); }
+function activePerks() { return { sword: perkActive('sword'), boots: perkActive('boots'), armor: perkActive('armor') }; }
+function applyPerks(p, pk) {
+  if (!p || !pk) return;
+  if (pk.sword) p.dmg = 10;
+  if (pk.boots) p.speed = 5.5;
+  if (pk.armor) p.dmgTaken = 0.6;      // 5 → 3 (a 10 → 6)
+}
+function keysText(n) { return n === 1 ? '1 klíč' : (n >= 2 && n <= 4 ? n + ' klíče' : n + ' klíčů'); }
+function updateShopLabel() {
+  const el = document.getElementById('shop-keys-label');
+  if (el) el.textContent = keysText(shop.keys);
+  const bl = document.getElementById('bank-label');
+  if (bl) bl.textContent = 'v bance ' + keysText(shop.bank);
+}
+function timeLeft(t) {
+  const d = Math.max(0, t - Date.now());
+  const days = Math.floor(d / 86400000), h = Math.floor(d % 86400000 / 3600000), m = Math.floor(d % 3600000 / 60000);
+  return days ? days + ' d ' + h + ' h' : (h ? h + ' h ' + m + ' min' : Math.max(1, m) + ' min');
+}
+function openShop() { renderShop(); showScreen('menu-shop'); }
+
+// ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
+function openBank() { renderBank(); showScreen('menu-bank'); }
+function bankMove(dir, all) {
+  if (dir === 'in') {
+    const n = all ? shop.keys : Math.min(1, shop.keys);
+    shop.keys -= n; shop.bank += n;
+  } else {
+    const n = all ? shop.bank : Math.min(1, shop.bank);
+    shop.bank -= n; shop.keys += n;
+  }
+  saveShop();
+  renderBank();
+}
+function renderBank() {
+  document.getElementById('bank-wallet').textContent = '🔑 V peněžence: ' + keysText(shop.keys);
+  document.getElementById('bank-safe').textContent = '🏦 V bance: ' + keysText(shop.bank);
+  document.getElementById('bank-in-1').disabled = document.getElementById('bank-in-all').disabled = shop.keys < 1;
+  document.getElementById('bank-out-1').disabled = document.getElementById('bank-out-all').disabled = shop.bank < 1;
+  updateShopLabel();
+}
+function buyItem(id) {
+  const it = SHOP_ITEMS.find(x => x.id === id);
+  if (!it || perkActive(id) || shop.keys < it.cost) return;
+  shop.keys -= it.cost;
+  shop[id] = Date.now() + PERK_MS;
+  saveShop();
+  renderShop();
+}
+function renderShop() {
+  document.getElementById('shop-keys').textContent = '🔑 Máš ' + keysText(shop.keys);
+  const box = document.getElementById('shop-items');
+  box.innerHTML = '';
+  SHOP_ITEMS.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'shop-row';
+    const info = document.createElement('div');
+    info.style.cssText = 'text-align:left;flex:1';
+    const nm = document.createElement('strong'); nm.textContent = it.name + ' · ' + keysText(it.cost);
+    const ds = document.createElement('span'); ds.textContent = it.desc + ' Platí 2 dny.';
+    info.appendChild(nm); info.appendChild(document.createElement('br')); info.appendChild(ds);
+    const b = document.createElement('button');
+    if (perkActive(it.id)) {
+      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Aktivní · ' + timeLeft(shop[it.id]);
+    } else if (shop.keys < it.cost) {
+      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Málo klíčů';
+    } else {
+      b.className = 'btn'; b.textContent = 'Koupit'; b.onclick = () => buyItem(it.id);
+    }
+    row.appendChild(info); row.appendChild(b);
+    box.appendChild(row);
+  });
+}
+loadShop();
+setTimeout(updateShopLabel, 0);
 
 // ======================================================================
 //  KRESLENÍ: pomocné funkce
@@ -1457,6 +1600,8 @@ class Knight {
     this.hp = 50;
     this.maxHp = 50;
     this.speed = 4;
+    this.dmg = 5;           // poškození mého meče
+    this.dmgTaken = 1;      // násobek přijatého poškození (pevný štít = 0.6)
     this.facingRight = team === 1;
     this.isShielding = false;
     this.isAttacking = false;
@@ -1557,9 +1702,10 @@ class Knight {
           createFloatingText('ODRAŽENO!', target.x, target.y - 52, '#7dd3fc');
           this.x -= dir * 12;
         } else {
-          target.hp = Math.max(0, target.hp - 5);
+          const d = Math.max(1, Math.round(this.dmg * target.dmgTaken));
+          target.hp = Math.max(0, target.hp - d);
           createSparks(target.x, target.y, '#f87171');
-          createFloatingText('-5 HP', target.x, target.y - 52, '#fca5a5');
+          createFloatingText('-' + d + ' HP', target.x, target.y - 52, '#fca5a5');
         }
       }
     }
@@ -1642,6 +1788,7 @@ function showScreen(screenId) {
   if (screenId) {
     document.getElementById(screenId).classList.remove('hidden');
   }
+  if (screenId === 'menu-main') updateShopLabel();
   if (screenId !== 'customize-screen') stopPreviewLoop();
 }
 
@@ -2067,7 +2214,7 @@ function markReadyWeb() {
     hostReady = true;
   } else {
     clientReady = true;
-    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[2]) });
+    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[2]), perks: activePerks() });
   }
   setWaitText(true);
   tryStartWebRound();
@@ -2097,6 +2244,7 @@ function startWebRound() {
   const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style }));
   peers.forEach(p => { if (p.c.open) p.c.send({ type: 'start', bg: settings.bg, roster: wire }); });
   startRound(null, null, settings.bg, roster);
+  peers.forEach(q => applyPerks(players[q.slot], q.perks));
 }
 
 function closeNetwork() {
@@ -2228,6 +2376,8 @@ function createRoom() {
       if (!d) return;
       if (d.type === 'ready') {
         pr.loadout = cleanLoadout(d.loadout);
+        const pk = d.perks || {};
+        pr.perks = { sword: !!pk.sword, boots: !!pk.boots, armor: !!pk.armor };
         pr.ready = true;
         tryStartWebRound();
       } else if (d.type === 'input') {
@@ -2420,6 +2570,7 @@ function initGame(l1, l2, bg, roster) {
     player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
     players = [player1, player2];
   }
+  applyPerks(players[myIdx] || players[0], activePerks());
   medkits = [];
   particles = [];
   floatingTexts = [];
@@ -2552,7 +2703,7 @@ function setupTouchListeners() {
 
       const normX = dx / maxRadius;
       const normY = dy / maxRadius;
-      const speed = 4;
+      const speed = (players[myIdx] && players[myIdx].speed) || 4;
 
       inputObj.vx = Math.abs(normX) > 0.2 ? normX * speed : 0;
       inputObj.vy = Math.abs(normY) > 0.2 ? normY * speed : 0;
@@ -2613,6 +2764,17 @@ function finishGame() {
     msg = 'Oba rytíři padli!';
   }
   document.getElementById('winner-announcement').innerText = msg;
+  const rw = document.getElementById('key-reward');
+  const me = players[myIdx];
+  if (me && alive.length && alive[0].group === me.group) {
+    shop.keys++;
+    saveShop();
+    updateShopLabel();
+    rw.textContent = '🔑 +1 klíč za výhru! Máš jich ' + shop.keys + '.';
+    rw.classList.remove('hidden');
+  } else {
+    rw.classList.add('hidden');
+  }
   setWaitText(false);
   showScreen('game-over-screen');
 }
