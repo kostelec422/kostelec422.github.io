@@ -8,12 +8,9 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 #v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-
-/* Červená obrazovka: objeví se spolu s příšerou a zůstane, dokud hráč nevyfotí domeček */
-#vig{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:0;background:rgba(190,20,50,.32);box-shadow:inset 0 0 140px 40px rgba(217,67,95,.9);transition:opacity .15s}
-#vig.red{opacity:1;animation:pulse .7s infinite alternate}
-@keyframes pulse{from{opacity:.6}to{opacity:1}}
-
+#vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--mon);transition:box-shadow .4s}
+#vig.warn{animation:pulse .6s infinite alternate}
+@keyframes pulse{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
 .screen{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;padding:28px;text-align:center;background:var(--bg);z-index:5}
 .screen h1{font-size:2.2rem;margin:0;line-height:1.1}
 .screen p{max-width:34ch;margin:0;line-height:1.5;opacity:.85}
@@ -27,69 +24,29 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 #shutter{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:3}
 #shutter[hidden]{display:none}
 #match{position:fixed;left:16px;bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:3;font-weight:700;text-shadow:0 1px 6px #000;display:none}
-
-/* Příšera */
-#mon{position:fixed;left:50%;top:40%;width:min(82vw,380px);transform:translate(-50%,-50%) scale(.15);opacity:0;z-index:2;pointer-events:none;
-  filter:drop-shadow(0 0 22px #ff1e3c);
-  transition:transform .3s cubic-bezier(.2,.9,.3,1.3),opacity .15s}
-#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1);animation:jit .09s infinite alternate}
-@keyframes jit{from{rotate:-2.5deg}to{rotate:2.5deg}}
-#mon .tg{transform-box:view-box;transform-origin:100px 160px;transform:scaleY(.04);opacity:0;transition:transform .2s ease-out,opacity .1s}
-#mon.lick .tg{transform:scaleY(1);opacity:1;animation:wag .12s infinite alternate}
-@keyframes wag{from{rotate:-5deg}to{rotate:5deg}}
-#mon .eye{animation:glow .25s infinite alternate}
-@keyframes glow{from{opacity:.8}to{opacity:1}}
-
+#mon{position:fixed;left:50%;top:38%;width:min(70vw,320px);transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
+#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#tune{position:fixed;left:16px;right:16px;top:calc(74px + env(safe-area-inset-top,0px));z-index:3;display:flex;align-items:center;gap:10px;font-weight:700;text-shadow:0 1px 6px #000}#tune input{flex:1;accent-color:var(--win)}#tune span{min-width:3ch;text-align:right}
 .bad{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-@media (prefers-reduced-motion:reduce){#vig.red{animation:none}#mon.on{animation:none}#mon.lick .tg{animation:none}}
+@media (prefers-reduced-motion:reduce){#vig.warn{animation:none;box-shadow:inset 0 0 90px 20px var(--mon)}}
 </style></head>
 <body>
 <video id="v" playsinline muted autoplay></video>
 <div id="vig"></div>
 
-<svg id="mon" viewBox="0 0 200 270" aria-hidden="true">
-  <defs>
-    <radialGradient id="eyeg"><stop offset="0" stop-color="#fff6a0"/><stop offset=".55" stop-color="#ff3b30"/><stop offset="1" stop-color="#7a0010"/></radialGradient>
-    <linearGradient id="tgg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ff7a93"/><stop offset="1" stop-color="#a80f2c"/></linearGradient>
-    <radialGradient id="bodyg" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#3a1a46"/><stop offset="1" stop-color="#120918"/></radialGradient>
-  </defs>
-  <!-- rohy -->
-  <path d="M50 58 C24 42 24 16 40 3 C50 22 68 34 84 42Z" fill="#0b0410" stroke="#000" stroke-width="3"/>
-  <path d="M150 58 C176 42 176 16 160 3 C150 22 132 34 116 42Z" fill="#0b0410" stroke="#000" stroke-width="3"/>
-  <!-- tělo -->
-  <path d="M18 205 C-2 112 18 40 100 34 C182 40 202 112 182 205 L166 180 L150 214 L128 184 L100 220 L72 184 L50 214 L34 180 Z" fill="url(#bodyg)" stroke="#05010a" stroke-width="5"/>
-  <!-- škrábance / jizvy -->
-  <path d="M30 120 L52 134 M170 120 L148 134 M38 150 L56 156 M162 150 L144 156" stroke="#05010a" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <!-- oči -->
-  <g class="eye">
-    <ellipse cx="68" cy="94" rx="25" ry="21" fill="url(#eyeg)" stroke="#05010a" stroke-width="3"/>
-    <ellipse cx="132" cy="94" rx="25" ry="21" fill="url(#eyeg)" stroke="#05010a" stroke-width="3"/>
-    <ellipse cx="68" cy="94" rx="4" ry="17" fill="#000"/>
-    <ellipse cx="132" cy="94" rx="4" ry="17" fill="#000"/>
-  </g>
-  <!-- zlé obočí -->
-  <path d="M36 70 L94 94 L92 80 L40 54Z" fill="#05010a"/>
-  <path d="M164 70 L106 94 L108 80 L160 54Z" fill="#05010a"/>
-  <!-- tlama -->
-  <path d="M42 128 Q100 108 158 128 Q172 176 100 196 Q28 176 42 128Z" fill="#12020a" stroke="#05010a" stroke-width="3"/>
-  <!-- horní zuby -->
-  <path d="M47 127 L58 156 L68 124 L80 160 L90 122 L100 162 L110 122 L120 160 L132 124 L142 156 L153 127 Z" fill="#f3ecd8" stroke="#2a1a1a" stroke-width="1.5" stroke-linejoin="round"/>
-  <!-- dolní zuby -->
-  <path d="M64 176 L74 150 L84 182 L94 154 L100 188 L106 154 L116 182 L126 150 L136 176 Z" fill="#f3ecd8" stroke="#2a1a1a" stroke-width="1.5" stroke-linejoin="round"/>
-  <!-- jazyk -->
-  <g class="tg">
-    <path d="M78 160 Q100 150 122 160 L120 232 Q100 266 80 232 Z" fill="url(#tgg)" stroke="#4a0612" stroke-width="3"/>
-    <path d="M100 162 L100 238" stroke="#7a0a20" stroke-width="3" stroke-linecap="round"/>
-    <path d="M86 190 Q100 194 114 190 M86 212 Q100 216 114 212" stroke="#c4284a" stroke-width="2" fill="none" stroke-linecap="round"/>
-  </g>
+<svg id="mon" viewBox="0 0 200 200" aria-hidden="true">
+  <path d="M30 170 C10 90 40 20 100 20 C160 20 190 90 170 170 L150 150 L130 175 L100 150 L70 175 L50 150 Z" fill="#6b2a5c" stroke="#1a0a18" stroke-width="5"/>
+  <circle cx="72" cy="82" r="22" fill="#f3ecd8"/><circle cx="130" cy="82" r="22" fill="#f3ecd8"/>
+  <circle cx="76" cy="86" r="9" fill="#d9435f"/><circle cx="126" cy="86" r="9" fill="#d9435f"/>
+  <path d="M58 120 Q100 150 142 120 L136 134 L124 122 L112 140 L100 124 L88 140 L76 122 L64 134 Z" fill="#f3ecd8" stroke="#1a0a18" stroke-width="3"/>
 </svg>
 
 <div id="hud" hidden><span id="score">Přežito: 0</span><img id="thumb" alt="Fotka domečku"></div>
 <div id="msg"></div>
 <div id="bar"><i></i></div>
 <div id="match"></div>
-<div id="tune" hidden style="display:none"></div>
+<div id="tune" hidden><label for="sens">Citlivost</label><input id="sens" type="range" min="10" max="90" step="1" value="10"><span id="thr">10 %</span></div>
 <button id="shutter" aria-label="Vyfotit" hidden></button>
 
 <div class="screen" id="intro">
@@ -109,8 +66,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 const $=s=>document.querySelector(s);
 const v=$('#v'),cv=document.createElement('canvas');cv.width=32;cv.height=24;
 const cx=cv.getContext('2d',{willReadFrequently:true});
-const thr=.6; // pevná citlivost (60 %)
-let ref=null,state='intro',score=0,timers=[],tick=null,left=4;
+let ref=null,state='intro',thr=.1,score=0,timers=[],tick=null,left=4,live=null;
 
 // Zmenšený šedotónový snímek, normalizovaný (nezávislý na jasu a kontrastu)
 function grab(){
@@ -122,27 +78,27 @@ function grab(){
   m/=768;let s=0;for(let i=0;i<768;i++){g[i]-=m;s+=g[i]*g[i]}
   s=Math.sqrt(s/768)||1;for(let i=0;i<768;i++)g[i]/=s;return g;
 }
-function sim(a,b){let s=0;for(let i=0;i<768;i++)s+=a[i]*b[i];return Math.max(0,s/768)}
+function sim(a,b){
+  // Porovnej několik malých posunů obrazu, aby nevadilo nepatrně jiné zamíření.
+  let best=-1;
+  for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){
+    let sum=0,n=0;
+    for(let y=2;y<22;y++)for(let x=2;x<30;x++){
+      const xx=x+dx,yy=y+dy;
+      if(xx<0||xx>=32||yy<0||yy>=24)continue;
+      sum+=a[y*32+x]*b[yy*32+xx];n++;
+    }
+    if(n){const score=sum/n;if(score>best)best=score}
+  }
+  return Math.max(0,best);
+}
 
 // Zvuk a vibrace
 let ac;function beep(f,d,t='sine',g=.15){try{ac=ac||new AudioContext();const o=ac.createOscillator(),k=ac.createGain();o.type=t;o.frequency.value=f;k.gain.value=g;o.connect(k);k.connect(ac.destination);o.start();k.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
-function roar(){ // zařvání: šum + hluboký řezavý tón
-  try{
-    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
-    const n=Math.floor(ac.sampleRate*.8),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
-    for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
-    const s=ac.createBufferSource();s.buffer=b;
-    const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=1100;
-    const k=ac.createGain();k.gain.value=.55;
-    s.connect(f);f.connect(k);k.connect(ac.destination);s.start();
-  }catch(e){}
-  beep(85,.8,'sawtooth',.28);beep(130,.5,'square',.12);
-}
 const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
 
 function clearAll(){timers.forEach(clearTimeout);timers=[];clearInterval(tick);tick=null}
 function say(t){$('#msg').textContent=t}
-function hideMonster(){const m=$('#mon');m.classList.remove('lick');m.classList.remove('on')}
 
 $('#go').onclick=async()=>{
   try{
@@ -155,8 +111,8 @@ $('#go').onclick=async()=>{
 
 function setup(){
   state='setup';score=0;ref=null;clearAll();
-  $('#hud').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='none';$('#match').style.display='none';clearInterval(window.mt);
-  hideMonster();$('#vig').classList.remove('red');
+  $('#hud').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
   say('Zaměř domeček a vyfoť ho');
 }
 
@@ -169,25 +125,24 @@ function startPlay(){
 }
 
 function schedule(){
-  state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';
-  hideMonster();$('#vig').classList.remove('red');
+  state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
   say('Schovej se. Příšera tě hledá…');
   const f=Math.max(.55,1-score*.06);              // s každým kolem se příšera objeví dřív
   const delay=(10+Math.random()*10)*1000*f;       // 10–20 s, pokaždé jinak
-  // žádné varování předem – příšera i červená obrazovka přijdou najednou
+  timers.push(setTimeout(warn,Math.max(delay-2000,3000)));
   timers.push(setTimeout(attack,Math.max(delay,5000)));
+}
+
+function warn(){ // varování ~2 s předem: vibrace, zvuk, červené okraje
+  $('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2);
 }
 
 function attack(){
   state='attack';left=4;
-  const m=$('#mon');
-  $('#vig').classList.add('red');                  // červená obrazovka přijde s příšerou a zůstane
-  m.classList.add('on');buzz([300,100,300]);roar();
-  $('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';
+  $('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);
+  $('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';$('#tune').hidden=true;
   say('Najdi domeček a vyfoť ho!');
-  timers.push(setTimeout(()=>m.classList.add('lick'),350));      // vyplázne jazyk
-  timers.push(setTimeout(()=>m.classList.remove('lick'),1250));  // schová jazyk
-  timers.push(setTimeout(()=>m.classList.remove('on'),1450));    // příšera zmizí, červená zůstává
   const t0=performance.now();
   tick=setInterval(()=>{
     left=4-(performance.now()-t0)/1000;
@@ -199,12 +154,10 @@ function attack(){
 
 function lose(){
   clearAll();state='over';
-  const m=$('#mon');
-  m.style.transform='translate(-50%,-50%) scale(2.2)';m.classList.add('on');m.classList.add('lick');
-  buzz(600);roar();
+  $('#mon').style.transform='translate(-50%,-50%) scale(2.2)';buzz(600);beep(60,.9,'sawtooth',.3);
   setTimeout(()=>{
-    m.style.transform='';hideMonster();
-    $('#hud').hidden=true;$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='none';clearInterval(window.mt);$('#vig').classList.remove('red');say('');
+    $('#mon').style.transform='';$('#mon').classList.remove('on');
+    $('#hud').hidden=true;$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);$('#vig').classList.remove('warn');say('');
     $('#final').textContent='Přežil jsi příšer: '+score;$('#over').hidden=false;
   },900);
 }
@@ -221,9 +174,9 @@ $('#shutter').onclick=()=>{
   if(state==='attack'){
     const s=sim(g,ref);
     if(s>=thr){
-      clearAll();score++;$('#score').textContent='Přežito: '+score;
+      clearAll();score++;$('#score').textContent='Přežito: '+score
       beep(880,.25);buzz(60);say('Zachráněn! Příšera zmizela.');
-      hideMonster();$('#vig').classList.remove('red'); // červená mizí až teď
+      $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
       $('#bar').style.display='none';$('#match').style.display='none';$('#shutter').hidden=true;
       timers.push(setTimeout(schedule,1800));
     }else{
@@ -233,6 +186,7 @@ $('#shutter').onclick=()=>{
   }
 };
 
+$('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
 $('#again').onclick=()=>{$('#over').hidden=true;setup()};
 </script>
 </body></html>
