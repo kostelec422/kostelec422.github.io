@@ -23,8 +23,8 @@
   --blue: #3b82f6;
   --red: #ef4444;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --joy: 130px;   /* průměr joysticku */
-  --btn: 65px;    /* průměr tlačítek MEČ / ŠTÍT */
+  --joy: 130px;
+  --btn: 65px;
 }
 @media (max-height: 420px) { :root { --joy: 112px; --btn: 58px; } }
 @media (max-height: 340px) { :root { --joy: 96px;  --btn: 52px; } }
@@ -47,7 +47,6 @@ html, body {
   color: var(--text);
 }
 
-/* ---------- ikony ---------- */
 .ic {
   width: 22px;
   height: 22px;
@@ -59,7 +58,6 @@ html, body {
   stroke-linejoin: round;
 }
 
-/* ---------- varování při otočení na výšku ---------- */
 #rotate-warning {
   display: none;
   position: fixed;
@@ -91,9 +89,7 @@ html, body {
   #rotate-warning { display: flex !important; }
 }
 
-/* ---------- herní plocha ---------- */
 #game-container {
-  /* fixed + všechny strany na 0 = přesně viditelná plocha (100vh na Androidu zahrnuje i skrytý panel prohlížeče) */
   position: fixed;
   top: 0;
   left: 0;
@@ -141,7 +137,6 @@ canvas#gameCanvas {
   max-height: calc(100% - 4px);
   overflow-y: auto;
 }
-/* panel s pevným spodkem: tlačítka jsou vždy vidět, obsah nad nimi se posouvá */
 .panel.flexcol { display: flex; flex-direction: column; overflow: hidden; }
 .panel.flexcol > .title { flex: 0 0 auto; }
 .panel.flexcol > .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -182,7 +177,6 @@ p.version { text-align: center; font-size: 11px; color: #5d6a85; margin: 14px 0 
 ul { margin-left: 20px; margin-bottom: 10px; }
 .logo { width: 54px; height: 54px; color: var(--accent); margin-bottom: 6px; }
 
-/* ---------- tlačítka ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -215,7 +209,6 @@ ul { margin-left: 20px; margin-bottom: 10px; }
   margin-top: 14px;
 }
 
-/* velké dlaždice voleb v menu */
 .choices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -325,6 +318,7 @@ input[type="text"]:focus { border-color: var(--accent); }
   color: #fff;
   box-shadow: 0 0 14px -3px var(--tc, var(--accent));
 }
+.chip.gen { width: 76px; height: 34px; font-size: 12px; }
 .arena {
   margin-top: 12px;
   text-align: left;
@@ -339,6 +333,9 @@ input[type="text"]:focus { border-color: var(--accent); }
 .chip.bg canvas { width: 70px; height: auto; aspect-ratio: 35 / 18; border-radius: 6px; }
 .arena .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 .cust-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+
+/* týmové menu */
+.slotbtn { border-left: 8px solid var(--tc); min-width: 230px; }
 
 @media (max-height: 420px) {
   .panel { padding: 14px 18px; border-radius: 18px; }
@@ -355,16 +352,17 @@ input[type="text"]:focus { border-color: var(--accent); }
   .row-label { width: 46px; font-size: 9.5px; }
   .chip { width: 48px; height: 46px; font-size: 9px; border-radius: 10px; }
   .chip canvas { width: 27px; height: 27px; }
+  .chip.gen { width: 66px; height: 30px; }
   .arena { margin-top: 6px; padding: 5px 10px; }
   .chip.bg { width: 68px; height: 46px; }
   .chip.bg canvas { width: 52px; }
   .cust-actions { margin-top: 8px; }
   .btn { padding: 10px 18px; }
-  .arena .row + .hint { display: none; }     /* poznámku o soupeři schováme, vybírá se i bez ní */
+  .arena .row + .hint { display: none; }
   .panel.flexcol > .foot { padding-top: 6px; }
 }
 @media (max-height: 380px) {
-  .panel.cust > .title, #instructions-screen .panel > .title { display: none; }
+  .panel.cust > .title, #instructions-screen .panel > .title, #menu-team .panel > .title { display: none; }
 }
 
 /* ---------- ovládání na displeji ---------- */
@@ -440,7 +438,6 @@ input[type="text"]:focus { border-color: var(--accent); }
 }
 .action-btn:active { transform: scale(.92); filter: brightness(1.25); }
 
-/* nápověda kláves na PC */
 #pc-hud-guide {
   position: absolute;
   bottom: 10px;
@@ -468,7 +465,6 @@ input[type="text"]:focus { border-color: var(--accent); }
 </head>
 <body>
 
-<!-- sada ikon (kreslené čarou, barva se bere z textu) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
     <symbol id="i-sword" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></symbol>
@@ -506,7 +502,7 @@ input[type="text"]:focus { border-color: var(--accent); }
         <button class="choice" onclick="selectDevice('pc')"><svg class="ic"><use href="#i-monitor"/></svg>Notebook / PC<small>ovládání klávesnicí</small></button>
         <button class="choice" onclick="selectDevice('mobile')"><svg class="ic"><use href="#i-phone"/></svg>Mobil / Tablet<small>dotykové ovládání</small></button>
       </div>
-      <p class="version">VERZE 6</p>
+      <p class="version">VERZE 7</p>
     </div>
   </div>
 
@@ -516,8 +512,7 @@ input[type="text"]:focus { border-color: var(--accent); }
       <h1 class="title">Vyber režim hry</h1>
       <div class="choices">
         <button class="choice" onclick="openDifficultyMenu()"><svg class="ic"><use href="#i-bot"/></svg>Proti počítači<small>tři obtížnosti</small></button>
-        <button class="choice" onclick="openPvPMenu()"><svg class="ic"><use href="#i-users"/></svg>Hra pro 2 hráče<small>souboj s kamarádem</small></button>
-        <button class="choice" onclick="showRulesOnly()"><svg class="ic"><use href="#i-book"/></svg>Pravidla<small>a ovládání</small></button>
+        <button class="choice" onclick="openTeamMenu()"><svg class="ic"><use href="#i-swords"/></svg>Týmy a souboje<small>až 4 bojovníci</small></button>
       </div>
       <div class="btn-group">
         <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
@@ -540,12 +535,30 @@ input[type="text"]:focus { border-color: var(--accent); }
     </div>
   </div>
 
+  <!-- TÝMY A SOUBOJE (až 4 bojovníci) -->
+  <div id="menu-team" class="overlay hidden">
+    <div class="panel flexcol">
+      <h1 class="title">Týmy a souboje</h1>
+      <div class="scroll">
+        <h2>Formát</h2>
+        <div id="team-formats" class="btn-group" style="margin-top:0"></div>
+        <h2>Bojovníci</h2>
+        <div id="team-slots" class="btn-group" style="margin-top:0"></div>
+        <p id="team-hint" class="lead" style="margin-top:10px"></p>
+      </div>
+      <div class="btn-group foot">
+        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn btn-secondary" id="team-diff" onclick="cycleTeamDiff()"></button>
+        <button class="btn" onclick="startTeamGame()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
+      </div>
+    </div>
+  </div>
+
   <!-- TYP PVP -->
   <div id="menu-pvp" class="overlay hidden">
     <div class="panel">
       <h1 class="title">Kde budete hrát?</h1>
       <div class="choices">
-        <button class="choice" id="btn-local-pvp" onclick="setupLocalPvP()"><svg class="ic"><use href="#i-monitor"/></svg>Na 1 zařízení<small>společně na klávesnici</small></button>
         <button class="choice" onclick="showScreen('menu-web')"><svg class="ic"><use href="#i-globe"/></svg>Na 2 zařízeních<small>přes internet</small></button>
       </div>
       <div class="btn-group">
@@ -593,14 +606,16 @@ input[type="text"]:focus { border-color: var(--accent); }
         <li>Zásah mečem odebere <strong>5 HP</strong>.</li>
         <li><strong>ŠTÍT:</strong> když ho držíš, <strong>odrazíš každý útok</strong>. Při držení štítu ale nemůžeš sekat.</li>
         <li><strong>LÉKÁRNIČKY</strong> padají z nebe a doplní <strong>+10 HP</strong>.</li>
+        <li>V týmové hře spoluhráče neraníš. Vyhrává poslední tým, který zůstane stát.</li>
       </ul>
       <h2>Ovládání</h2>
       <div id="controls-desc"></div>
       </div>
       <div class="btn-group foot">
-        <button class="btn" id="start-battle-btn" onclick="goToCustomize('instructions-screen')">Rozumím, vybrat výbavu<svg class="ic"><use href="#i-next"/></svg></button>
-        <button class="btn btn-secondary" onclick="returnToMainMenu()">Hlavní menu</button>
+        <button class="btn btn-secondary" onclick="goToCustomize(custReturn)"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
+        <button class="btn" id="start-battle-btn" onclick="confirmAndStartGame()"><svg class="ic"><use href="#i-sword"/></svg>Do boje!</button>
       </div>
+      <p id="wait-text-rules" class="wait-text hidden">Čekám na soupeře...</p>
     </div>
   </div>
 
@@ -614,7 +629,7 @@ input[type="text"]:focus { border-color: var(--accent); }
       </div>
       <div class="cust-actions foot">
         <button class="btn btn-secondary" onclick="custBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-        <button class="btn" onclick="confirmAndStartGame()"><svg class="ic"><use href="#i-sword"/></svg>Do boje!</button>
+        <button class="btn" onclick="showRulesBeforeBattle()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
       </div>
       <p id="wait-text-cust" class="wait-text hidden">Čekám na soupeře...</p>
     </div>
@@ -657,7 +672,9 @@ const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
 // ======================================================================
 const TEAM = {
   1: { name: 'MODRÝ',   main: '#3b82f6', dark: '#1e4fb8', light: '#9cc3ff', rgb: '59,130,246' },
-  2: { name: 'ČERVENÝ', main: '#ef4444', dark: '#a81f1f', light: '#ffa3a3', rgb: '239,68,68' }
+  2: { name: 'ČERVENÝ', main: '#ef4444', dark: '#a81f1f', light: '#ffa3a3', rgb: '239,68,68' },
+  3: { name: 'ŽLUTÝ',   main: '#eab308', dark: '#a16207', light: '#fde047', rgb: '234,179,8' },
+  4: { name: 'ZELENÝ',  main: '#22c55e', dark: '#15803d', light: '#86efac', rgb: '34,197,94' }
 };
 const CHARACTERS = [
   { id: 'knight',  name: 'Rytíř' },
@@ -682,12 +699,36 @@ const BACKGROUNDS = [
   { id: 'forest', name: 'Les' },
   { id: 'rocks',  name: 'Skály' }
 ];
+// holčičí varianty (stejné pořadí = stejný index postavy)
+const GIRL_CHARACTERS = [
+  { id: 'knight',  name: 'Rytířka' },
+  { id: 'viking',  name: 'Vikinka' },
+  { id: 'samurai', name: 'Samurajka' },
+  { id: 'pirate',  name: 'Pirátka' }
+];
+const GIRL_SWORDS = [
+  { id: 'rapier',  name: 'Rapír' },
+  { id: 'crystal', name: 'Krystal' },
+  { id: 'rose',    name: 'Růže' },
+  { id: 'wand',    name: 'Hůlka' }
+];
+const GIRL_SHIELDS = [
+  { id: 'heart',     name: 'Srdce' },
+  { id: 'flower',    name: 'Květ' },
+  { id: 'butterfly', name: 'Motýl' },
+  { id: 'moon',      name: 'Měsíc' }
+];
+const charList   = st => (st && st.g) ? GIRL_CHARACTERS : CHARACTERS;
+const swordList  = st => (st && st.g) ? GIRL_SWORDS : SWORDS;
+const shieldList = st => (st && st.g) ? GIRL_SHIELDS : SHIELDS;
+const isGirlSword  = k => GIRL_SWORDS.some(x => x.id === k);
+const isGirlShield = k => GIRL_SHIELDS.some(x => x.id === k);
 
 // ======================================================================
 //  NASTAVENÍ (pamatuje se v prohlížeči, když to jde)
 // ======================================================================
 const STORE_KEY = 'ka-v5';
-const settings = { l: { 1: { c: 0, s: 0, h: 0 }, 2: { c: 0, s: 0, h: 0 } }, bg: 0 };
+const settings = { l: { 1: { c: 0, s: 0, h: 0, g: 0 }, 2: { c: 0, s: 0, h: 0, g: 0 } }, bg: 0 };
 
 function clampIdx(v, n) {
   v = parseInt(v, 10);
@@ -695,11 +736,11 @@ function clampIdx(v, n) {
 }
 function cleanLoadout(o) {
   o = o || {};
-  return { c: clampIdx(o.c, CHARACTERS.length), s: clampIdx(o.s, SWORDS.length), h: clampIdx(o.h, SHIELDS.length) };
+  return { c: clampIdx(o.c, CHARACTERS.length), s: clampIdx(o.s, SWORDS.length), h: clampIdx(o.h, SHIELDS.length), g: clampIdx(o.g, 2) };
 }
 function randomLoadout() {
   const r = n => Math.floor(Math.random() * n);
-  return { c: r(CHARACTERS.length), s: r(SWORDS.length), h: r(SHIELDS.length) };
+  return { c: r(CHARACTERS.length), s: r(SWORDS.length), h: r(SHIELDS.length), g: r(2) };
 }
 function loadSettings() {
   try {
@@ -721,7 +762,7 @@ loadSettings();
 // ======================================================================
 const OUT = 'rgba(8,10,18,.88)';
 
-function rr(g, x, y, w, h, r) {            // obdélník se zaoblenými rohy (jen cesta)
+function rr(g, x, y, w, h, r) {
   g.beginPath();
   g.moveTo(x + r, y);
   g.arcTo(x + w, y, x + w, y + h, r);
@@ -730,13 +771,22 @@ function rr(g, x, y, w, h, r) {            // obdélník se zaoblenými rohy (je
   g.arcTo(x, y, x + w, y, r);
   g.closePath();
 }
-function mulberry(a) {                     // opakovatelná "náhoda" pro pozadí
+function mulberry(a) {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
     let t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
+}
+function starPath(g, cx, cy, R, r) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, d = i % 2 ? r : R;
+    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
+    if (i) g.lineTo(x, y); else g.moveTo(x, y);
+  }
+  g.closePath();
 }
 
 // ======================================================================
@@ -755,24 +805,53 @@ function drawKnightFigure(g, team, st, dir, walk, shielding, swing, opts) {
     g.fill();
   }
 
+  if (st.g) drawHairBack(g, st.c);
   drawLegs(g, walk, st.c);
   drawBody(g, T, st.c);
+  if (st.g) drawSkirt(g, T);
   drawHead(g, T, st.c);
+  if (st.g) drawBow(g);
 
   if (shielding && !opts.noShield) {
     g.save();
     g.translate(21, -1);
-    drawShield(g, SHIELDS[st.h].id, T, 1);
+    drawShield(g, shieldList(st)[st.h].id, T, 1);
     g.restore();
   }
   if (!opts.noSword) {
     g.save();
     g.translate(8, 3);
     g.rotate(swing != null ? Math.sin(swing) * 1.8 : 0.2);
-    drawSword(g, SWORDS[st.s].id, T);
+    drawSword(g, swordList(st)[st.s].id, T);
     g.restore();
   }
   g.restore();
+}
+
+// ---- holčičí doplňky ----
+function drawHairBack(g, c) {
+  g.fillStyle = ['#e9b949', '#d9822b', '#1c1c28', '#7a3b1d'][c] || '#7a3b1d';
+  g.strokeStyle = OUT; g.lineWidth = 1.6; g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(-8, -22);
+  g.bezierCurveTo(-24, -24, -28, -6, -18, 8);
+  g.bezierCurveTo(-16, 2, -10, -6, -6, -10);
+  g.closePath(); g.fill(); g.stroke();
+}
+function drawSkirt(g, T) {
+  g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8; g.lineJoin = 'round';
+  g.beginPath(); g.moveTo(-12, 5); g.lineTo(12, 5); g.lineTo(18, 18); g.lineTo(-18, 18); g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = T.light; g.fillRect(-12, 5, 24, 3);
+}
+function drawBow(g) {
+  g.fillStyle = '#f472b6'; g.strokeStyle = OUT; g.lineWidth = 1.2; g.lineJoin = 'round';
+  g.beginPath();
+  g.moveTo(-12, -20); g.lineTo(-20, -26); g.lineTo(-20, -14); g.closePath();
+  g.moveTo(-12, -20); g.lineTo(-4, -27);  g.lineTo(-4, -15);  g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = '#fbcfe8';
+  g.beginPath(); g.arc(-12, -20, 2.4, 0, Math.PI * 2); g.fill(); g.stroke();
 }
 
 function drawLegs(g, walk, c) {
@@ -802,17 +881,17 @@ function drawBody(g, T, c) {
   g.fillStyle = gr; g.strokeStyle = OUT; g.lineWidth = 2;
   rr(g, -12, -8, 24, 21, 5); g.fill(); g.stroke();
 
-  if (c === 0) {                                 // rytíř: lesk na plátu + zlatá spona
+  if (c === 0) {
     g.fillStyle = 'rgba(255,255,255,.22)';
     rr(g, -8, -6, 7, 12, 3); g.fill();
     belt(g, '#4a3320', '#f5c542');
-  } else if (c === 1) {                          // viking: kožešinový límec
+  } else if (c === 1) {
     belt(g, '#3b2616', '#cbd5e1');
     g.fillStyle = '#e0cfae'; g.strokeStyle = OUT; g.lineWidth = 1.4;
     rr(g, -13, -10, 26, 7, 3.5); g.fill(); g.stroke();
     g.fillStyle = '#c9b48f';
     for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-8 + i * 5.3, -3, 2.1, 0, Math.PI * 2); g.fill(); }
-  } else if (c === 2) {                          // samuraj: pláty a ramenní chrániče
+  } else if (c === 2) {
     g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
     for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-11, -3 + i * 4); g.lineTo(11, -3 + i * 4); g.stroke(); }
     g.fillStyle = '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.5;
@@ -820,7 +899,7 @@ function drawBody(g, T, c) {
     rr(g, 7, -10, 9, 8, 2);   g.fill(); g.stroke();
     g.fillStyle = T.main; g.fillRect(-15, -5, 7, 1.8); g.fillRect(8, -5, 7, 1.8);
     belt(g, '#161b26', '#fbbf24');
-  } else {                                       // pirát: pruhované tričko
+  } else {
     g.save();
     rr(g, -12, -8, 24, 21, 5); g.clip();
     g.fillStyle = 'rgba(255,255,255,.82)';
@@ -835,7 +914,7 @@ function drawBody(g, T, c) {
 function drawHead(g, T, c) {
   const skin = '#f2c9a3';
   g.lineJoin = 'round';
-  if (c === 0) {                                 // ---- RYTÍŘ
+  if (c === 0) {
     g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8;
     g.beginPath();
     g.moveTo(1, -26);
@@ -849,7 +928,7 @@ function drawHead(g, T, c) {
     g.fillStyle = '#0f141e'; rr(g, 1, -18, 12, 5, 2); g.fill();
     g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(-9, -21); g.quadraticCurveTo(-4, -26, 3, -26); g.stroke();
-  } else if (c === 1) {                          // ---- VIKING
+  } else if (c === 1) {
     g.fillStyle = '#f5ecd5'; g.strokeStyle = OUT; g.lineWidth = 1.6;
     g.beginPath(); g.moveTo(-9, -21); g.bezierCurveTo(-18, -24, -20, -33, -14, -38); g.bezierCurveTo(-16, -31, -12, -27, -6, -25); g.closePath(); g.fill(); g.stroke();
     g.beginPath(); g.moveTo(9, -21);  g.bezierCurveTo(18, -24, 20, -33, 14, -38);   g.bezierCurveTo(16, -31, 12, -27, 6, -25);  g.closePath(); g.fill(); g.stroke();
@@ -867,7 +946,7 @@ function drawHead(g, T, c) {
     g.fillStyle = '#8f9bab'; g.fillRect(2.5, -14, 3, 8);
     g.fillStyle = '#10151f';
     g.beginPath(); g.arc(8, -11, 1.6, 0, Math.PI * 2); g.fill();
-  } else if (c === 2) {                          // ---- SAMURAJ
+  } else if (c === 2) {
     for (let i = 0; i < 3; i++) {
       g.fillStyle = i % 2 === 0 ? T.main : '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.3;
       rr(g, -19 + i * 0.8, -18 + i * 4.2, 13, 4.6, 2); g.fill(); g.stroke();
@@ -890,7 +969,7 @@ function drawHead(g, T, c) {
     g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1;
     g.beginPath(); g.moveTo(5, -10); g.lineTo(5, -2); g.moveTo(9, -10); g.lineTo(9, -2); g.stroke();
     g.fillStyle = '#fbbf24'; g.beginPath(); g.arc(0, -27, 2.2, 0, Math.PI * 2); g.fill();
-  } else {                                       // ---- PIRÁT
+  } else {
     g.fillStyle = skin; g.strokeStyle = OUT; g.lineWidth = 1.8;
     g.beginPath(); g.arc(0, -14, 12.5, 0, Math.PI * 2); g.fill(); g.stroke();
     g.strokeStyle = '#10151f'; g.lineWidth = 1.4;
@@ -901,7 +980,6 @@ function drawHead(g, T, c) {
     g.strokeStyle = '#7a3b1d'; g.lineWidth = 1.6;
     g.beginPath(); g.moveTo(-1, -7); g.quadraticCurveTo(3, -4, 8, -7); g.stroke();
     g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-12, -10, 1.8, 0, Math.PI * 2); g.fill();
-    // klobouk
     g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.8;
     g.beginPath(); g.ellipse(0, -22, 18, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
     const hg = g.createLinearGradient(0, -36, 0, -22);
@@ -921,9 +999,47 @@ function drawHead(g, T, c) {
 // ======================================================================
 //  KRESLENÍ: meče (rukojeť v bodě 0,0, čepel míří doprava, délka do ~40)
 // ======================================================================
+function drawGirlSword(g, kind, T) {
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.fillStyle = '#f472b6'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
+  g.fillStyle = '#fde68a'; g.beginPath(); g.arc(-8, 0, 2.5, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = OUT; g.lineWidth = 1.2;
+  if (kind === 'rapier') {
+    g.fillStyle = '#fbbf24'; g.beginPath(); g.ellipse(2, 0, 3, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#8c99ab'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(4, 0); g.lineTo(43, 0); g.stroke();
+    g.strokeStyle = '#f4f8fc'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(5, 0); g.lineTo(42, 0); g.stroke();
+  } else if (kind === 'crystal') {
+    g.fillStyle = '#fbbf24'; rr(g, 0, -6, 3.4, 12, 1.6); g.fill(); g.stroke();
+    const gr = g.createLinearGradient(3, 0, 42, 0);
+    gr.addColorStop(0, '#f9a8d4'); gr.addColorStop(1, '#ffffff');
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(3.4, -2.6); g.lineTo(20, -6.5); g.lineTo(42, 0); g.lineTo(20, 6.5); g.lineTo(3.4, 2.6); g.closePath();
+    g.fill(); g.strokeStyle = 'rgba(190,60,130,.8)'; g.lineWidth = 1; g.stroke();
+    g.beginPath(); g.moveTo(8, 0); g.lineTo(38, 0); g.stroke();
+  } else if (kind === 'rose') {
+    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    g.beginPath(); g.arc(2, -3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.arc(2, 3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.strokeStyle = '#f9a8d4'; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(5, 0); g.lineTo(40, 0); g.stroke();
+    g.strokeStyle = '#fff1f8'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(6, 0); g.lineTo(39, 0); g.stroke();
+    g.fillStyle = T.light; g.beginPath(); g.arc(-8, 0, 3.2, 0, Math.PI * 2); g.fill();
+  } else { // wand
+    g.fillStyle = '#fbbf24'; rr(g, 0, -5, 3.2, 10, 1.6); g.fill(); g.stroke();
+    g.strokeStyle = '#fbbf24'; g.lineWidth = 3.2;
+    g.beginPath(); g.moveTo(3, 0); g.lineTo(33, 0); g.stroke();
+    g.fillStyle = '#fde047'; g.strokeStyle = OUT; g.lineWidth = 1.2;
+    starPath(g, 37, 0, 7, 3); g.fill(); g.stroke();
+  }
+}
+
 function drawSword(g, kind, T) {
   g.lineJoin = 'round';
   g.lineCap = 'round';
+  if (isGirlSword(kind)) { drawGirlSword(g, kind, T); return; }
   const steel = (y0, y1) => {
     const gr = g.createLinearGradient(0, y0, 0, y1);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#d2dae5'); gr.addColorStop(1, '#8c99ab');
@@ -987,9 +1103,48 @@ function drawSword(g, kind, T) {
 // ======================================================================
 //  KRESLENÍ: štíty (střed v 0,0; sx = roztažení do šířky pro náhledy)
 // ======================================================================
+function drawGirlShield(g, kind, T) {
+  g.lineJoin = 'round'; g.lineWidth = 2; g.strokeStyle = OUT;
+  const gr = g.createLinearGradient(-9, -18, 9, 18);
+  gr.addColorStop(0, T.light); gr.addColorStop(0.45, T.main); gr.addColorStop(1, T.dark);
+  g.fillStyle = gr;
+  if (kind === 'heart') {
+    g.beginPath();
+    g.moveTo(0, -8);
+    g.bezierCurveTo(-3, -18, -10, -17, -9, -8);
+    g.bezierCurveTo(-8, 2, -2, 8, 0, 17);
+    g.bezierCurveTo(2, 8, 8, 2, 9, -8);
+    g.bezierCurveTo(10, -17, 3, -18, 0, -8);
+    g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.55)';
+    g.beginPath(); g.ellipse(-4, -8, 2.2, 3.4, -0.5, 0, Math.PI * 2); g.fill();
+  } else if (kind === 'flower') {
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      g.beginPath(); g.ellipse(Math.cos(a) * 5, Math.sin(a) * 10, 4.6, 7.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = '#fde047';
+    g.beginPath(); g.ellipse(0, 0, 3.6, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (kind === 'butterfly') {
+    g.beginPath(); g.ellipse(0, -9, 8.5, 9, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.ellipse(0, 9.5, 6.5, 8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.7)';
+    g.beginPath(); g.arc(0, -9, 3, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#2b3140'; rr(g, -1.3, -17, 2.6, 34, 1.3); g.fill();
+  } else { // moon
+    g.beginPath();
+    g.ellipse(0, 0, 8.5, 17, 0, 0, Math.PI * 2);
+    g.moveTo(8.7, 0);
+    g.ellipse(3.5, 0, 5.2, 13.5, 0, 0, Math.PI * 2);
+    g.fill('evenodd'); g.stroke();
+    g.fillStyle = '#fde047'; starPath(g, -2, -1, 4.5, 1.9); g.fill();
+  }
+}
+
 function drawShield(g, kind, T, sx) {
   g.save();
   g.scale(sx || 1, 1);
+  if (isGirlShield(kind)) { drawGirlShield(g, kind, T); g.restore(); return; }
   g.lineJoin = 'round';
   g.lineWidth = 2; g.strokeStyle = OUT;
   const grad = () => {
@@ -1045,7 +1200,7 @@ function drawShield(g, kind, T, sx) {
 // ======================================================================
 //  POZADÍ (kreslí se jednou do skryté plochy a pak už jen kopíruje)
 // ======================================================================
-const HZ = 72;   // horizont (nahoře kulisy, dole bojiště)
+const HZ = 72;
 const bgCache = [];
 
 function getBackground(idx) {
@@ -1113,7 +1268,7 @@ function paintDesert(g, rnd, W, H) {
   };
   cactus(70, HZ + 20, 1.1); cactus(835, HZ + 24, 0.95); cactus(470, HZ + 10, 0.7);
   cactus(30, 440, 1.0); cactus(870, 455, 1.15);
-  for (const p of [[250, HZ + 16], [640, HZ + 18], [180, 470], [700, 475]]) {   // suché trsy
+  for (const p of [[250, HZ + 16], [640, HZ + 18], [180, 470], [700, 475]]) {
     g.strokeStyle = '#8a6a3a'; g.lineWidth = 1.4;
     for (let k = 0; k < 7; k++) {
       const a = -Math.PI / 2 + (k - 3) * 0.32;
@@ -1177,7 +1332,7 @@ function paintForest(g, rnd, W, H) {
     g.fillStyle = 'rgba(190,255,170,.2)'; g.beginPath(); g.arc(x - 4 * s, y - 10 * s, 6 * s, 0, Math.PI * 2); g.fill();
   };
   bush(32, 120, 0.9); bush(868, 112, 1.0); bush(40, 462, 1.1); bush(862, 468, 1.2); bush(450, 480, 0.8);
-  for (const p of [[150, 440], [740, 130], [300, 100]]) {                      // kameny
+  for (const p of [[150, 440], [740, 130], [300, 100]]) {
     g.fillStyle = '#8c9aa0'; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
     g.beginPath(); g.ellipse(p[0], p[1], 11, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
     g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(p[0] - 3, p[1] - 2, 5, 2.6, 0, 0, Math.PI * 2); g.fill();
@@ -1249,40 +1404,54 @@ function paintRocks(g, rnd, W, H) {
 //  STAV APLIKACE
 // ======================================================================
 let selectedDevice = 'pc';
-let gameMode = 'ai';
+let gameMode = 'ai';              // 'ai' | 'pvp' | 'team'
 let aiDifficulty = 'medium';
 let isWebMatch = false;
 let isHost = false;
 let isOnlyRulesView = false;
 let gameRunning = false;
-let sceneActive = false;          // true = na ploše je rozehraná / dohraná hra (jinak jen pozadí)
+let sceneActive = false;
 
 // PeerJS Networking
 let peer = null;
 let conn = null;
 const PEER_PREFIX = "KA-";
 
-// Společný start / restart přes web
 let hostReady = false;
 let clientReady = false;
-let clientLoadout = null;         // výbava soupeře (host ji dostane od klienta)
+let clientLoadout = null;
 
-// Události (jiskry, texty), které host posílá klientovi
 let netEvents = [];
-
-// Vstup klienta (hráč 2 přes web) z tlačítek na displeji
 let pendingClientAttack = false;
 let clientTouchShield = false;
 
-// Klávesy (pouze podle e.code, aby to fungovalo na každé klávesnici)
 const keys = {};
 
-// Hráči & Objekty
-let player1, player2, medkits = [], particles = [], floatingTexts = [];
+// Hráči & Objekty (players = všichni bojovníci v aréně, player1/player2 = první dva)
+let players = [], player1, player2, medkits = [], particles = [], floatingTexts = [];
 const match = { bg: 0 };
 
-// Vstup z mobilního joysticku
 let touchInputP1 = { vx: 0, vy: 0 };
+
+// ---------- týmové formáty (vždy férový počet v každém týmu) ----------
+const POS4 = [[130, 150], [130, 350], [770, 150], [770, 350]];
+const TEAM_FORMATS = {
+  '1v1':  { name: '1 proti 1',            cols: [1, 2],       grp: [1, 2],       pos: [[150, 250], [750, 250]] },
+  'ffa3': { name: '3 – všichni proti všem', cols: [1, 2, 3],    grp: [1, 2, 3],    pos: [[130, 250], [770, 150], [770, 350]] },
+  'ffa4': { name: '4 – všichni proti všem', cols: [1, 2, 3, 4], grp: [1, 2, 3, 4], pos: POS4 },
+  '2v2':  { name: '2 proti 2 (týmy)',      cols: [1, 3, 2, 4], grp: [1, 1, 2, 2], pos: POS4 }
+};
+const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai'], diff: 'medium' };
+
+// barva (1-4), kterou má lidský hráč h v právě chystané hře
+function hcolor(h) {
+  if (!isWebMatch && gameMode === 'team') {
+    const f = TEAM_FORMATS[teamCfg.fmt];
+    const i = teamCfg.slots.indexOf('p' + h);
+    if (i >= 0 && i < f.cols.length) return f.cols[i];
+  }
+  return h;
+}
 
 // ======================================================================
 //  TŘÍDY
@@ -1291,8 +1460,10 @@ class Knight {
   constructor(x, y, team, style) {
     this.x = x;
     this.y = y;
-    this.team = team;                 // 1 = modrý, 2 = červený (barvy jsou pevné)
-    this.style = style;               // { c: postava, s: meč, h: štít }
+    this.team = team;                 // barva: 1 modrý, 2 červený, 3 žlutý, 4 zelený
+    this.group = team;                // tým (spoluhráči mají stejnou skupinu)
+    this.ctrl = null;                 // 'p1' | 'p2' | 'ai' | 'net'
+    this.style = style;
     this.radius = 22;
     this.hp = 50;
     this.maxHp = 50;
@@ -1305,7 +1476,6 @@ class Knight {
     this.vx = 0;
     this.vy = 0;
     this.walkCycle = 0;
-    // Pro vizuální dopočet na klientovi (web hra)
     this.lastX = x;
     this.lastY = y;
     this.netAttacking = false;
@@ -1335,7 +1505,6 @@ class Knight {
     }
   }
 
-  // Klient nic nepočítá, jen animuje chůzi a máchnutí mečem podle dat od hosta
   clientVisualUpdate() {
     const moved = Math.hypot(this.x - this.lastX, this.y - this.lastY) > 0.3;
     this.walkCycle = moved ? this.walkCycle + 0.25 : 0;
@@ -1364,7 +1533,6 @@ class Knight {
       this.walkCycle, this.isShielding, this.isAttacking ? this.attackSwing : null);
     ctx.restore();
 
-    // ukazatel životů nad hlavou
     const T = TEAM[this.team];
     const w = 46, h = 6, x = this.x - w / 2, y = this.y - 46;
     ctx.fillStyle = 'rgba(6,9,16,.65)';
@@ -1380,8 +1548,9 @@ class Knight {
     rr(ctx, x, y, w, h, 3); ctx.stroke();
   }
 
-  attack(target) {
-    if (this.attackCooldown > 0 || this.isShielding) return;
+  // Seká na všechny protivníky (jiný tým), kteří jsou v dosahu meče
+  attack() {
+    if (this.attackCooldown > 0 || this.isShielding || this.hp <= 0) return;
 
     this.isAttacking = true;
     this.attackSwing = 0;
@@ -1389,17 +1558,20 @@ class Knight {
 
     const dir = this.facingRight ? 1 : -1;
     const swordReachX = this.x + dir * 38;
-    const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
 
-    if (dist < target.radius + 18) {
-      if (target.isShielding) {
-        createSparks(swordReachX, this.y, '#60a5fa');
-        createFloatingText('ODRAŽENO!', target.x, target.y - 52, '#7dd3fc');
-        this.x -= dir * 12;
-      } else {
-        target.hp = Math.max(0, target.hp - 5);
-        createSparks(target.x, target.y, '#f87171');
-        createFloatingText('-5 HP', target.x, target.y - 52, '#fca5a5');
+    for (const target of players) {
+      if (target === this || target.group === this.group || target.hp <= 0) continue;
+      const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
+      if (dist < target.radius + 18) {
+        if (target.isShielding) {
+          createSparks(swordReachX, this.y, '#60a5fa');
+          createFloatingText('ODRAŽENO!', target.x, target.y - 52, '#7dd3fc');
+          this.x -= dir * 12;
+        } else {
+          target.hp = Math.max(0, target.hp - 5);
+          createSparks(target.x, target.y, '#f87171');
+          createFloatingText('-5 HP', target.x, target.y - 52, '#fca5a5');
+        }
       }
     }
   }
@@ -1481,15 +1653,11 @@ function showScreen(screenId) {
   if (screenId) {
     document.getElementById(screenId).classList.remove('hidden');
   }
-  if (screenId === 'menu-pvp') {
-    // Hra dvou hráčů na jednom zařízení je jen pro notebook / PC
-    document.getElementById('btn-local-pvp').classList.toggle('hidden', selectedDevice === 'mobile');
-  }
   if (screenId !== 'customize-screen') stopPreviewLoop();
 }
 
 function setWaitText(show) {
-  ['wait-text-cust', 'wait-text-over'].forEach(id => {
+  ['wait-text-cust', 'wait-text-over', 'wait-text-rules'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', !show);
   });
 }
@@ -1508,7 +1676,7 @@ function openPvPMenu() {
 }
 
 function setupLocalPvP() {
-  if (selectedDevice === 'mobile') return;   // na mobilu / tabletu není
+  if (selectedDevice === 'mobile') return;
   gameMode = 'pvp';
   isWebMatch = false;
   isHost = false;
@@ -1520,12 +1688,102 @@ function startSinglePlayer(diff) {
   isWebMatch = false;
   isHost = false;
   aiDifficulty = diff;
-  prepareInstructions();
+  goToCustomize('menu-difficulty');
+}
+
+// ---------- týmy a souboje ----------
+function openTeamMenu() {
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  if (selectedDevice === 'mobile') teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : 'ai');
+  renderTeamMenu();
+  showScreen('menu-team');
+}
+
+function renderTeamMenu() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  const fw = document.getElementById('team-formats');
+  fw.innerHTML = '';
+  Object.keys(TEAM_FORMATS).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (k === teamCfg.fmt ? '' : ' btn-secondary');
+    b.textContent = TEAM_FORMATS[k].name;
+    b.onclick = () => { teamCfg.fmt = k; renderTeamMenu(); };
+    fw.appendChild(b);
+  });
+
+  const sw = document.getElementById('team-slots');
+  sw.innerHTML = '';
+  f.cols.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn btn-secondary slotbtn';
+    b.style.setProperty('--tc', TEAM[c].main);
+    const s = teamCfg.slots[i];
+    const who = s === 'p1' ? 'Ty (Hráč 1)' : (s === 'p2' ? 'Kamarád (Hráč 2)' : 'Počítač');
+    const tm = teamCfg.fmt === '2v2' ? ' · tým ' + (f.grp[i] === 1 ? 'A' : 'B') : '';
+    b.textContent = TEAM[c].name + tm + ' – ' + who;
+    b.onclick = () => toggleSlot(i);
+    sw.appendChild(b);
+  });
+
+  let hint = teamCfg.fmt === '2v2'
+    ? 'Tým A: modrý + žlutý. Tým B: červený + zelený. Týmy mají vždy stejný počet bojovníků.'
+    : (teamCfg.fmt === '1v1' ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.');
+  hint += selectedDevice === 'mobile'
+    ? ' Na mobilu hraješ jen ty, ostatní řídí počítač.'
+    : ' Klepnutím na bojovníka ho předáš kamarádovi (stejná klávesnice) nebo zpět počítači.';
+  document.getElementById('team-hint').textContent = hint;
+  document.getElementById('team-diff').textContent =
+    'Počítač: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
+}
+
+function toggleSlot(i) {
+  if (i === 0 || selectedDevice === 'mobile') return;
+  if (teamCfg.slots[i] === 'p2') {
+    teamCfg.slots[i] = 'ai';
+  } else {
+    teamCfg.slots = teamCfg.slots.map(s => s === 'p2' ? 'ai' : s);
+    teamCfg.slots[i] = 'p2';
+  }
+  renderTeamMenu();
+}
+
+function cycleTeamDiff() {
+  const order = ['easy', 'medium', 'hard'];
+  teamCfg.diff = order[(order.indexOf(teamCfg.diff) + 1) % 3];
+  renderTeamMenu();
+}
+
+function startTeamGame() {
+  gameMode = 'team';
+  isWebMatch = false;
+  isHost = false;
+  aiDifficulty = teamCfg.diff;
+  goToCustomize('menu-team');
+}
+
+function buildRoster() {
+  const f = TEAM_FORMATS[teamCfg.fmt];
+  return f.cols.map((c, i) => {
+    const ctrl = teamCfg.slots[i];
+    return {
+      x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl,
+      style: ctrl === 'ai' ? randomLoadout() : cleanLoadout(settings.l[+ctrl[1]])
+    };
+  });
 }
 
 function showRulesOnly() {
   isOnlyRulesView = true;
   document.getElementById('start-battle-btn').classList.add('hidden');
+  setWaitText(false);
+  document.getElementById('controls-desc').innerHTML = getControlsHTML();
+  showScreen('instructions-screen');
+}
+
+function showRulesBeforeBattle() {
+  isOnlyRulesView = false;
   setWaitText(false);
   document.getElementById('controls-desc').innerHTML = getControlsHTML();
   showScreen('instructions-screen');
@@ -1555,8 +1813,8 @@ function getControlsHTML() {
   } else {
     return `
       <p><strong>Ovládání na klávesnici:</strong></p>
-      <p><strong>Hráč 1 (modrý):</strong> Pohyb = [W, A, S, D] | Meč = [F] | Štít = [G]</p>
-      <p><strong>Hráč 2 (červený):</strong> Pohyb = [ŠIPKY] | Meč = [MEZERNÍK] | Štít = [SHIFT]</p>
+      <p><strong>Hráč 1:</strong> Pohyb = [W, A, S, D] | Meč = [F] | Štít = [G]</p>
+      <p><strong>Hráč 2 (jen když ho zapneš):</strong> Pohyb = [ŠIPKY] | Meč = [MEZERNÍK] | Štít = [SHIFT]</p>
     `;
   }
 }
@@ -1565,33 +1823,36 @@ function getControlsHTML() {
 let custReturn = 'instructions-screen';
 let previewRAF = 0;
 
+// vrací čísla lidských hráčů (1, 2), kteří si vybírají výbavu
 function customizeSlots() {
-  if (isWebMatch) return [isHost ? 1 : 2];     // na webu si každý vybírá jen svého
-  if (gameMode === 'pvp') return [1, 2];       // 2 hráči na jednom PC
-  return [1];                                  // proti počítači
+  if (isWebMatch) return [isHost ? 1 : 2];
+  if (gameMode === 'team') return teamCfg.slots.slice(0, TEAM_FORMATS[teamCfg.fmt].cols.length).filter(s => s !== 'ai').map(s => +s[1]);
+  if (gameMode === 'pvp') return [1, 2];
+  return [1];
 }
 
 function slotTitle(team) {
-  const barva = team === 1 ? 'modrý' : 'červený';
+  const barva = TEAM[hcolor(team)].name.toLowerCase();
   if (isWebMatch) return 'Ty · ' + barva;
-  if (gameMode === 'pvp') return 'Hráč ' + team + ' · ' + barva;
+  if (gameMode === 'pvp' || gameMode === 'team') return 'Hráč ' + team + ' · ' + barva;
   return 'Tvůj bojovník · ' + barva;
 }
 
-function makeChipCanvas(kind, i, team) {
+function makeChipCanvas(kind, i, team, gi) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 72;
   const g = cv.getContext('2d');
   const T = TEAM[team];
+  const st = { c: i, s: 0, h: 0, g: gi };
   if (kind === 'c') {
     g.translate(36, 47); g.scale(1.05, 1.05);
-    drawKnightFigure(g, team, { c: i, s: 0, h: 0 }, 1, 0, false, null, { noSword: true, noShield: true, noShadow: true });
+    drawKnightFigure(g, team, st, 1, 0, false, null, { noSword: true, noShield: true, noShadow: true });
   } else if (kind === 's') {
     g.translate(14, 58); g.rotate(-Math.PI / 4); g.scale(1.35, 1.35);
-    drawSword(g, SWORDS[i].id, T);
+    drawSword(g, swordList(st)[i].id, T);
   } else {
     g.translate(36, 36); g.scale(1.5, 1.5);
-    drawShield(g, SHIELDS[i].id, T, 1.6);
+    drawShield(g, shieldList(st)[i].id, T, 1.6);
   }
   return cv;
 }
@@ -1600,7 +1861,8 @@ function buildCustomize() {
   const wrap = document.getElementById('cust-slots');
   wrap.innerHTML = '';
   customizeSlots().forEach(team => {
-    const T = TEAM[team];
+    const C = hcolor(team);
+    const T = TEAM[C];
     const el = document.createElement('div');
     el.className = 'slot';
     el.style.setProperty('--tc', T.main);
@@ -1611,7 +1873,27 @@ function buildCustomize() {
       '<div class="slot-rows"></div></div>';
     el.querySelector('.slot-title').textContent = slotTitle(team);
     const rows = el.querySelector('.slot-rows');
-    [['c', 'Postava', CHARACTERS], ['s', 'Meč', SWORDS], ['h', 'Štít', SHIELDS]].forEach(([k, label, list]) => {
+    const me = settings.l[team];
+
+    // přepínač Kluk / Holka
+    const grow = document.createElement('div');
+    grow.className = 'row';
+    grow.innerHTML = '<div class="row-label">Typ</div><div class="chips"></div>';
+    ['Kluk', 'Holka'].forEach((nm, gi) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip gen' + (me.g === gi ? ' sel' : '');
+      b.textContent = nm;
+      b.addEventListener('click', () => {
+        me.g = gi;
+        saveSettings();
+        buildCustomize();
+      });
+      grow.querySelector('.chips').appendChild(b);
+    });
+    rows.appendChild(grow);
+
+    [['c', 'Postava', charList(me)], ['s', 'Meč', swordList(me)], ['h', 'Štít', shieldList(me)]].forEach(([k, label, list]) => {
       const row = document.createElement('div');
       row.className = 'row';
       row.innerHTML = '<div class="row-label"></div><div class="chips"></div>';
@@ -1620,13 +1902,13 @@ function buildCustomize() {
       list.forEach((item, i) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'chip' + (settings.l[team][k] === i ? ' sel' : '');
-        b.appendChild(makeChipCanvas(k, i, team));
+        b.className = 'chip' + (me[k] === i ? ' sel' : '');
+        b.appendChild(makeChipCanvas(k, i, C, me.g));
         const sp = document.createElement('span');
         sp.textContent = item.name;
         b.appendChild(sp);
         b.addEventListener('click', () => {
-          settings.l[team][k] = i;
+          me[k] = i;
           saveSettings();
           chips.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('sel', j === i));
         });
@@ -1667,18 +1949,19 @@ function buildCustomize() {
     chips.appendChild(b);
   });
   box.appendChild(row);
-  if (!isWebMatch && gameMode === 'ai') {
+  if (!isWebMatch && (gameMode === 'ai' || gameMode === 'team')) {
     const hint = document.createElement('p');
     hint.className = 'hint';
-    hint.textContent = 'Počítačový soupeř dostane náhodnou výbavu.';
+    hint.textContent = 'Počítačoví bojovníci dostanou náhodnou výbavu.';
     box.appendChild(hint);
   }
 }
 
 function drawPreviews(ts) {
   document.querySelectorAll('.slot-preview').forEach(cv => {
-    const team = +cv.dataset.team;
-    const st = settings.l[team];
+    const hid = +cv.dataset.team;
+    const st = settings.l[hid];
+    const team = hcolor(hid);
     const T = TEAM[team];
     const g = cv.getContext('2d');
     g.clearRect(0, 0, cv.width, cv.height);
@@ -1711,7 +1994,7 @@ function stopPreviewLoop() {
 
 function goToCustomize(from) {
   custReturn = from || 'instructions-screen';
-  sceneActive = false;        // na pozadí za nabídkou ukaž vybranou arénu
+  sceneActive = false;
   buildCustomize();
   showScreen('customize-screen');
   startPreviewLoop();
@@ -1726,21 +2009,23 @@ function custBack() {
 function resolveMatchSetup() {
   const l1 = cleanLoadout(settings.l[1]);
   let l2;
-  if (isWebMatch) l2 = cleanLoadout(clientLoadout || settings.l[2]);      // host: výbava klienta
+  if (isWebMatch) l2 = cleanLoadout(clientLoadout || settings.l[2]);
   else if (gameMode === 'ai') l2 = randomLoadout();
   else l2 = cleanLoadout(settings.l[2]);
   return { l1: l1, l2: l2, bg: settings.bg };
 }
 
-function startRound(l1, l2, bg) {
+function startRound(l1, l2, bg, roster) {
   showScreen(null);
   setWaitText(false);
-  initGame(l1, l2, bg);
+  initGame(l1, l2, bg, roster);
 }
 
 function confirmAndStartGame() {
   if (isWebMatch) {
     markReadyWeb();
+  } else if (gameMode === 'team') {
+    startRound(null, null, settings.bg, buildRoster());
   } else {
     const m = resolveMatchSetup();
     startRound(m.l1, m.l2, m.bg);
@@ -1751,7 +2036,6 @@ function restartCurrentGame() {
   confirmAndStartGame();
 }
 
-// --- Společný start přes web: hra začne, až kliknou oba ---
 function markReadyWeb() {
   if (isHost) {
     hostReady = true;
@@ -1780,7 +2064,7 @@ function startWebRound() {
 function closeNetwork() {
   const oldConn = conn;
   const oldPeer = peer;
-  conn = null;   // handler 'close' pozná, že jde o záměrné zavření
+  conn = null;
   peer = null;
   if (oldConn) { try { oldConn.close(); } catch (e) {} }
   if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
@@ -1818,7 +2102,7 @@ function backFromWeb() {
 }
 
 // ======================================================================
-//  PEERJS WEB MULTIPLAYER
+//  PEERJS WEB MULTIPLAYER (zůstává 1 proti 1)
 // ======================================================================
 function createRoom() {
   document.getElementById('room-display').classList.remove('hidden');
@@ -1842,7 +2126,6 @@ function createRoom() {
   myPeer.on('open', () => {
     document.getElementById('room-status-text').innerText = "Čekám na připojení soupeře...";
 
-    // Vygenerovat QR kód s přímým odkazem
     const joinUrl = window.location.href.split('?')[0] + '?room=' + roomCode;
     document.getElementById('qrcode-box').innerHTML = '';
     new QRCode(document.getElementById('qrcode-box'), {
@@ -1853,13 +2136,13 @@ function createRoom() {
   });
 
   myPeer.on('connection', (c) => {
-    if (conn) { c.close(); return; }   // přijmeme jen jednoho soupeře
+    if (conn) { c.close(); return; }
     conn = c;
     setupNetworkEvents(c);
     c.on('open', () => {
       document.getElementById('room-status-text').innerText = "Soupeř připojen! Spouštím hru...";
       setTimeout(() => {
-        if (conn === c) prepareInstructions();
+        if (conn === c) goToCustomize('menu-web');
       }, 800);
     });
   });
@@ -1902,7 +2185,7 @@ function joinRoom(autoCode) {
 
     c.on('open', () => {
       document.getElementById('join-status-text').innerText = "";
-      prepareInstructions();
+      goToCustomize('menu-web');
     });
 
     c.on('error', () => {
@@ -1942,19 +2225,16 @@ function setupNetworkEvents(c) {
     }
 
     if (data.type === 'sync') {
-      // Dokud hra neběží a hráči neexistují, data ignorujeme (dřív to způsobovalo pád)
       if (!gameRunning || !player1 || !player2) return;
 
       if (isHost) {
-        // Host přijímá pokyny od Hráče 2 (klienta)
         if (!data.p2) return;
         player2.vx = data.p2.vx;
         player2.vy = data.p2.vy;
         player2.facingRight = data.p2.facingRight;
         player2.isShielding = data.p2.isShielding;
-        if (data.p2.attackTrigger) player2.attack(player1);
+        if (data.p2.attackTrigger) player2.attack();
       } else {
-        // Klient přijímá celkový stav hry od Hosta
         if (!data.p1 || !data.p2) return;
 
         player1.x = data.p1.x;
@@ -1964,7 +2244,6 @@ function setupNetworkEvents(c) {
         player1.isShielding = data.p1.isShielding;
         player1.netAttacking = data.p1.isAttacking;
 
-        // Svého rytíře (hráč 2) nechává klient otáčet a krýt štítem lokálně, ať to nebliká
         player2.x = data.p2.x;
         player2.y = data.p2.y;
         player2.hp = data.p2.hp;
@@ -1989,7 +2268,7 @@ function setupNetworkEvents(c) {
   });
 
   c.on('close', () => {
-    if (c !== conn) return;   // záměrné zavření z naší strany
+    if (c !== conn) return;
     alert('Soupeř se odpojil.');
     returnToMainMenu();
   });
@@ -2020,7 +2299,6 @@ function sendNetworkSync(attackTriggered = false) {
   }
 }
 
-// Načtení URL s kódem místnosti z QR kódu
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const roomParam = urlParams.get('room');
@@ -2036,24 +2314,38 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // INICIALIZACE HRY
-function initGame(l1, l2, bg) {
+function initGame(l1, l2, bg, roster) {
   match.bg = clampIdx(bg, BACKGROUNDS.length);
-  player1 = new Knight(150, canvas.height / 2, 1, cleanLoadout(l1));
-  player2 = new Knight(canvas.width - 150, canvas.height / 2, 2, cleanLoadout(l2));
+  if (roster) {
+    players = roster.map(r => {
+      const k = new Knight(r.x, r.y, r.team, cleanLoadout(r.style));
+      k.group = r.group;
+      k.ctrl = r.ctrl;
+      k.facingRight = r.x < canvas.width / 2;
+      return k;
+    });
+    player1 = players[0];
+    player2 = players[1];
+  } else {
+    player1 = new Knight(150, canvas.height / 2, 1, cleanLoadout(l1));
+    player2 = new Knight(canvas.width - 150, canvas.height / 2, 2, cleanLoadout(l2));
+    player1.ctrl = 'p1';
+    player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
+    players = [player1, player2];
+  }
   medkits = [];
   particles = [];
   floatingTexts = [];
   netEvents = [];
   pendingClientAttack = false;
   clientTouchShield = false;
-  // Objekt se NESMÍ nahrazovat novým, joystick drží odkaz na ten původní
   touchInputP1.vx = 0; touchInputP1.vy = 0;
   gameRunning = true;
   sceneActive = true;
 
   const touchUI = document.getElementById('touch-controls');
   const pcHud = document.getElementById('pc-hud-guide');
-  const myTeam = (isWebMatch && !isHost) ? 2 : 1;
+  const myTeam = roster ? players[0].team : ((isWebMatch && !isHost) ? 2 : 1);
 
   if (selectedDevice === 'mobile') {
     touchUI.style.setProperty('--team', TEAM[myTeam].main);
@@ -2064,8 +2356,10 @@ function initGame(l1, l2, bg) {
     const sep = '<span class="sep">|</span>';
     if (isWebMatch) {
       pcHud.innerHTML = 'Pohyb <b>W A S D</b> / <b>ŠIPKY</b>' + sep + 'Meč <b>F</b> / <b>MEZERNÍK</b>' + sep + 'Štít <b>G</b> / <b>SHIFT</b>';
-    } else {
+    } else if (players.some(p => p.ctrl === 'p2')) {
       pcHud.innerHTML = 'Hráč 1: <b>W A S D</b> <b>F</b> <b>G</b>' + sep + 'Hráč 2: <b>ŠIPKY</b> <b>MEZERNÍK</b> <b>SHIFT</b>';
+    } else {
+      pcHud.innerHTML = 'Pohyb <b>W A S D</b>' + sep + 'Meč <b>F</b>' + sep + 'Štít <b>G</b>';
     }
     pcHud.classList.remove('hidden');
   }
@@ -2097,11 +2391,14 @@ window.addEventListener('keyup', e => {
     if (player1 && (!isWebMatch || isHost)) player1.isShielding = false;
   }
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-    if (player2 && !isWebMatch) player2.isShielding = false;
+    if (isWebMatch) {
+      if (isHost && player1) player1.isShielding = false;
+    } else {
+      players.forEach(p => { if (p.ctrl === 'p2') p.isShielding = false; });
+    }
   }
 });
 
-// Při přepnutí na jiné okno se uvolní všechny klávesy (aby nezůstaly "zaseknuté")
 window.addEventListener('blur', () => {
   for (const k in keys) keys[k] = false;
 });
@@ -2172,13 +2469,11 @@ function setupTouchListeners() {
 
       inputObj.vx = Math.abs(normX) > 0.2 ? normX * speed : 0;
       inputObj.vy = Math.abs(normY) > 0.2 ? normY * speed : 0;
-      // Natočení rytíře se řeší v update() podle rychlosti
     }
   }
 
   handleJoystick('p1-joystick-zone', 'p1-joystick-knob', touchInputP1);
 
-  // Akční tlačítka
   const bindAction = (btnId, onPress, onRelease) => {
     const btn = document.getElementById(btnId);
     btn.addEventListener('touchstart', e => {
@@ -2198,10 +2493,9 @@ function setupTouchListeners() {
     }
   };
 
-  // Moje tlačítka (na webu: můj rytíř – host = modrý, klient = červený)
   bindAction('p1-btn-attack', () => {
-    if (!isWebMatch || isHost) player1.attack(player2);
-    else pendingClientAttack = true;   // klient pošle úder hostovi
+    if (!isWebMatch || isHost) player1.attack();
+    else pendingClientAttack = true;
   });
 
   bindAction('p1-btn-shield',
@@ -2218,8 +2512,13 @@ function setupTouchListeners() {
 
 function finishGame() {
   gameRunning = false;
+  const alive = players.filter(p => p.hp > 0);
   let msg = '';
-  if (player1.hp > 0 && player2.hp <= 0) {
+  if (gameMode === 'team' && !isWebMatch) {
+    if (alive.length === 0) msg = 'Všichni rytíři padli!';
+    else if (teamCfg.fmt === '2v2') msg = 'Vítězí tým ' + (alive[0].group === 1 ? 'A' : 'B') + ': ' + alive.map(p => TEAM[p.team].name).join(' + ') + '!';
+    else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
+  } else if (player1.hp > 0 && player2.hp <= 0) {
     msg = 'Modrý rytíř ovládl arénu!';
   } else if (player2.hp > 0 && player1.hp <= 0) {
     msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Červený rytíř ovládl arénu!';
@@ -2238,52 +2537,57 @@ function update() {
   if (!gameRunning) return;
 
   if (!isWebMatch || isHost) {
-    // --- OVLÁDÁNÍ HRÁČE 1 ---
-    player1.vx = touchInputP1.vx;
-    player1.vy = touchInputP1.vy;
+    for (const p of players) {
+      if (p.hp <= 0) { p.vx = 0; p.vy = 0; p.isShielding = false; continue; }
 
-    if (keys['KeyA'] || (isWebMatch && keys['ArrowLeft'])) { player1.vx = -player1.speed; }
-    else if (keys['KeyD'] || (isWebMatch && keys['ArrowRight'])) { player1.vx = player1.speed; }
+      if (p.ctrl === 'p1') {
+        const W = isWebMatch;
+        p.vx = touchInputP1.vx;
+        p.vy = touchInputP1.vy;
 
-    if (keys['KeyW'] || (isWebMatch && keys['ArrowUp'])) { player1.vy = -player1.speed; }
-    else if (keys['KeyS'] || (isWebMatch && keys['ArrowDown'])) { player1.vy = player1.speed; }
+        if (keys['KeyA'] || (W && keys['ArrowLeft'])) { p.vx = -p.speed; }
+        else if (keys['KeyD'] || (W && keys['ArrowRight'])) { p.vx = p.speed; }
 
-    faceByVelocity(player1);
+        if (keys['KeyW'] || (W && keys['ArrowUp'])) { p.vy = -p.speed; }
+        else if (keys['KeyS'] || (W && keys['ArrowDown'])) { p.vy = p.speed; }
 
-    if (keys['KeyG'] || (isWebMatch && (keys['ShiftLeft'] || keys['ShiftRight']))) player1.isShielding = true;
-    if (keys['KeyF'] || (isWebMatch && keys['Space'])) { player1.attack(player2); }
+        faceByVelocity(p);
 
-    // --- OVLÁDÁNÍ HRÁČE 2 ---
-    if (gameMode === 'pvp' && !isWebMatch) {
-      player2.vx = 0;
-      player2.vy = 0;
+        if (keys['KeyG'] || (W && (keys['ShiftLeft'] || keys['ShiftRight']))) p.isShielding = true;
+        if (keys['KeyF'] || (W && keys['Space'])) p.attack();
+      } else if (p.ctrl === 'p2') {
+        p.vx = 0;
+        p.vy = 0;
 
-      if (keys['ArrowLeft']) { player2.vx = -player2.speed; }
-      else if (keys['ArrowRight']) { player2.vx = player2.speed; }
+        if (keys['ArrowLeft']) { p.vx = -p.speed; }
+        else if (keys['ArrowRight']) { p.vx = p.speed; }
 
-      if (keys['ArrowUp']) { player2.vy = -player2.speed; }
-      else if (keys['ArrowDown']) { player2.vy = player2.speed; }
+        if (keys['ArrowUp']) { p.vy = -p.speed; }
+        else if (keys['ArrowDown']) { p.vy = p.speed; }
 
-      faceByVelocity(player2);
+        faceByVelocity(p);
 
-      if (keys['ShiftLeft'] || keys['ShiftRight']) player2.isShielding = true;
-      if (keys['Space']) { player2.attack(player1); }
-    } else if (gameMode === 'ai') {
-      updateAI();
+        if (keys['ShiftLeft'] || keys['ShiftRight']) p.isShielding = true;
+        if (keys['Space']) p.attack();
+      } else if (p.ctrl === 'ai') {
+        updateAI(p);
+      }
+      // ctrl 'net' (hráč 2 přes web) řídí data od klienta
     }
-    // Při web hře řídí hráče 2 data od klienta (vx, vy, štít, útok)
 
-    checkShieldSolidBlock(player1, player2);
-    checkShieldSolidBlock(player2, player1);
+    for (const a of players) {
+      for (const d of players) {
+        if (a !== d && a.hp > 0 && d.hp > 0) checkShieldSolidBlock(a, d);
+      }
+    }
 
-    player1.update();
-    player2.update();
+    players.forEach(p => p.update());
 
-    // Lékárničky (procházíme odzadu, aby mazání nepřeskakovalo prvky)
     for (let i = medkits.length - 1; i >= 0; i--) {
       const m = medkits[i];
       m.update();
-      for (const p of [player1, player2]) {
+      for (const p of players) {
+        if (p.hp <= 0) continue;
         if (Math.hypot(p.x - m.x, p.y - m.y) < p.radius + m.size) {
           p.hp = Math.min(p.maxHp, p.hp + 10);
           createFloatingText('+10 HP', p.x, p.y - 52, '#86efac');
@@ -2316,12 +2620,10 @@ function update() {
 
     sendNetworkSync(clientAttackTrigger);
 
-    // Jen animace (chůze nohou, máchnutí mečem)
     player1.clientVisualUpdate();
     player2.clientVisualUpdate();
   }
 
-  // Částice & Texty (odzadu kvůli mazání)
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.x += p.vx; p.y += p.vy; p.life--;
@@ -2333,8 +2635,9 @@ function update() {
     if (t.life <= 0) floatingTexts.splice(i, 1);
   }
 
-  // KONTROLA VÍTĚZSTVÍ
-  if (player1.hp <= 0 || player2.hp <= 0) {
+  // KONTROLA VÍTĚZSTVÍ: končí, když zbude jen jeden tým (nebo nikdo)
+  const alive = players.filter(p => p.hp > 0);
+  if (alive.length === 0 || alive.every(p => p.group === alive[0].group)) {
     finishGame();
   }
 }
@@ -2352,75 +2655,87 @@ function checkShieldSolidBlock(attacker, defender) {
   }
 }
 
-function updateAI() {
-  const dx = player1.x - player2.x;
-  const dy = player1.y - player2.y;
-  const dist = Math.hypot(dx, dy);
+// AI: jde po nejbližším protivníkovi (spoluhráče nechává na pokoji)
+function updateAI(p) {
+  let target = null, best = Infinity;
+  for (const o of players) {
+    if (o.group === p.group || o.hp <= 0) continue;
+    const d = Math.hypot(o.x - p.x, o.y - p.y);
+    if (d < best) { best = d; target = o; }
+  }
+  if (!target) { p.vx = 0; p.vy = 0; return; }
 
-  player2.facingRight = dx > 0;
+  const dx = target.x - p.x;
+  const dy = target.y - p.y;
+  const dist = best;
+
+  p.facingRight = dx > 0;
   let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75 : 1);
 
   if (dist > 55) {
-    player2.vx = (dx / dist) * player2.speed * speedMod;
-    player2.vy = (dy / dist) * player2.speed * speedMod;
+    p.vx = (dx / dist) * p.speed * speedMod;
+    p.vy = (dy / dist) * p.speed * speedMod;
   } else {
-    player2.vx = 0;
-    player2.vy = 0;
+    p.vx = 0;
+    p.vy = 0;
   }
 
   if (dist < 70) {
-    if (player1.isAttacking && aiDifficulty !== 'easy') {
-      player2.isShielding = true;
+    if (target.isAttacking && aiDifficulty !== 'easy') {
+      p.isShielding = true;
     } else {
-      player2.isShielding = false;
-      player2.attack(player1);
+      p.isShielding = false;
+      p.attack();
     }
   } else {
-    player2.isShielding = false;
+    p.isShielding = false;
   }
 }
 
 // ======================================================================
 //  VYKRESLENÍ
 // ======================================================================
-function hudLabel(team) {
-  if (isWebMatch) {
-    const mine = (team === 1) === isHost;
-    return TEAM[team].name + (mine ? ' · TY' : '');
-  }
-  if (gameMode === 'ai') return team === 1 ? 'MODRÝ · TY' : 'POČÍTAČ';
-  return team === 1 ? 'HRÁČ 1 · MODRÝ' : 'HRÁČ 2 · ČERVENÝ';
+function hudLabel(p) {
+  const nm = TEAM[p.team].name;
+  if (isWebMatch) return nm + (((p.team === 1) === isHost) ? ' · TY' : '');
+  let t = p.ctrl === 'p1' ? (gameMode === 'pvp' ? 'HRÁČ 1' : 'TY') : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
+  if (gameMode === 'team' && teamCfg.fmt === '2v2') t += ' · TÝM ' + (p.group === 1 ? 'A' : 'B');
+  return nm + ' · ' + t;
 }
 
 function drawHUD() {
-  // na malém displeji je plátno zmenšené, proto ukazatele úměrně zvětšíme, ať jsou čitelné
   const k = Math.min(1.45, Math.max(1, canvas.width / (canvas.clientWidth || canvas.width)));
   const W = canvas.width / k;
+  const n = players.length;
+  const used = [0, 0];
   ctx.save();
   ctx.scale(k, k);
-  [player1, player2].forEach((p, i) => {
-    const team = i + 1, T = TEAM[team];
-    const w = 250, h = 12, m = 16;
-    const x = team === 1 ? m : W - m - w;
-    const y = 27;
+  players.forEach((p, i) => {
+    const T = TEAM[p.team];
+    const side = n === 2 ? i : (n === 3 ? (i === 0 ? 0 : 1) : (i < 2 ? 0 : 1));
+    const left = side === 0;
+    const row = used[side]++;
+    const w = 220, h = 11, m = 16;
+    const x = left ? m : W - m - w;
+    const y = 27 + row * 27;
 
     ctx.font = '800 11px ' + FONT;
     ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = team === 1 ? 'left' : 'right';
-    const tx = team === 1 ? x : x + w;
+    ctx.textAlign = left ? 'left' : 'right';
+    const tx = left ? x : x + w;
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineJoin = 'round';
-    ctx.strokeText(hudLabel(team), tx, 21);
+    ctx.strokeText(hudLabel(p), tx, y - 6);
     ctx.fillStyle = T.light;
-    ctx.fillText(hudLabel(team), tx, 21);
+    ctx.fillText(hudLabel(p), tx, y - 6);
 
     ctx.fillStyle = 'rgba(6,9,16,.6)';
     rr(ctx, x, y, w, h, 6); ctx.fill();
     const f = Math.max(0, p.hp / p.maxHp);
     if (f > 0) {
       const fw = Math.max(h, w * f);
-      const fx = team === 1 ? x : x + w - fw;
+      const fx = left ? x : x + w - fw;
       const gr = ctx.createLinearGradient(fx, 0, fx + fw, 0);
-      if (team === 1) { gr.addColorStop(0, T.dark); gr.addColorStop(1, T.main); }
+      if (left) { gr.addColorStop(0, T.dark); gr.addColorStop(1, T.main); }
       else { gr.addColorStop(0, T.main); gr.addColorStop(1, T.dark); }
       ctx.fillStyle = gr;
       rr(ctx, fx, y, fw, h, 6); ctx.fill();
@@ -2431,9 +2746,9 @@ function drawHUD() {
     rr(ctx, x, y, w, h, 6); ctx.stroke();
 
     ctx.font = '800 10px ' + FONT;
-    ctx.textAlign = team === 1 ? 'right' : 'left';
+    ctx.textAlign = left ? 'right' : 'left';
     ctx.fillStyle = '#fff';
-    ctx.fillText(String(Math.ceil(p.hp)), team === 1 ? x + w - 7 : x + 7, y + 9.5);
+    ctx.fillText(String(Math.ceil(p.hp)), left ? x + w - 7 : x + 7, y + 8.5);
   });
   ctx.restore();
 }
@@ -2446,9 +2761,8 @@ function render() {
   drawHUD();
 
   medkits.forEach(m => m.draw());
-  [player1, player2].slice().sort((a, b) => a.y - b.y).forEach(p => p.draw());
+  players.filter(p => p.hp > 0).sort((a, b) => a.y - b.y).forEach(p => p.draw());
 
-  // Jiskry
   particles.forEach(p => {
     const a = Math.max(0, p.life / 16);
     ctx.globalAlpha = a;
@@ -2457,7 +2771,6 @@ function render() {
   });
   ctx.globalAlpha = 1;
 
-  // Plovoucí texty (-5 HP, ODRAŽENO...)
   ctx.font = '800 16px ' + FONT;
   ctx.textAlign = 'center';
   ctx.lineJoin = 'round';
@@ -2472,7 +2785,6 @@ function render() {
 }
 
 // HERNÍ SMYČKA – pevných 60 kroků za sekundu bez ohledu na obnovovací frekvenci displeje
-// (na telefonu se 120 Hz by jinak hra a hlavně host běžel dvakrát rychleji)
 const STEP_MS = 1000 / 60;
 let lastTime = 0;
 let accumulator = 0;
@@ -2494,7 +2806,6 @@ function gameLoop(ts) {
   requestAnimationFrame(gameLoop);
 }
 
-// Spuštění smyčky
 requestAnimationFrame(gameLoop);
 </script>
 </body>
