@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Puzzle / Pexeso</title>
+<style>
+:root{--bg:#f4f1ea;--fg:#222;--card:#fff;--ac:#d9480f;--ac2:#2b8a3e;--bd:#d8d2c4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1b19;--fg:#eee;--card:#2a2926;--ac:#ff8c4a;--ac2:#69db7c;--bd:#444}}
+:root[data-theme="dark"]{--bg:#1c1b19;--fg:#eee;--card:#2a2926;--ac:#ff8c4a;--ac2:#69db7c;--bd:#444}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;padding:16px}
+h1{font-size:1.8rem;margin:8px 0}
+.box{max-width:520px;margin:0 auto}
+button,.btn{font:inherit;background:var(--ac);color:#fff;border:0;border-radius:12px;padding:12px 18px;margin:5px;cursor:pointer;display:inline-block}
+button.alt{background:var(--card);color:var(--fg);border:2px solid var(--bd)}
+button.on{outline:3px solid var(--ac2)}
+.hide{display:none}
+#prev{width:200px;max-width:60%;border-radius:12px;margin:10px auto;display:block;border:2px solid var(--bd)}
+#board{margin:12px auto;width:min(92vw,70vh,480px);aspect-ratio:1;display:grid;gap:2px;touch-action:manipulation}
+.tile{background-repeat:no-repeat;cursor:pointer;border-radius:3px}
+.tile.sel{outline:4px solid var(--ac);z-index:1}
+.card{perspective:600px;cursor:pointer}
+.in{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
+.card.up .in{transform:rotateY(180deg)}
+.f,.b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:6px}
+.b{background:repeating-linear-gradient(45deg,var(--ac),var(--ac) 8px,var(--card) 8px,var(--card) 16px);border:2px solid var(--bd)}
+.f{transform:rotateY(180deg);background-repeat:no-repeat}
+.card.done .f{outline:3px solid var(--ac2)}
+#info{font-size:1.1rem;min-height:1.5em}
+#win{font-size:1.4rem;color:var(--ac2);font-weight:bold}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>🧩 Puzzle / Pexeso</h1>
+
+<div id="s1">
+<p>Vyfoť obrázek, ze kterého se hra vytvoří.</p>
+<label class="btn" style="font-size:1.3rem">📷 Vyfotit
+<input id="file" type="file" accept="image/*" capture="environment" class="hide"></label>
+<p><label class="btn alt" style="background:var(--card);color:var(--fg);border:2px solid var(--bd)">🖼 Vybrat z galerie
+<input id="file2" type="file" accept="image/*" class="hide"></label></p>
+</div>
+
+<div id="s2" class="hide">
+<img id="prev" alt="náhled">
+<p><b>Obtížnost:</b></p>
+<button class="alt lv" data-n="2">Lehká</button><button class="alt lv on" data-n="3">Střední</button><button class="alt lv" data-n="4">Těžká</button>
+<p><button id="mP" style="font-size:1.3rem">🧩 Puzzle</button><button id="mX" style="font-size:1.3rem">🃏 Pexeso</button></p>
+<button class="alt" id="newph">📷 Jiný obrázek</button>
+</div>
+
+<div id="s3" class="hide">
+<div id="info"></div>
+<div id="board"></div>
+<div id="win"></div>
+<button id="again">↻ Znovu</button><button class="alt" id="menu">☰ Menu</button>
+</div>
+</div>
+
+<script>
+var img=null,url="",mode="P",lvl=3;
+var $=function(i){return document.getElementById(i)};
+function show(id){["s1","s2","s3"].forEach(function(s){$(s).classList.toggle("hide",s!==id)})}
+
+function onFile(e){
+  var f=e.target.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    var im=new Image();
+    im.onload=function(){
+      var S=Math.min(720,im.width,im.height);
+      var c=document.createElement("canvas"); c.width=c.height=S;
+      var m=Math.min(im.width,im.height);
+      c.getContext("2d").drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,S,S);
+      url=c.toDataURL("image/jpeg",0.88);
+      $("prev").src=url; show("s2");
+    };
+    im.src=r.result;
+  };
+  r.readAsDataURL(f);
+}
+$("file").onchange=onFile;$("file2").onchange=onFile;
+$("newph").onclick=function(){$("file").value="";$("file2").value="";show("s1")};
+$("menu").onclick=function(){show("s2")};
+$("mP").onclick=function(){mode="P";start()};
+$("mX").onclick=function(){mode="X";start()};
+document.querySelectorAll(".lv").forEach(function(b){b.onclick=function(){
+  lvl=+b.dataset.n;
+  document.querySelectorAll(".lv").forEach(function(x){x.className="alt lv"});
+  b.className="alt lv on"}});
+$("again").onclick=start;
+
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function piece(el,idx,n){
+  var x=idx%n,y=Math.floor(idx/n);
+  el.style.backgroundImage="url("+url+")";
+  el.style.backgroundSize=(n*100)+"% "+(n*100)+"%";
+  el.style.backgroundPosition=(n>1?x/(n-1)*100:0)+"% "+(n>1?y/(n-1)*100:0)+"%";
+}
+
+function start(){
+  show("s3"); $("win").textContent="";
+  var b=$("board"); b.innerHTML="";
+  if(mode==="P")puzzle(b); else pexeso(b);
+}
+
+function puzzle(b){
+  var n=lvl+1,total=n*n,moves=0,sel=-1;
+  b.style.gridTemplateColumns="repeat("+n+",1fr)";
+  var order;
+  do{order=shuffle(Array.from({length:total},function(_,i){return i}))}
+  while(order.every(function(v,i){return v===i}));
+  $("info").textContent="Klepni na dva dílky, aby se prohodily.";
+  function draw(){
+    b.innerHTML="";
+    order.forEach(function(v,pos){
+      var d=document.createElement("div"); d.className="tile"+(pos===sel?" sel":"");
+      piece(d,v,n);
+      d.onclick=function(){click(pos)};
+      b.appendChild(d);
+    });
+  }
+  function click(pos){
+    if($("win").textContent)return;
+    if(sel<0){sel=pos;draw();return}
+    if(sel!==pos){var t=order[sel];order[sel]=order[pos];order[pos]=t;moves++}
+    sel=-1;draw();
+    $("info").textContent="Tahů: "+moves;
+    if(order.every(function(v,i){return v===i})){$("win").textContent="🎉 Hotovo za "+moves+" tahů!"}
+  }
+  draw();
+}
+
+function pexeso(b){
+  var n=lvl,pcs=n*n,cols=n*2;
+  b.style.gridTemplateColumns="repeat("+cols+",1fr)";
+  var ids=[];for(var i=0;i<pcs;i++){ids.push(i,i)}
+  shuffle(ids);
+  var open=[],found=0,tries=0,lock=false;
+  $("info").textContent="Najdi dvojice stejných dílků.";
+  ids.forEach(function(v){
+    var c=document.createElement("div"); c.className="card";
+    c.innerHTML='<div class="in"><div class="b"></div><div class="f"></div></div>';
+    piece(c.querySelector(".f"),v,n);
+    c.onclick=function(){
+      if(lock||c.classList.contains("up"))return;
+      c.classList.add("up"); open.push({c:c,v:v});
+      if(open.length===2){
+        tries++; lock=true;
+        var a=open[0],d=open[1];
+        if(a.v===d.v){
+          a.c.classList.add("done");d.c.classList.add("done");
+          found++;open=[];lock=false;
+          if(found===pcs){$("win").textContent="🎉 Hotovo! Pokusů: "+tries}
+        }else{
+          setTimeout(function(){a.c.classList.remove("up");d.c.classList.remove("up");open=[];lock=false},900);
+        }
+        $("info").textContent="Pokusů: "+tries+" · Nalezeno: "+found+"/"+pcs;
+      }
+    };
+    b.appendChild(c);
+  });
+}
+</script>
+</body>
+</html>
