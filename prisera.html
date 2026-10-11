@@ -24,7 +24,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 #shutter{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:3}
 #shutter[hidden]{display:none}
 #match{position:fixed;left:16px;bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:3;font-weight:700;text-shadow:0 1px 6px #000;display:none}
-#mon{position:fixed;left:50%;top:38%;width:min(70vw,320px);transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
+#mon{position:fixed;left:50%;top:38%;width:min(92vw,440px);aspect-ratio:1;transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
 #mon.on{opacity:1;transform:translate(-50%,-50%) scale(1.15);filter:drop-shadow(0 0 28px #d9435f) drop-shadow(0 0 70px #000)}
 .b{animation:tw .09s infinite;transform-origin:100px 110px}
 @keyframes tw{50%{transform:translate(2px,-3px) rotate(1deg)}}
@@ -39,12 +39,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 <video id="v" playsinline muted autoplay></video>
 <div id="vig"></div>
 
-<svg id="mon" viewBox="0 0 200 200" aria-hidden="true">
-  <g class="b"><path d="M52 52 L40 6 L78 38 Z M148 52 L160 6 L122 38 Z" fill="#120912"/><path d="M20 190 C0 110 15 30 100 28 C185 30 200 110 180 190 L160 160 L140 192 L118 158 L100 195 L82 158 L60 192 L40 160 Z" fill="#190d1a" stroke="#000" stroke-width="4"/><path d="M14 130 L-6 170 M20 140 L6 182 M186 130 L206 170 M180 140 L194 182" stroke="#120912" stroke-width="7" stroke-linecap="round"/><path d="M45 64 Q100 30 155 64" fill="none" stroke="#000" stroke-width="8"/></g>
-  <path class="eye" d="M44 84 Q72 60 98 86 Q70 100 44 84 Z" fill="#ffe45e"/><path class="eye" d="M156 84 Q128 60 102 86 Q130 100 156 84 Z" fill="#ffe45e"/>
-  <ellipse cx="72" cy="83" rx="4" ry="11" fill="#b00020"/><ellipse cx="128" cy="83" rx="4" ry="11" fill="#b00020"/>
-  <path d="M40 118 Q100 190 160 118 Q100 134 40 118 Z" fill="#5a0010" stroke="#000" stroke-width="3"/><path d="M44 120 L52 146 L60 126 L68 156 L76 130 L86 164 L94 134 L106 134 L114 164 L124 130 L132 156 L140 126 L148 146 L156 120 Z" fill="#f3ecd8" stroke="#000" stroke-width="2"/>
-</svg>
+<canvas id="mon" width="520" height="520" aria-hidden="true"></canvas>
 
 <div id="hud" hidden><span id="score">Přežito: 0</span><img id="thumb" alt="Fotka domečku"></div>
 <div id="msg"></div>
@@ -66,6 +61,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
   <button id="again">Hrát znovu</button>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const v=$('#v'),cv=document.createElement('canvas');cv.width=32;cv.height=24;
@@ -120,8 +116,7 @@ function schedule(){
   state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;
   $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
   say('Schovej se. Příšera tě hledá…');
-  const f=Math.max(.55,1-score*.06);              // s každým kolem se příšera objeví dřív
-  const delay=(10+Math.random()*10)*1000*f;       // 10–20 s, pokaždé jinak
+    const delay=(5+Math.random()*25)*1000; // 5–30 s, úplně náhodně
   timers.push(setTimeout(warn,Math.max(delay-2000,3000)));
   timers.push(setTimeout(attack,Math.max(delay,5000)));
 }
@@ -201,5 +196,71 @@ async function judgeShot(g){
 }
 $('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
 $('#again').onclick=()=>{$('#over').hidden=true;setup()};
+(function(){
+if(!window.THREE)return;
+const cvs=document.getElementById('mon');
+const R=new THREE.WebGLRenderer({canvas:cvs,alpha:true,antialias:true});
+R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));R.setSize(520,520,false);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(40,1,.1,50);C.position.set(0,.2,5.4);
+S.add(new THREE.AmbientLight(0x553344,.9));
+const L1=new THREE.DirectionalLight(0xffd8b8,1.15);L1.position.set(2,3,4);S.add(L1);
+const L2=new THREE.PointLight(0xff1133,1.8,14);L2.position.set(-2.5,-1,3);S.add(L2);
+const skin=new THREE.MeshStandardMaterial({color:0x4a5d3f,roughness:.55,metalness:.05});
+const dark=new THREE.MeshStandardMaterial({color:0x2d3a2b,roughness:.7});
+const bone=new THREE.MeshStandardMaterial({color:0xe8dfc0,roughness:.4});
+const gum=new THREE.MeshStandardMaterial({color:0x4a0010,roughness:.8,emissive:0x2a0008});
+const tm=new THREE.MeshStandardMaterial({color:0xc2234a,roughness:.35,emissive:0x400010});
+const eyeMat=new THREE.MeshStandardMaterial({color:0xffd23f,emissive:0xffb000,emissiveIntensity:1});
+const black=new THREE.MeshBasicMaterial({color:0x000000});
+const root=new THREE.Group();S.add(root);
+// hlava s hrbolatou kůží
+const hg=new THREE.SphereGeometry(1,48,36),p=hg.attributes.position;
+for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+ const n=1+.07*Math.sin(x*7+y*5)*Math.cos(z*6+x*3)+.04*Math.sin(y*13+z*9);p.setXYZ(i,x*n*1.1,y*n,z*n)}
+hg.computeVertexNormals();
+const head=new THREE.Mesh(hg,skin);head.position.y=.25;head.rotation.x=.18;root.add(head);
+const add=(m,x,y,z,par)=>{m.position.set(x,y,z);(par||root).add(m);return m};
+const ball=(r,mat)=>new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);
+for(const s of[-1,1]){
+ const e=add(ball(.2,eyeMat),s*.4,.72,.78);e.scale.y=.6;
+ const pu=ball(1,black);pu.scale.set(.04,.1,.04);add(pu,s*.4,.72,.97);
+ const br=ball(1,dark);br.scale.set(.42,.15,.26);br.rotation.z=s*.6;add(br,s*.4,.9,.93);
+ const h=new THREE.Mesh(new THREE.ConeGeometry(.17,.95,14),bone);h.rotation.z=-s*.45;add(h,s*.68,1.35,-.05);
+ const nz=ball(.06,black);add(nz,s*.12,.38,1.04);
+}
+// dutina a horní zuby
+const cav=ball(1,gum);cav.scale.set(.72,.3,.62);add(cav,0,-.12,.5);
+for(let k=-6;k<=6;k++){const a=k*.2,t=new THREE.Mesh(new THREE.ConeGeometry(.07,.26,8),bone);
+ t.rotation.x=Math.PI;add(t,Math.sin(a)*.72,-.12,.28+Math.cos(a)*.62);}
+// čelist
+const jaw=new THREE.Group();jaw.position.set(0,-.12,-.1);root.add(jaw);
+const jm=ball(1,skin);jm.scale.set(.85,.3,.88);add(jm,0,-.1,.65,jaw);
+for(let k=-5;k<=5;k++){const a=k*.22,t=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,8),bone);
+ add(t,Math.sin(a)*.7,.22,.65+Math.cos(a)*.7,jaw);}
+// jazyk
+const tongue=new THREE.Mesh(new THREE.BufferGeometry(),tm);root.add(tongue);
+const tip=ball(.2,tm);tip.scale.set(1.15,.5,1.3);root.add(tip);
+function setTongue(len,t){
+ const pts=[],n=10;
+ for(let i=0;i<=n;i++){const u=i/n,l=u*len;
+  pts.push(new THREE.Vector3(Math.sin(t*9+u*6)*.14*u,-.5-l*.3+Math.sin(t*7+u*5)*.06*u,.7+l*.75))}
+ const g=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.15,10,false);
+ tongue.geometry.dispose();tongue.geometry=g;
+ const e=pts[n];tip.position.copy(e);
+}
+let t0=0,was=false;
+function loop(ms){requestAnimationFrame(loop);
+ if(!cvs.classList.contains('on')){was=false;return}
+ if(!was){was=true;t0=ms}
+ const t=(ms-t0)/1000,e=1-Math.pow(1-Math.min(1,t),3);
+ root.position.z=-2.5+e*2.4;root.position.y=Math.sin(t*3)*.05;
+ root.rotation.y=Math.sin(t*1.7)*.25;root.rotation.z=Math.sin(t*2.3)*.07;
+ root.scale.setScalar(1+Math.sin(t*5)*.015+Math.max(0,t-2.5)*.07);
+ jaw.rotation.x=.3+.5*Math.min(1,t/1.1)+.12*Math.sin(t*10);
+ setTongue(.3+Math.max(0,Math.min(1,(t-.8)/.9))*1.6,t);
+ eyeMat.emissiveIntensity=1+.4*Math.sin(t*14);
+ R.render(S,C)}
+requestAnimationFrame(loop);
+})();
 </script>
 </body></html>
