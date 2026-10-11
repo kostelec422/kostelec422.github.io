@@ -574,6 +574,7 @@ textarea#code-text {
       <div class="scroll">
         <div class="code-box">
           <h2>Přenést klíče na jiné zařízení</h2>
+          <p id="xfer-have" class="lead" style="text-align:center;font-weight:800;color:var(--accent);margin-bottom:6px"></p>
           <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
           <div class="btn-group" style="margin-top:6px">
             <button class="btn" onclick="xferStartSend()">Poslat klíče</button>
@@ -884,6 +885,7 @@ const val = id => document.getElementById(id).value;
 
 function openCode() {
   closeXfer();
+  updateXferHave();
   document.getElementById('xfer-send').classList.add('hidden');
   document.getElementById('xfer-recv').classList.add('hidden');
   showScreen('menu-code');
@@ -891,6 +893,13 @@ function openCode() {
 
 // ---------- přenos klíčů přímo mezi dvěma zařízeními (PeerJS) ----------
 let xferPeer = null;
+function storageWorks() { try { localStorage.setItem('ka-t', '1'); localStorage.removeItem('ka-t'); return true; } catch (e) { return false; } }
+function updateXferHave() {
+  const el = document.getElementById('xfer-have');
+  if (!el) return;
+  el.textContent = 'Na tomto zařízení teď máš: ' + keysText(shop.keys) + ' v peněžence a ' + keysText(shop.bank) + ' v bance.'
+    + (storageWorks() ? '' : ' ⚠ Tento prohlížeč si klíče neukládá (třeba anonymní okno), po zavření zmizí.');
+}
 function closeXfer() { if (xferPeer) { try { xferPeer.destroy(); } catch (e) {} xferPeer = null; } }
 function hasStuff() { return shop.keys > 0 || shop.bank > 0 || perkActive('sword') || perkActive('boots') || perkActive('armor'); }
 function setSt(id, t, ok) { const el = document.getElementById(id); el.textContent = t; el.style.color = ok === true ? '#86efac' : (ok === false ? '#fca5a5' : ''); }
@@ -923,7 +932,7 @@ function xferStartSend() {
       shop.keys = Math.max(0, shop.keys - sent.keys);
       shop.bank = Math.max(0, shop.bank - sent.bank);
       ['sword', 'boots', 'armor'].forEach(k => { if (shop[k] === sent[k]) shop[k] = 0; });
-      saveShop(); updateShopLabel();
+      saveShop(); updateShopLabel(); updateXferHave();
       setSt('xfer-send-status', '✔ Hotovo! Klíče jsou teď na druhém zařízení.', true);
       setTimeout(closeXfer, 800);
     });
@@ -953,12 +962,14 @@ function xferReceive(auto) {
       if (done || !d || d.type !== 'xfer' || !d.data) return;
       done = true;
       const o = d.data;
+      const before = { k: shop.keys, b: shop.bank };
       shop.keys += num(o.keys);
       shop.bank += num(o.bank);
       ['sword', 'boots', 'armor'].forEach(k => { shop[k] = Math.max(shop[k], +o[k] || 0); });
       saveShop(); updateShopLabel();
       try { c.send({ type: 'ack' }); } catch (e) {}
-      setSt('xfer-recv-status', '✔ Přijato: ' + keysText(num(o.keys)) + ' v peněžence a ' + keysText(num(o.bank)) + ' v bance. Teď máš ' + keysText(shop.keys) + ' + ' + keysText(shop.bank) + ' v bance.', true);
+      updateXferHave();
+      setSt('xfer-recv-status', '✔ Přijato ' + keysText(num(o.keys)) + ' a ' + keysText(num(o.bank)) + ' v bance. Měl jsi ' + keysText(before.k) + ' (v bance ' + before.b + '), teď máš ' + keysText(shop.keys) + ' (v bance ' + shop.bank + ').', true);
       setTimeout(closeXfer, 1000);
     });
     c.on('error', () => setSt('xfer-recv-status', 'Chyba spojení. Zkus to znovu.', false));
@@ -1020,6 +1031,7 @@ function renderShop() {
   });
 }
 loadShop();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 setTimeout(updateShopLabel, 0);
 
 // ======================================================================
@@ -2729,7 +2741,7 @@ window.addEventListener('DOMContentLoaded', () => {
     openCode();
     xferShowReceive();
     document.getElementById('xfer-code-in').value = takeParam.toUpperCase();
-    xferReceive(takeParam);
+    setSt('xfer-recv-status', 'Zkontroluj nahoře, že tu vidíš svoje klíče, a klepni na Přijmout. Pokud tu máš 0 a čekáš víc, otevři hru v prohlížeči, kde obvykle hraješ, a zadej kód ručně.');
   } else if (roomParam) {
     selectedDevice = 'mobile';
     openPvPMenu();
