@@ -350,6 +350,13 @@ textarea#code-text {
 .code-box h2 { text-align: center; margin-top: 0; }
 #code-msg { text-align: center; font-weight: 700; min-height: 20px; margin: 10px 0 0; }
 
+input[type="number"] {
+  padding: 10px; font: 800 22px var(--font); text-align: center; width: 110px; margin: 4px 0;
+  border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
+  color: #fff; outline: none; user-select: text; -webkit-user-select: text;
+}
+input[type="number"]:focus { border-color: var(--accent); }
+
 /* obchod */
 .shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
 .shop-row span { color: var(--muted); font-size: 13px; }
@@ -527,7 +534,7 @@ textarea#code-text {
         <button class="choice" onclick="openCode()"><svg class="ic"><use href="#i-refresh"/></svg>Můj kód<small>přenos klíčů na jiné zařízení</small></button>
         <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
       </div>
-      <p class="version">VERZE 8 · s volbou Nehraje</p>
+      <p class="version">VERZE 9 · množství klíčů</p>
     </div>
   </div>
 
@@ -575,15 +582,26 @@ textarea#code-text {
         <div class="code-box">
           <h2>Přenést klíče na jiné zařízení</h2>
           <p id="xfer-have" class="lead" style="text-align:center;font-weight:800;color:var(--accent);margin-bottom:6px"></p>
-          <p class="lead" style="font-size:12px;text-align:center">Klíče, banka i vylepšení se z tohoto zařízení přesunou na druhé a tady zmizí, takže je nejde použít dvakrát. Obě zařízení potřebují internet a otevřenou hru.</p>
+          <p class="lead" style="font-size:12px;text-align:center">Klíče z peněženky, kolik si vybereš, se přesunou na druhé zařízení a tady zmizí, takže je nejde použít dvakrát. Banka a vylepšení z obchodu zůstanou tady. Obě zařízení potřebují internet a otevřenou hru.</p>
           <div class="btn-group" style="margin-top:6px">
-            <button class="btn" onclick="xferStartSend()">Poslat klíče</button>
+            <button class="btn" onclick="xferShowSend()">Poslat klíče</button>
             <button class="btn btn-secondary" onclick="xferShowReceive()">Přijmout klíče</button>
           </div>
           <div id="xfer-send" class="hidden">
-            <p class="lead" style="margin:10px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
-            <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
-            <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
+            <div id="xfer-amount-box">
+              <p id="xfer-amount-label" class="lead" style="margin:10px 0 2px;text-align:center">Kolik klíčů pošleš?</p>
+              <input type="number" id="xfer-amount" min="1" step="1" inputmode="numeric" value="1"><br>
+              <div class="btn-group" style="margin-top:4px">
+                <button class="btn btn-secondary" onclick="xferAmountAll()">Všechny</button>
+                <button class="btn" onclick="xferStartSend()">Vytvořit kód</button>
+              </div>
+            </div>
+            <div id="xfer-code-box" class="hidden">
+              <p id="xfer-amount-sent" class="lead" style="margin:10px 0 0;text-align:center;font-weight:800;color:var(--accent)"></p>
+              <p class="lead" style="margin:6px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
+              <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
+              <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
+            </div>
             <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
           </div>
           <div id="xfer-recv" class="hidden">
@@ -904,11 +922,36 @@ function closeXfer() { if (xferPeer) { try { xferPeer.destroy(); } catch (e) {} 
 function hasStuff() { return shop.keys > 0 || shop.bank > 0 || perkActive('sword') || perkActive('boots') || perkActive('armor'); }
 function setSt(id, t, ok) { const el = document.getElementById(id); el.textContent = t; el.style.color = ok === true ? '#86efac' : (ok === false ? '#fca5a5' : ''); }
 
-function xferStartSend() {
+// 1. krok: zobrazí se pole "kolik klíčů pošleš"
+function xferShowSend() {
   closeXfer();
   document.getElementById('xfer-send').classList.remove('hidden');
   document.getElementById('xfer-recv').classList.add('hidden');
-  if (!hasStuff()) { document.getElementById('xfer-code').textContent = ''; document.getElementById('xfer-qr').innerHTML = ''; setSt('xfer-send-status', 'Nemáš co přenášet.', false); return; }
+  document.getElementById('xfer-code-box').classList.add('hidden');
+  const box = document.getElementById('xfer-amount-box');
+  if (shop.keys < 1) {
+    box.classList.add('hidden');
+    setSt('xfer-send-status', 'V peněžence nemáš žádné klíče' + (shop.bank > 0 ? ' (v bance máš ' + keysText(shop.bank) + ', nejdřív je vyber).' : '.'), false);
+    return;
+  }
+  box.classList.remove('hidden');
+  document.getElementById('xfer-amount-label').textContent = 'Kolik klíčů pošleš? (máš ' + keysText(shop.keys) + ')';
+  const inp = document.getElementById('xfer-amount');
+  inp.max = shop.keys;
+  inp.value = shop.keys;
+  setSt('xfer-send-status', '');
+}
+function xferAmountAll() { document.getElementById('xfer-amount').value = shop.keys; }
+
+// 2. krok: po "Vytvořit kód" se otevře spojení a pošle se jen zadané množství
+function xferStartSend(amountArg) {
+  const amount = parseInt(typeof amountArg === 'number' ? amountArg : val('xfer-amount'), 10);
+  if (!(amount >= 1)) { setSt('xfer-send-status', 'Zadej, kolik klíčů pošleš (aspoň 1).', false); return; }
+  if (amount > shop.keys) { setSt('xfer-send-status', 'Máš jen ' + keysText(shop.keys) + '.', false); return; }
+  closeXfer();
+  document.getElementById('xfer-amount-box').classList.add('hidden');
+  document.getElementById('xfer-code-box').classList.remove('hidden');
+  document.getElementById('xfer-amount-sent').textContent = 'Posíláš: ' + keysText(amount);
   const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
@@ -925,15 +968,13 @@ function xferStartSend() {
   pr.on('connection', (c) => {
     if (used) { try { c.close(); } catch (e) {} return; }
     used = true;
-    const sent = { keys: shop.keys, bank: shop.bank, sword: shop.sword, boots: shop.boots, armor: shop.armor };
+    const sent = { keys: Math.min(amount, shop.keys), bank: 0, sword: 0, boots: 0, armor: 0 };
     c.on('open', () => { c.send({ type: 'xfer', data: sent }); setSt('xfer-send-status', 'Posílám...'); });
     c.on('data', (d) => {
       if (!d || d.type !== 'ack') return;
       shop.keys = Math.max(0, shop.keys - sent.keys);
-      shop.bank = Math.max(0, shop.bank - sent.bank);
-      ['sword', 'boots', 'armor'].forEach(k => { if (shop[k] === sent[k]) shop[k] = 0; });
       saveShop(); updateShopLabel(); updateXferHave();
-      setSt('xfer-send-status', '✔ Hotovo! Klíče jsou teď na druhém zařízení.', true);
+      setSt('xfer-send-status', '✔ Hotovo! ' + keysText(sent.keys) + ' je teď na druhém zařízení. Tady ti zbývá ' + keysText(shop.keys) + '.', true);
       setTimeout(closeXfer, 800);
     });
   });
@@ -969,7 +1010,7 @@ function xferReceive(auto) {
       saveShop(); updateShopLabel();
       try { c.send({ type: 'ack' }); } catch (e) {}
       updateXferHave();
-      setSt('xfer-recv-status', '✔ Přijato ' + keysText(num(o.keys)) + ' a ' + keysText(num(o.bank)) + ' v bance. Měl jsi ' + keysText(before.k) + ' (v bance ' + before.b + '), teď máš ' + keysText(shop.keys) + ' (v bance ' + shop.bank + ').', true);
+      setSt('xfer-recv-status', '✔ Přijato ' + keysText(num(o.keys)) + (num(o.bank) ? ' a ' + keysText(num(o.bank)) + ' v bance' : '') + '. Měl jsi ' + keysText(before.k) + ', teď máš ' + keysText(shop.keys) + (shop.bank ? ' (v bance ' + shop.bank + ')' : '') + '.', true);
       setTimeout(closeXfer, 1000);
     });
     c.on('error', () => setSt('xfer-recv-status', 'Chyba spojení. Zkus to znovu.', false));
