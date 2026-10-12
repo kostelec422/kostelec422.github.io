@@ -11,9 +11,17 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family
 #vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--mon);transition:box-shadow .4s}
 #vig.warn{animation:pulse .6s infinite alternate}
 @keyframes pulse{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
-.screen{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;padding:28px;text-align:center;background:var(--bg);z-index:5}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;padding:28px;text-align:center;background:var(--bg);z-index:5;overflow-y:auto}
+.screen .in{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%}
 .screen h1{font-size:2.2rem;margin:0;line-height:1.1}
 .screen p{max-width:34ch;margin:0;line-height:1.5;opacity:.85}
+.rules{list-style:none;margin:0;padding:0;max-width:44ch;width:100%;text-align:left;display:flex;flex-direction:column;gap:10px;counter-reset:r}
+.rules li{counter-increment:r;position:relative;padding:12px 14px 12px 52px;background:#ffffff0f;border-radius:14px;line-height:1.45;font-size:.97rem}
+.rules li::before{content:counter(r);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--win);color:#241a05;font-weight:800;display:grid;place-items:center}
+.rules b{color:var(--win)}
+.tips{max-width:44ch;width:100%;text-align:left;font-size:.9rem;line-height:1.5;padding:12px 14px;border:1px dashed #f3ecd855;border-radius:14px}
+.tips b{color:var(--ok)}
+.tips.warnbox b{color:var(--mon)}
 button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:14px 28px;background:var(--win);color:#241a05;cursor:pointer}
 button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 #hud{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:3;text-shadow:0 1px 6px #000}
@@ -48,18 +56,29 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 <div id="tune" hidden><label for="sens">Shoda domečků</label><input id="sens" type="range" min="10" max="90" step="1" value="40"><span id="thr">40 %</span></div>
 <button id="shutter" aria-label="Vyfotit" hidden></button>
 
-<div class="screen" id="intro">
+<div class="screen" id="intro"><div class="in">
   <h1>Domeček a příšera</h1>
-  <p>Nejdřív vyfoť svůj domeček. Pak se pohybuj po domě. Když tě příšera najde, máš 4 sekundy, aby ses vrátil k domečku a vyfotil ho znovu.</p>
-  <button id="go">Zapnout kameru</button>
+  <p>Hra, ve které utíkáš před příšerou a domeček je tvoje jediná záchrana.</p>
+  <ol class="rules">
+    <li><b>Vyfoť domeček.</b> Zapni kameru, zaměř na jedno místo nebo předmět (třeba dveře, gauč nebo obraz) a stiskni velké kulaté tlačítko. To je tvůj domeček.</li>
+    <li><b>Pohybuj se po domě.</b> Fotka domečku zůstane v rohu obrazovky. Chodí po bytě, prozkoumávej, kamera pořád běží.</li>
+    <li><b>Příšera přijde náhodně.</b> Může to být za 5 sekund i za půl minuty. Asi 2 sekundy předem tě varuje: červené blikající okraje, zvuk a vibrace.</li>
+    <li><b>Máš 4 sekundy.</b> Když se příšera objeví, vrať se k domečku a vyfoť ho znovu. Červený pruh ukazuje, kolik času zbývá.</li>
+    <li><b>Fotka musí sedět.</b> Dole vidíš <b>Shodu</b> v procentech. Když je dost vysoká, příšera zmizí a dostaneš bod. Když ne, zkoušej to znovu, dokud nevyprší čas.</li>
+    <li><b>Konec hry.</b> Pokud čas vyprší, příšera tě dostane. Skóre je počet příšer, které jsi přežil.</li>
+  </ol>
+  <div class="tips"><b>Tipy:</b> Vyber domeček s výrazným vzorem, ne jen holou zeď. Při focení ho zaměř podobně jako poprvé. Nastavení „Shoda domečků“ nahoře můžeš upravit: nižší procento = hra je snazší. Zapni si zvuk.</div>
+  <div class="tips warnbox"><b>Bezpečí:</b> Neběhej, dávej pozor na schody, nábytek a ostatní lidi. Hraj jen doma a v klidu. Kamera se nikam neodesílá a nic se neukládá, fotky se používají jen přímo ve hře.</div>
+  <button id="go">Rozumím, zapnout kameru</button>
   <p id="err" style="color:var(--mon)"></p>
-</div>
+</div></div>
 
-<div class="screen" id="over" hidden>
+<div class="screen" id="over" hidden><div class="in">
   <h1>Příšera tě dostala</h1>
   <p id="final"></p>
   <button id="again">Hrát znovu</button>
-</div>
+  <button id="rules2" style="background:transparent;color:var(--ink);border:2px solid #f3ecd855">Zobrazit pravidla</button>
+</div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -158,19 +177,7 @@ $('#shutter').onclick=()=>{
     t.getContext('2d').drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,104,78);
     $('#thumb').src=t.toDataURL();beep(660,.15);startPlay();return;
   }
-  if(state==='attack'){judgeShot(g);return;
-    const s=sim(g,ref);
-    if(s>=thr){
-      clearAll();score++;$('#score').textContent='Přežito: '+score;
-      beep(880,.25);buzz(60);say('Zachráněn! Příšera zmizela.');
-      $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
-      $('#bar').style.display='none';$('#match').style.display='none';$('#shutter').hidden=true;
-      timers.push(setTimeout(schedule,1800));
-    }else{
-      const m=$('#msg');m.textContent='Nesedí ('+Math.round(s*100)+' %). Zkus to znovu!';
-      m.classList.remove('bad');void m.offsetWidth;m.classList.add('bad');beep(200,.2,'square');
-    }
-  }
+  if(state==='attack'){judgeShot(g);return}
 };
 
 let refBlob=null,paused=false,busy=false;
@@ -196,6 +203,7 @@ async function judgeShot(g){
 }
 $('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
 $('#again').onclick=()=>{$('#over').hidden=true;setup()};
+$('#rules2').onclick=()=>{$('#over').hidden=true;$('#intro').hidden=false;$('#go').textContent='Rozumím, hrát znovu';$('#go').onclick=()=>{$('#intro').hidden=true;setup()}};
 (function(){
 if(!window.THREE)return;
 const cvs=document.getElementById('mon');
