@@ -30,18 +30,45 @@ button.on{outline:3px solid var(--ac2)}
 .card.done .f{outline:3px solid var(--ac2)}
 #info{font-size:1.1rem;min-height:1.5em}
 #win{font-size:1.4rem;color:var(--ac2);font-weight:bold}
+.rules{text-align:left;margin:14px 0;padding:0;list-style:none;counter-reset:r}
+.rules li{counter-increment:r;position:relative;background:var(--card);border:2px solid var(--bd);border-radius:12px;padding:12px 14px 12px 52px;margin:8px 0;line-height:1.45}
+.rules li::before{content:counter(r);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--ac);color:#fff;font-weight:800;display:grid;place-items:center}
+.sub{text-align:left;margin:16px 0 4px;font-size:1.1rem}
 </style>
 </head>
 <body>
 <div class="box">
 <h1>🧩 Puzzle / Pexeso</h1>
 
-<div id="s1">
+<div id="s0">
+<p>Z tvé fotky vznikne hra. Můžeš skládat puzzle, nebo hrát pexeso.</p>
+<ol class="rules">
+<li><b>Vyfoť obrázek</b> nebo ho vyber z galerie. Hra z něj vyřízne čtverec. Fotka zůstane jen ve tvém prohlížeči a nikam se neodesílá.</li>
+<li><b>Vyber obtížnost.</b> Čím těžší, tím víc dílků.</li>
+<li><b>Vyber hru:</b> Puzzle nebo Pexeso.</li>
+</ol>
+<h3 class="sub">🧩 Puzzle</h3>
+<ol class="rules">
+<li>Obrázek se rozdělí na dílky (lehká 3×3, střední 4×4, těžká 5×5) a zamíchá.</li>
+<li>Klepni na jeden dílek a pak na druhý. Prohodí se.</li>
+<li>Cíl: složit původní obrázek co nejmenším počtem tahů.</li>
+</ol>
+<h3 class="sub">🃏 Pexeso</h3>
+<ol class="rules">
+<li>Dílky obrázku jsou rubem nahoru (lehká 4 dvojice, střední 9, těžká 16).</li>
+<li>Klepni na dvě karty. Když jsou stejné, zůstanou odkryté se zeleným rámečkem. Jinak se po chvíli otočí zpět.</li>
+<li>Cíl: najít všechny dvojice co nejmenším počtem pokusů.</li>
+</ol>
+<button id="ok" style="font-size:1.3rem">Rozumím, začít</button>
+</div>
+
+<div id="s1" class="hide">
 <p>Vyfoť obrázek, ze kterého se hra vytvoří.</p>
 <label class="btn" style="font-size:1.3rem">📷 Vyfotit
 <input id="file" type="file" accept="image/*" capture="environment" class="hide"></label>
 <p><label class="btn alt" style="background:var(--card);color:var(--fg);border:2px solid var(--bd)">🖼 Vybrat z galerie
 <input id="file2" type="file" accept="image/*" class="hide"></label></p>
+<button class="alt rl">📖 Pravidla</button>
 </div>
 
 <div id="s2" class="hide">
@@ -49,21 +76,24 @@ button.on{outline:3px solid var(--ac2)}
 <p><b>Obtížnost:</b></p>
 <button class="alt lv" data-n="2">Lehká</button><button class="alt lv on" data-n="3">Střední</button><button class="alt lv" data-n="4">Těžká</button>
 <p><button id="mP" style="font-size:1.3rem">🧩 Puzzle</button><button id="mX" style="font-size:1.3rem">🃏 Pexeso</button></p>
-<button class="alt" id="newph">📷 Jiný obrázek</button>
+<button class="alt" id="newph">📷 Jiný obrázek</button><button class="alt rl">📖 Pravidla</button>
 </div>
 
 <div id="s3" class="hide">
 <div id="info"></div>
 <div id="board"></div>
 <div id="win"></div>
-<button id="again">↻ Znovu</button><button class="alt" id="menu">☰ Menu</button>
+<button id="again">↻ Znovu</button><button class="alt" id="menu">☰ Menu</button><button class="alt rl">📖 Pravidla</button>
 </div>
 </div>
 
 <script>
-var img=null,url="",mode="P",lvl=3;
+var img=null,url="",mode="P",lvl=3,cur="s0",back="s1";
 var $=function(i){return document.getElementById(i)};
-function show(id){["s1","s2","s3"].forEach(function(s){$(s).classList.toggle("hide",s!==id)})}
+function show(id){cur=id;["s0","s1","s2","s3"].forEach(function(s){$(s).classList.toggle("hide",s!==id)})}
+
+$("ok").onclick=function(){show(back)};
+document.querySelectorAll(".rl").forEach(function(b){b.onclick=function(){back=cur;show("s0")}});
 
 function onFile(e){
   var f=e.target.files[0]; if(!f)return;
