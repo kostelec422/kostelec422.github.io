@@ -884,6 +884,11 @@ function loadShop() {
   } catch (e) {}
 }
 function saveShop() { try { localStorage.setItem(SHOP_KEY, JSON.stringify(shop)); } catch (e) {} }
+// Před každou změnou si znovu přečteme uložený stav, aby se nikdy nepřepsaly klíče z jiného okna/karty.
+function refreshShop() { loadShop(); }
+window.addEventListener('storage', e => { if (e.key === SHOP_KEY) { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); if (typeof updateXferHave === 'function') updateXferHave(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); } });
+window.addEventListener('pageshow', () => { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); });
 function perkActive(k) { return shop[k] > Date.now(); }
 function activePerks() { return { sword: perkActive('sword'), boots: perkActive('boots'), armor: perkActive('armor') }; }
 function applyPerks(p, pk) {
@@ -973,10 +978,12 @@ function xferStartSend(amountArg) {
   pr.on('connection', (c) => {
     if (used) { try { c.close(); } catch (e) {} return; }
     used = true;
+    refreshShop();
     const sent = { keys: Math.min(amount, shop.keys), bank: 0, sword: 0, boots: 0, armor: 0 };
     c.on('open', () => { c.send({ type: 'xfer', data: sent }); setSt('xfer-send-status', 'Posílám...'); });
     c.on('data', (d) => {
       if (!d || d.type !== 'ack') return;
+      refreshShop();
       shop.keys = Math.max(0, shop.keys - sent.keys);
       saveShop(); updateShopLabel(); updateXferHave();
       setSt('xfer-send-status', '✔ Hotovo! ' + keysText(sent.keys) + ' je teď na druhém zařízení. Tady ti zbývá ' + keysText(shop.keys) + '.', true);
@@ -1018,6 +1025,7 @@ function xferReceive(auto) {
       if (done || !d || d.type !== 'xfer' || !d.data) return;
       done = true;
       const o = d.data;
+      refreshShop();
       const before = { k: shop.keys, b: shop.bank };
       shop.keys += num(o.keys);
       shop.bank += num(o.bank);
@@ -1037,6 +1045,7 @@ function openShop() { renderShop(); showScreen('menu-shop'); }
 // ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
 function openBank() { renderBank(); showScreen('menu-bank'); }
 function bankMove(dir, all) {
+  refreshShop();
   if (dir === 'in') {
     const n = all ? shop.keys : Math.min(1, shop.keys);
     shop.keys -= n; shop.bank += n;
@@ -1056,6 +1065,7 @@ function renderBank() {
 }
 function buyItem(id) {
   const it = SHOP_ITEMS.find(x => x.id === id);
+  refreshShop();
   if (!it || perkActive(id) || shop.keys < it.cost) return;
   shop.keys -= it.cost;
   shop[id] = Date.now() + PERK_MS;
@@ -3143,6 +3153,7 @@ function finishGame() {
   const rw = document.getElementById('key-reward');
   const me = players[myIdx];
   if (me && alive.length && alive[0].group === me.group) {
+    refreshShop();
     shop.keys++;
     saveShop();
     updateShopLabel();
