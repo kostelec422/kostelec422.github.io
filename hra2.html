@@ -676,7 +676,12 @@ input[type="number"]:focus { border-color: var(--accent); }
       <div id="room-display" class="hidden" style="margin-top:12px;">
         <p style="text-align:center;margin-bottom:0;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:var(--accent); letter-spacing:.12em;">---</strong></p>
         <div id="qrcode-box"></div>
+        <div class="btn-group" style="margin-top:4px">
+          <button class="btn" onclick="shareRoomLink()"><svg class="ic"><use href="#i-next"/></svg>Sdílet odkaz</button>
+          <button class="btn btn-secondary" id="copy-link-btn" onclick="copyRoomLink()">Kopírovat odkaz</button>
+        </div>
         <p id="room-status-text" style="text-align:center; font-size:13px; color:var(--muted);">Připojuji k síti...</p>
+        <p class="lead" style="font-size:12px;text-align:center;margin-top:4px">Po odeslání odkazu se vrať do hry a nech ji otevřenou, než se kamarád připojí.</p>
       </div>
 
       <div id="room-input-zone" class="hidden" style="margin-top:12px;">
@@ -978,7 +983,17 @@ function xferStartSend(amountArg) {
       setTimeout(closeXfer, 800);
     });
   });
-  pr.on('error', () => setSt('xfer-send-status', 'Chyba spojení. Zkus to znovu.', false));
+  pr.on('disconnected', () => {
+    if (xferPeer !== pr || pr.destroyed) return;
+    setTimeout(() => { if (xferPeer === pr) revivePeer(pr); }, document.visibilityState === 'visible' ? 300 : 3000);
+  });
+  pr.on('error', (err) => {
+    if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed')) {
+      setTimeout(() => { if (xferPeer === pr) revivePeer(pr); }, 2000);
+      return;
+    }
+    setSt('xfer-send-status', 'Chyba spojení. Zkus to znovu.', false);
+  });
 }
 
 function xferShowReceive() {
@@ -2505,6 +2520,7 @@ function closeNetwork() {
   oldPeers.forEach(p => { try { p.c.close(); } catch (e) {} });
   if (oldConn) { try { oldConn.close(); } catch (e) {} }
   if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
+  releaseWakeLock();
 }
 
 function resetNetState() {
@@ -2567,7 +2583,73 @@ function updateLobbyStatus() {
     : 'Připojeno ' + peers.length + ' z ' + need + ' kamarádů. Čekám na další...';
 }
 
-function createRoom() {
+// ---------- kód místnosti: bez zaměnitelných znaků (0/O, 1/I) ----------
+const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function genRoomCode() {
+  let c = '';
+  for (let i = 0; i < 6; i++) c += CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)];
+  return c;
+}
+
+// ---------- udržení spojení, když hra na chvíli odejde do pozadí (např. při sdílení do WhatsAppu) ----------
+let currentJoinUrl = '';
+let currentRoomCode = '';
+let wakeLock = null;
+function revivePeer(p) {
+  if (p && p.disconnected && !p.destroyed) { try { p.reconnect(); } catch (e) {} }
+}
+async function acquireWakeLock() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) { wakeLock = null; }
+}
+function releaseWakeLock() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  revivePeer(peer);
+  revivePeer(xferPeer);
+  if (peer) acquireWakeLock();
+});
+window.addEventListener('online', () => { revivePeer(peer); revivePeer(xferPeer); });
+
+function roomShareText() {
+  return 'Pojď si zahrát Rytířský souboj! Kód místnosti: ' + currentRoomCode + '\n' + currentJoinUrl;
+}
+async function shareRoomLink() {
+  if (!currentJoinUrl) return;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Rytířský souboj', text: 'Pojď si zahrát Rytířský souboj! Kód místnosti: ' + currentRoomCode, url: currentJoinUrl });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;   // uživatel sdílení zrušil
+    }
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(roomShareText()), '_blank');
+}
+async function copyRoomLink() {
+  const btn = document.getElementById('copy-link-btn');
+  let ok = false;
+  try { await navigator.clipboard.writeText(currentJoinUrl); ok = true; } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = currentJoinUrl; document.body.appendChild(ta); ta.select();
+      ok = document.execCommand('copy'); document.body.removeChild(ta);
+    } catch (e2) {}
+  }
+  if (btn) {
+    btn.textContent = ok ? 'Zkopírováno ✔' : 'Nepodařilo se';
+    setTimeout(() => { btn.textContent = 'Kopírovat odkaz'; }, 1800);
+  }
+}
+
+function createRoom(attempt) {
   if (!enoughTeams()) return;
   if (netNeeded() < 1) {
     alert('Klepni na bojovníka a vyber aspoň jednoho kamaráda.');
@@ -2579,7 +2661,9 @@ function createRoom() {
   document.getElementById('room-input-zone').classList.add('hidden');
   document.getElementById('room-status-text').innerText = "Vytvářím místnost...";
 
-  const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const roomCode = genRoomCode();
+  currentRoomCode = roomCode;
+  currentJoinUrl = window.location.href.split('?')[0].split('#')[0] + '?room=' + roomCode;
   document.getElementById('room-code-num').innerText = roomCode;
 
   closeNetwork();
@@ -2596,13 +2680,18 @@ function createRoom() {
 
   myPeer.on('open', () => {
     updateLobbyStatus();
-    const joinUrl = window.location.href.split('?')[0] + '?room=' + roomCode;
-    document.getElementById('qrcode-box').innerHTML = '';
-    new QRCode(document.getElementById('qrcode-box'), {
-      text: joinUrl,
-      width: 140,
-      height: 140
-    });
+    acquireWakeLock();
+    const box = document.getElementById('qrcode-box');
+    if (!box.firstChild) {
+      new QRCode(box, { text: currentJoinUrl, width: 140, height: 140 });
+    }
+  });
+
+  // spojení se serverem spadlo (hra byla v pozadí) -> hned ho obnov, aby kód zase platil
+  myPeer.on('disconnected', () => {
+    if (peer !== myPeer || myPeer.destroyed) return;
+    if (!lobbyDone) document.getElementById('room-status-text').innerText = 'Obnovuji spojení...';
+    setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, document.visibilityState === 'visible' ? 300 : 3000);
   });
 
   myPeer.on('connection', (c) => {
@@ -2665,6 +2754,12 @@ function createRoom() {
 
   myPeer.on('error', (err) => {
     console.error(err);
+    if (err && err.type === 'unavailable-id' && (attempt || 0) < 5) { createRoom((attempt || 0) + 1); return; }  // kód už někdo používá
+    if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed')) {
+      document.getElementById('room-status-text').innerText = 'Problém se spojením, zkouším to znovu...';
+      setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, 2000);
+      return;
+    }
     document.getElementById('room-status-text').innerText = "Chyba při vytváření místnosti!";
   });
 }
@@ -2692,12 +2787,20 @@ function joinRoom(autoCode) {
 
   const myPeer = new Peer();
   peer = myPeer;
+  let tries = 0;
+  let joined = false;
+  const MAX_TRIES = 12;      // ~30 s čekání, než se hostitel vrátí do hry
 
-  myPeer.on('open', () => {
+  myPeer.on('open', () => connectToHost());
+
+  function connectToHost() {
+    if (peer !== myPeer || myPeer.destroyed) return;
+    tries++;
     const c = myPeer.connect(PEER_PREFIX + code, { reliable: true });
     conn = c;
 
     c.on('open', () => {
+      joined = true;
       document.getElementById('join-status-text').innerText = "Připojeno, čekám na ostatní...";
     });
 
@@ -2751,7 +2854,7 @@ function joinRoom(autoCode) {
     });
 
     c.on('close', () => {
-      if (c !== conn) return;
+      if (c !== conn || !joined) return;
       alert('Hostitel se odpojil.');
       returnToMainMenu();
     });
@@ -2759,12 +2862,21 @@ function joinRoom(autoCode) {
     c.on('error', () => {
       document.getElementById('join-status-text').innerText = "Chyba připojení k danému kódu!";
     });
+  }
+
+  myPeer.on('disconnected', () => {
+    if (peer === myPeer && !myPeer.destroyed) setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, 1000);
   });
 
   myPeer.on('error', (err) => {
     console.error(err);
     if (err && err.type === 'peer-unavailable') {
-      document.getElementById('join-status-text').innerText = "Místnost s tímto kódem neexistuje.";
+      if (!joined && tries < MAX_TRIES) {        // hostitel může být jen chvíli v pozadí, zkus to znovu
+        document.getElementById('join-status-text').innerText = "Čekám, až se hostitel vrátí do hry... (" + tries + "/" + MAX_TRIES + ")";
+        setTimeout(connectToHost, 2500);
+        return;
+      }
+      document.getElementById('join-status-text').innerText = "Místnost s tímto kódem neexistuje. Zkontroluj kód a požádej hostitele, ať má hru otevřenou.";
     } else {
       document.getElementById('join-status-text').innerText = "Nedaří se připojit k serveru!";
     }
