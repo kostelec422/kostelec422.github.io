@@ -1,831 +1,160 @@
 <!doctype html>
 <html lang="cs"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Domeček a příšera</title>
+<title>Domeček a příšera: duel</title>
 <style>
-:root{--bg:#0e1424;--ink:#f3ecd8;--win:#f2c14e;--mon:#d9435f;--ok:#5fd0a0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
+:root{--bg:#0e1424;--ink:#f3ecd8;--win:#f2c14e;--mon:#d9435f;--ok:#5fd0a0;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1424;--ink:#f3ecd8}}
+:root[data-theme="dark"]{--bg:#0e1424;--ink:#f3ecd8}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif;overflow:hidden}
+*{box-sizing:border-box}[hidden]{display:none!important}
 #v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-#vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--mon);transition:box-shadow .4s}
-#vig.warn{animation:pulse .6s infinite alternate}
-@keyframes pulse{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
-.screen{position:fixed;inset:0;display:flex;flex-direction:column;padding:28px;text-align:center;background:var(--bg);z-index:5;overflow-y:auto}
-.screen .in{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%}
-.screen h1{font-size:2.2rem;margin:0;line-height:1.1}
-.screen p{max-width:34ch;margin:0;line-height:1.5;opacity:.85}
-.rules{list-style:none;margin:0;padding:0;max-width:44ch;width:100%;text-align:left;display:flex;flex-direction:column;gap:10px;counter-reset:r}
-.rules li{counter-increment:r;position:relative;padding:12px 14px 12px 52px;background:#ffffff0f;border-radius:14px;line-height:1.45;font-size:.97rem}
-.rules li::before{content:counter(r);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--win);color:#241a05;font-weight:800;display:grid;place-items:center}
-.rules b{color:var(--win)}
-.tips{max-width:44ch;width:100%;text-align:left;font-size:.9rem;line-height:1.5;padding:12px 14px;border:1px dashed #f3ecd855;border-radius:14px}
-.tips b{color:var(--ok)}
-.tips.warnbox b{color:var(--mon)}
-button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:14px 28px;background:var(--win);color:#241a05;cursor:pointer}
-button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
-#hud{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:3;text-shadow:0 1px 6px #000}
-#hud img{width:52px;height:39px;object-fit:cover;border:2px solid var(--win);border-radius:6px}
-#msg{position:fixed;left:16px;right:16px;bottom:calc(120px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;font-size:1.15rem;text-shadow:0 1px 8px #000;z-index:3}
-#bar{position:fixed;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));height:10px;background:#0008;border-radius:9px;overflow:hidden;z-index:3;display:none}
-#bar i{display:block;height:100%;width:100%;background:var(--mon);transition:width .1s linear}
-#shutter{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:3}
-#shutter[hidden]{display:none}
-#match{position:fixed;left:16px;bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:3;font-weight:700;text-shadow:0 1px 6px #000;display:none}
-#mon{position:fixed;left:50%;top:38%;width:min(92vw,440px);aspect-ratio:1;transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
-#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1.15);filter:drop-shadow(0 0 28px #d9435f) drop-shadow(0 0 70px #000)}
-.b{animation:tw .09s infinite;transform-origin:100px 110px}
-@keyframes tw{50%{transform:translate(2px,-3px) rotate(1deg)}}
-.eye{animation:glow .45s infinite alternate}
-@keyframes glow{from{opacity:.65}to{opacity:1}}
-#tune{position:fixed;left:16px;right:16px;top:calc(74px + env(safe-area-inset-top,0px));z-index:3;display:flex;align-items:center;gap:10px;font-weight:700;text-shadow:0 1px 6px #000}#tune input{flex:1;accent-color:var(--win)}#tune span{min-width:3ch;text-align:right}
-.bad{animation:shake .3s}
-@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-@media (prefers-reduced-motion:reduce){#vig.warn{animation:none;box-shadow:inset 0 0 90px 20px var(--mon)}}
-
-/* ===== Výběr režimu ===== */
-.big{display:block;width:min(100%,360px);border-radius:20px;text-align:left;padding:16px 18px;background:#ffffff14;color:var(--ink);border:2px solid #f3ecd833}
-.big small{display:block;font-weight:400;opacity:.8;margin-top:4px;line-height:1.4}
-.big.scary{border-color:var(--mon)}
-#modebtn{position:fixed;right:16px;bottom:calc(30px + env(safe-area-inset-bottom,0px));z-index:3;width:48px;height:48px;padding:0;border-radius:50%;background:#000a;color:var(--ink);border:2px solid #f3ecd855;font-size:1.3rem;line-height:1}
-
-/* ===== Režim Strašení příšer ===== */
-#sc{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;touch-action:none;background:#000}
-#scui{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:40px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;align-items:stretch;background:linear-gradient(transparent,#000d 45%)}
-#scmsg{margin:0;text-align:center;font-weight:700;text-shadow:0 1px 6px #000;line-height:1.35}
-#scui label{font-weight:700;font-size:.95rem;display:flex;gap:10px;align-items:center;text-shadow:0 1px 6px #000}
-#scui input{flex:1;accent-color:var(--win)}
-#gen{background:var(--mon);color:#fff}
-#scx{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:14px;z-index:6;width:46px;height:46px;padding:0;border-radius:50%;background:#000b;color:var(--ink);border:2px solid #f3ecd866;font-size:1.4rem;line-height:1}
-#rv{position:fixed;inset:0;z-index:4;background:#000;display:flex;flex-direction:column;align-items:center}
-#rv video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
-#savebar{padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;gap:12px;width:100%}
-#savebtn{width:min(100%,360px);background:var(--ok);color:#052214}
-#toast{position:fixed;left:16px;right:16px;top:calc(70px + env(safe-area-inset-top,0px));z-index:7;text-align:center;font-weight:700;background:#000c;border-radius:12px;padding:10px 14px;opacity:0;pointer-events:none;transition:opacity .25s}
-#toast.on{opacity:1}
+#vig{position:fixed;inset:0;pointer-events:none;z-index:2}
+#vig.warn{animation:p .5s infinite alternate}
+@keyframes p{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
+.scr{position:fixed;inset:0;z-index:6;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;overflow-y:auto}
+.scr h1{margin:0;font-size:2rem}.scr p{margin:0;max-width:36ch;line-height:1.5;opacity:.85}
+button,input{font:inherit;border-radius:999px;border:0;padding:14px 26px}
+button{font-weight:700;background:var(--win);color:#241a05;cursor:pointer}
+input{background:#ffffff18;color:var(--ink);text-align:center;letter-spacing:.3em;font-size:1.3rem;width:9em;border:2px solid #f3ecd833}
+#err{color:var(--mon)}
+#hud{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:4;display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px;text-shadow:0 1px 6px #000;font-weight:700}
+#oc{width:84px;height:63px;object-fit:cover;border:2px solid var(--mon);border-radius:8px;background:#000}
+#th{width:84px;height:63px;object-fit:cover;border:2px solid var(--win);border-radius:8px;margin-top:6px;display:block}
+#msg{position:fixed;left:16px;right:16px;bottom:calc(120px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;font-size:1.15rem;text-shadow:0 1px 8px #000;z-index:4}
+#match{position:fixed;left:16px;bottom:calc(40px + env(safe-area-inset-bottom,0px));z-index:4;font-weight:700;text-shadow:0 1px 6px #000}
+#shut{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:4}
+#mon{position:fixed;left:50%;top:38%;width:min(90vw,420px);transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:3;pointer-events:none;transition:transform 1s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
+#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1.1);filter:drop-shadow(0 0 28px #d9435f)}
+.bad{animation:sh .3s}@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#share{position:fixed;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:7;background:#000b;padding:10px;border-radius:14px;text-align:center;font-weight:700}#qr{width:170px;height:170px;display:block;margin:0 auto 6px;border-radius:6px}
+.sc{font-size:3rem;font-weight:800;color:var(--win)}
 </style></head>
 <body>
 <video id="v" playsinline muted autoplay></video>
 <div id="vig"></div>
+<canvas id="mon" width="300" height="300" aria-hidden="true"></canvas>
+<div id="hud" hidden><div id="sc">Ty 0 : 0 Soupeř</div><div><img id="oc" alt="Soupeř"><img id="th" alt="Tvůj domeček"></div></div>
+<div id="msg"></div><div id="match"></div>
+<button id="shut" aria-label="Vyfotit" hidden></button>
 
-<canvas id="mon" width="520" height="520" aria-hidden="true"></canvas>
-
-<div id="hud" hidden><span id="score">Přežito: 0</span><img id="thumb" alt="Fotka domečku"></div>
-<div id="msg"></div>
-<div id="bar"><i></i></div>
-<div id="match"></div>
-<div id="tune" hidden><label for="sens">Shoda domečků</label><input id="sens" type="range" min="10" max="90" step="1" value="40"><span id="thr">40 %</span></div>
-<button id="shutter" aria-label="Vyfotit" hidden></button>
-<button id="modebtn" aria-label="Změnit režim" hidden>⇄</button>
-
-<!-- Režim Strašení příšer -->
-<canvas id="sc" hidden></canvas>
-<div id="scui" hidden>
-  <p id="scmsg"></p>
-  <label for="hsz">Velikost díry<input id="hsz" type="range" min="0.4" max="2.6" step="0.02" value="1"></label>
-  <button id="gen">Vygenerovat strašení</button>
+<div id="share" hidden><canvas id="qr"></canvas><div id="sh"></div></div>
+<div class="scr" id="lobby">
+  <h1>Domeček a příšera: duel</h1>
+  <p>Dva hráči, jedna příšera. Oba vyfotíte svůj domeček. Když příšera vyleze, kdo první vyfotí domeček znovu, získá bod. Hraje se na 5 kol.</p>
+  <button id="solo">Hrát sám</button>
+  <button id="mk">Vytvořit hru pro dva</button>
+  <p>nebo zadej kód od kamaráda</p>
+  <input id="code" maxlength="4" inputmode="numeric" placeholder="0000" aria-label="Kód hry">
+  <button id="jn">Připojit se</button>
+  <p>Oba musíte otevřít stejný odkaz na hru. Kamera se nikam neukládá, soupeři se posílá jen malý náhled.</p>
+  <p id="err"></p>
 </div>
-<div id="rv" hidden>
-  <video id="rvv" playsinline loop></video>
-  <div id="savebar"><button id="savebtn">Uložit do fotek</button></div>
-</div>
-<button id="scx" aria-label="Zrušit" hidden>✕</button>
-<div id="toast" role="status"></div>
+<div class="scr" id="end" hidden><h1 id="verd"></h1><div class="sc" id="fin"></div><button onclick="location.reload()">Hrát znovu</button></div>
 
-<div class="screen" id="intro"><div class="in">
-  <h1>Domeček a příšera</h1>
-  <p>Hra, ve které utíkáš před příšerou a domeček je tvoje jediná záchrana.</p>
-  <ol class="rules">
-    <li><b>Vyfoť domeček.</b> Zapni kameru, zaměř na jedno místo nebo předmět (třeba dveře, gauč nebo obraz) a stiskni velké kulaté tlačítko. To je tvůj domeček.</li>
-    <li><b>Pohybuj se po domě.</b> Fotka domečku zůstane v rohu obrazovky. Chodí po bytě, prozkoumávej, kamera pořád běží.</li>
-    <li><b>Příšera přijde náhodně.</b> Může to být za 5 sekund i za půl minuty. Asi 2 sekundy předem tě varuje: červené blikající okraje, zvuk a vibrace.</li>
-    <li><b>Máš 4 sekundy.</b> Když se příšera objeví, vrať se k domečku a vyfoť ho znovu. Červený pruh ukazuje, kolik času zbývá.</li>
-    <li><b>Fotka musí sedět.</b> Dole vidíš <b>Shodu</b> v procentech. Když je dost vysoká, příšera zmizí a dostaneš bod. Když ne, zkoušej to znovu, dokud nevyprší čas.</li>
-    <li><b>Konec hry.</b> Pokud čas vyprší, příšera tě dostane. Skóre je počet příšer, které jsi přežil.</li>
-  </ol>
-  <div class="tips"><b>Tipy:</b> Vyber domeček s výrazným vzorem, ne jen holou zeď. Při focení ho zaměř podobně jako poprvé. Nastavení „Shoda domečků“ nahoře můžeš upravit: nižší procento = hra je snazší. Zapni si zvuk.</div>
-  <div class="tips"><b>Dva režimy:</b> Po potvrzení si vybereš, jestli budeš utíkat před příšerou, nebo budeš příšery strašit: vyfotíš předmět s dírou a z ní vyleze příšera ve strašidelném videu, které si můžeš uložit.</div>
-  <div class="tips warnbox"><b>Bezpečí:</b> Neběhej, dávej pozor na schody, nábytek a ostatní lidi. Hraj jen doma a v klidu. Kamera se nikam neodesílá a nic se neukládá, fotky se používají jen přímo ve hře.</div>
-  <button id="go">Rozumím, zapnout kameru</button>
-  <p id="err" style="color:var(--mon)"></p>
-</div></div>
-
-<div class="screen" id="modes" hidden><div class="in">
-  <h1>Vyber režim</h1>
-  <button class="big" id="m1"><b>Útěk před příšerou</b><small>Vyfoť domeček a vrať se k němu dřív, než tě příšera dostane.</small></button>
-  <button class="big scary" id="m2"><b>Strašení příšer</b><small>Vyfoť předmět s dírou. Z díry vyleze příšera a vygeneruje se strašidelné video, které můžeš uložit.</small></button>
-</div></div>
-
-<div class="screen" id="over" hidden><div class="in">
-  <h1>Příšera tě dostala</h1>
-  <p id="final"></p>
-  <button id="again">Hrát znovu</button>
-  <button id="chmode" style="background:transparent;color:var(--ink);border:2px solid #f3ecd855">Změnit režim</button>
-  <button id="rules2" style="background:transparent;color:var(--ink);border:2px solid #f3ecd855">Zobrazit pravidla</button>
-</div></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-<!-- Animační engine pro režim Strašení příšer (kreslí na 2D canvas, žádné další knihovny) -->
-<script id="fx">
-const ScareFX=(function(){
-const D=7.0,SH_T=5.0;
-const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
-const sm=x=>{x=cl(x);return x*x*(3-2*x)};
-const eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)};
-const rnd=(a,b)=>a+Math.random()*(b-a);
-
-// mini parser SVG cest (M L C Q Z, absolutní souřadnice)
-function parse(d){const out=[],re=/([MLCQZ])|(-?\d*\.?\d+)/g;let m,cur=null;
-  while((m=re.exec(d))){if(m[1]){cur=[m[1]];out.push(cur)}else cur.push(parseFloat(m[2]))}return out}
-function trace(c,cmds){c.beginPath();
-  for(const k of cmds){const n=k;
-    switch(k[0]){
-      case'M':c.moveTo(n[1],n[2]);break;
-      case'L':c.lineTo(n[1],n[2]);break;
-      case'C':c.bezierCurveTo(n[1],n[2],n[3],n[4],n[5],n[6]);break;
-      case'Q':c.quadraticCurveTo(n[1],n[2],n[3],n[4]);break;
-      case'Z':c.closePath();break}}}
-const SH={
-  hl:parse("M50 58 C24 42 24 16 40 3 C50 22 68 34 84 42Z"),
-  hr:parse("M150 58 C176 42 176 16 160 3 C150 22 132 34 116 42Z"),
-  body:parse("M18 205 C-2 112 18 40 100 34 C182 40 202 112 182 205 L166 180 L150 214 L128 184 L100 220 L72 184 L50 214 L34 180 Z"),
-  scr:parse("M30 120 L52 134 M170 120 L148 134 M38 150 L56 156 M162 150 L144 156"),
-  bl:parse("M36 70 L94 94 L92 80 L40 54Z"),
-  br:parse("M164 70 L106 94 L108 80 L160 54Z"),
-  mouth:parse("M42 128 Q100 108 158 128 Q172 176 100 196 Q28 176 42 128Z"),
-  up:parse("M47 127 L58 156 L68 124 L80 160 L90 122 L100 162 L110 122 L120 160 L132 124 L142 156 L153 127 Z"),
-  lo:parse("M64 176 L74 150 L84 182 L94 154 L100 188 L106 154 L116 182 L126 150 L136 176 Z"),
-  tg:parse("M78 160 Q100 150 122 160 L120 232 Q100 266 80 232 Z"),
-  dr1:parse("M84 182 L83 206"),dr2:parse("M116 182 L117 214")
-};
-
-// Příšera v lokálních souřadnicích 200x270, kotva = střed spodku těla (100,215)
-function monster(c,p){
-  c.save();c.translate(p.ax,p.ay);c.rotate(p.rot||0);c.scale(p.s,p.s);c.translate(-100,-215);
-  c.lineJoin='round';c.lineCap='round';
-  c.fillStyle='#0b0410';c.strokeStyle='#000';c.lineWidth=3;
-  for(const k of[SH.hl,SH.hr]){trace(c,k);c.fill();c.stroke()}
-  const g=c.createRadialGradient(100,100,10,100,120,115);g.addColorStop(0,'#3a1a46');g.addColorStop(1,'#0e0614');
-  trace(c,SH.body);c.fillStyle=g;c.fill();c.strokeStyle='#05010a';c.lineWidth=5;c.stroke();
-  trace(c,SH.scr);c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
-  for(const ex of[68,132]){
-    c.save();c.translate(ex,94);
-    const eg=c.createRadialGradient(0,0,0,0,0,25);eg.addColorStop(0,'#fff6a0');eg.addColorStop(.55,'#ff3b30');eg.addColorStop(1,'#7a0010');
-    c.beginPath();c.ellipse(0,0,25,21,0,0,Math.PI*2);c.fillStyle=eg;c.fill();c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
-    c.beginPath();c.ellipse(0,0,4,17,0,0,Math.PI*2);c.fillStyle='#000';c.fill();
-    c.restore();
-  }
-  c.fillStyle='#05010a';for(const k of[SH.bl,SH.br]){trace(c,k);c.fill()}
-  trace(c,SH.mouth);c.fillStyle='#12020a';c.fill();c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
-  c.fillStyle='#f3ecd8';c.strokeStyle='#2a1a1a';c.lineWidth=1.5;
-  for(const k of[SH.up,SH.lo]){trace(c,k);c.fill();c.stroke()}
-  c.strokeStyle='rgba(190,255,200,.5)';c.lineWidth=2;
-  for(const k of[SH.dr1,SH.dr2]){trace(c,k);c.stroke()}
-  if(p.tg>.02){
-    c.save();c.translate(100,160);c.rotate(p.wag||0);c.scale(1,p.tg);c.translate(-100,-160);
-    const tg=c.createLinearGradient(0,160,0,262);tg.addColorStop(0,'#ff7a93');tg.addColorStop(1,'#a80f2c');
-    trace(c,SH.tg);c.fillStyle=tg;c.fill();c.strokeStyle='#4a0612';c.lineWidth=3;c.stroke();
-    c.strokeStyle='#7a0a20';c.beginPath();c.moveTo(100,162);c.lineTo(100,238);c.stroke();
-    c.strokeStyle='#c4284a';c.lineWidth=2;c.beginPath();c.moveTo(86,190);c.quadraticCurveTo(100,194,114,190);c.moveTo(86,212);c.quadraticCurveTo(100,216,114,212);c.stroke();
-    c.restore();
-  }
-  c.restore();
-}
-// záře očí (aditivně)
-function glow(c,p){
-  const cs=Math.cos(p.rot||0),sn=Math.sin(p.rot||0);
-  for(const lx of[68,132]){
-    const dx=(lx-100)*p.s,dy=(94-215)*p.s,X=p.ax+dx*cs-dy*sn,Y=p.ay+dx*sn+dy*cs,r=62*p.s;
-    const g=c.createRadialGradient(X,Y,0,X,Y,r);
-    g.addColorStop(0,'rgba(255,70,40,'+(.7*(p.flick||1))+')');g.addColorStop(1,'rgba(255,0,0,0)');
-    c.fillStyle=g;c.beginPath();c.arc(X,Y,r,0,Math.PI*2);c.fill();
-  }
-}
-// pařát svírající okraj díry
-function hand(c,Hh,side,h,t){
-  if(h<=.001)return;
-  const x=Hh.x,y=Hh.y,rx=Hh.rx,ry=Hh.ry;
-  const rimX=x+side*rx*.93,rimY=y+ry*.25,slide=(1-eo(h))*rx*.55;
-  const px=rimX-side*.8*slide,py=rimY+.55*slide;
-  c.save();c.globalAlpha=sm(h*1.8);c.lineCap='round';c.lineJoin='round';
-  // paže uvnitř díry
-  c.save();c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.clip();
-  c.beginPath();c.moveTo(x+side*rx*.15,y+ry*1.4);c.lineTo(px,py);
-  c.strokeStyle='#05100a';c.lineWidth=ry*1.0;c.stroke();
-  c.strokeStyle='#33482f';c.lineWidth=ry*.72;c.stroke();
-  c.restore();
-  // prsty s drápy
-  const base=side<0?Math.PI+.1:-.1,fw=ry*.26;
-  for(let i=0;i<4;i++){
-    const a=base+(i-1.5)*.42,cu=Math.sin(t*5+i*1.3)*.12*h,Lf=rx*(.24+.05*(i%2))+ry*.3;
-    const sx=px+Math.cos(a)*ry*.3,sy=py+Math.sin(a)*ry*.3;
-    const tx=px+Math.cos(a+cu)*Lf,ty=py+Math.sin(a+cu)*Lf;
-    const mx=(sx+tx)/2+Math.cos(a+Math.PI/2)*ry*.15,my=(sy+ty)/2+Math.sin(a+Math.PI/2)*ry*.15;
-    c.beginPath();c.moveTo(sx,sy);c.quadraticCurveTo(mx,my,tx,ty);
-    c.strokeStyle='#05100a';c.lineWidth=fw+5;c.stroke();
-    c.strokeStyle='#4a6642';c.lineWidth=fw;c.stroke();
-    const ex=tx+Math.cos(a)*ry*.36,ey=ty+Math.sin(a)*ry*.36,qx=-Math.sin(a)*ry*.09,qy=Math.cos(a)*ry*.09;
-    c.beginPath();c.moveTo(tx+qx,ty+qy);c.lineTo(ex,ey);c.lineTo(tx-qx,ty-qy);c.closePath();
-    c.fillStyle='#e8dfc0';c.fill();c.strokeStyle='#2a1a1a';c.lineWidth=1.5;c.stroke();
-  }
-  c.beginPath();c.ellipse(px,py,ry*.6,ry*.52,0,0,Math.PI*2);
-  c.fillStyle='#4a6642';c.fill();c.strokeStyle='#05100a';c.lineWidth=4;c.stroke();
-  c.restore();
-}
-
-function make(photo,W,H,hole){
-  const hx=hole.x,hy=hole.y,rx=hole.rx,ry=hole.ry,ms=(rx*1.8)/200;
-  const Hh={x:hx,y:hy,rx:rx,ry:ry};
-  const ml=document.createElement('canvas');ml.width=W;ml.height=H;const mc=ml.getContext('2d');
-  const nz=document.createElement('canvas');nz.width=nz.height=128;
-  {const x=nz.getContext('2d'),id=x.createImageData(128,128);
-   for(let i=0;i<id.data.length;i+=4){const v=Math.random()*255;id.data[i]=id.data[i+1]=id.data[i+2]=v;id.data[i+3]=255}
-   x.putImageData(id,0,0)}
-
-  // praskliny
-  function mkCrack(x,y,ang,segs,seglen){
-    const pts=[{x:x,y:y}],cum=[0];let a=ang,tot=0;
-    for(let i=0;i<segs;i++){a+=rnd(-.5,.5);const l=seglen*rnd(.6,1.3);x+=Math.cos(a)*l;y+=Math.sin(a)*l;tot+=l;pts.push({x:x,y:y});cum.push(tot)}
-    return{pts:pts,cum:cum,total:tot}}
-  const cracks=[];
-  for(let i=0;i<11;i++){
-    const th=i*Math.PI*2/11+rnd(-.15,.15),px=hx+Math.cos(th)*rx,py=hy+Math.sin(th)*ry,ang=Math.atan2(py-hy,px-hx);
-    const cr=mkCrack(px,py,ang,8,rx*.45);cr.branch=false;cracks.push(cr);
-    const q=cr.pts[3];const b=mkCrack(q.x,q.y,ang+(Math.random()<.5?-.8:.8),4,rx*.3);b.branch=true;cracks.push(b);
-  }
-  function partial(c,cr,f){
-    const L=cr.total*f;c.beginPath();c.moveTo(cr.pts[0].x,cr.pts[0].y);
-    for(let i=1;i<cr.pts.length;i++){
-      if(cr.cum[i]<=L)c.lineTo(cr.pts[i].x,cr.pts[i].y);
-      else{const u=(L-cr.cum[i-1])/(cr.cum[i]-cr.cum[i-1]);
-        c.lineTo(cr.pts[i-1].x+(cr.pts[i].x-cr.pts[i-1].x)*u,cr.pts[i-1].y+(cr.pts[i].y-cr.pts[i-1].y)*u);break}
-    }}
-  // prach
-  const dust=[];for(let i=0;i<36;i++)dust.push({ts:rnd(.4,3.2),life:rnd(1.2,2.2),ox:rnd(-.8,.8)*rx,vx:rnd(-30,30),vy:rnd(-110,-50),r:rnd(.06,.16)*rx});
-
-  function holeDraw(c,t){
-    c.save();
-    c.beginPath();c.ellipse(hx,hy,rx,ry,0,0,Math.PI*2);
-    const g=c.createRadialGradient(hx,hy+ry*.15,0,hx,hy,rx);g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,.93)');
-    c.fillStyle=g;c.fill();c.clip();
-    const ga=cl(.12+.55*sm((t-.5)/2.2)+.1*Math.sin(t*9));
-    const gg=c.createRadialGradient(hx,hy+ry*.3,0,hx,hy+ry*.3,rx*1.15);
-    gg.addColorStop(0,'rgba(255,40,50,'+ga+')');gg.addColorStop(1,'rgba(90,0,10,0)');
-    c.fillStyle=gg;c.fillRect(hx-rx,hy-ry,rx*2,ry*2);
-    if(t>1.5&&t<2.7){
-      const a=sm((t-1.5)/.3)*(1-sm((t-2.4)/.3))*((t>2.02&&t<2.1)?0:1);
-      for(const s of[-1,1]){
-        const ex=hx+s*rx*.28,ey=hy+ry*.1,r=rx*.07;
-        const eg=c.createRadialGradient(ex,ey,0,ex,ey,r*3);
-        eg.addColorStop(0,'rgba(255,240,120,'+a+')');eg.addColorStop(.3,'rgba(255,60,40,'+(a*.8)+')');eg.addColorStop(1,'rgba(255,0,0,0)');
-        c.fillStyle=eg;c.beginPath();c.arc(ex,ey,r*3,0,Math.PI*2);c.fill();
-      }
-    }
-    c.restore();
-    c.strokeStyle='rgba(0,0,0,.7)';c.lineWidth=Math.max(3,ry*.12);c.beginPath();c.ellipse(hx,hy,rx,ry,0,0,Math.PI*2);c.stroke();
-  }
-  function cracksDraw(c,t){
-    const g=eo((t-2.7)/2.3);if(g<=0)return;
-    c.save();c.lineCap='round';c.lineJoin='round';
-    for(const cr of cracks){
-      const f=cr.branch?cl((g-.3)/.7):g;if(f<=0)continue;
-      partial(c,cr,f);c.strokeStyle='rgba(255,40,60,.35)';c.lineWidth=9;c.stroke();
-      c.strokeStyle='rgba(0,0,0,.9)';c.lineWidth=4;c.stroke();
-      c.strokeStyle='rgba(255,255,255,.22)';c.lineWidth=1;c.stroke();
-    }
-    c.restore();
-  }
-  function dustDraw(c,t){
-    for(const d of dust){
-      const u=t-d.ts;if(u<0||u>d.life)continue;
-      const a=.35*(1-u/d.life)*sm(u/.2);
-      c.fillStyle='rgba(150,140,130,'+a+')';
-      c.beginPath();c.arc(hx+d.ox+d.vx*u,hy+ry*.2+d.vy*u,d.r*(1+u),0,Math.PI*2);c.fill();
-    }
-  }
-  function monsterLayer(c,t){
-    if(t<2.2)return;
-    let pose,clip=true,r=eo((t-2.2)/2.0);
-    if(t<SH_T){
-      pose={ax:hx,ay:(hy+ry+212*ms)+r*(-212*ms-ry*.4),s:ms,rot:Math.sin(t*1.7)*.035,tg:sm((t-4.3)/.5),wag:Math.sin(t*28)*.07,flick:.8+.2*Math.random()};
-    }else{
-      const e=cl((t-SH_T)/1.1),e2=e*e,e14=Math.pow(e,1.4);
-      const sEnd=Math.max(1.2*W/200,1.05*H/220),Lend=sEnd/ms,s=ms*(1+(Lend-1)*e2);
-      const h0=hy+ry*.6-95*ms,headX=hx+(W/2-hx)*e14,headY=h0+(H*.46-h0)*e14;
-      pose={ax:headX,ay:headY+95*s,s:s,rot:Math.sin(t*40)*.05*e+Math.sin(t*1.7)*.035*(1-e),tg:1,wag:Math.sin(t*34)*.1,flick:.8+.2*Math.random()};
-      clip=false;r=1;
-    }
-    mc.setTransform(1,0,0,1,0,0);mc.globalAlpha=1;mc.globalCompositeOperation='source-over';mc.clearRect(0,0,W,H);
-    mc.save();
-    if(clip){mc.beginPath();mc.moveTo(0,0);mc.lineTo(W,0);mc.lineTo(W,hy);mc.lineTo(hx+rx,hy);mc.ellipse(hx,hy,rx,ry,0,0,Math.PI,false);mc.lineTo(0,hy);mc.closePath();mc.clip()}
-    monster(mc,pose);
-    if(clip){
-      mc.globalCompositeOperation='source-atop';
-      const fl=ry*2.2+80*ms,y1=hy+ry,y0=y1-fl;
-      const sg=mc.createLinearGradient(0,y1,0,y0);sg.addColorStop(0,'rgba(0,0,0,'+(.92*(1-.75*r))+')');sg.addColorStop(1,'rgba(0,0,0,0)');
-      mc.fillStyle=sg;mc.fillRect(0,0,W,H);
-    }
-    mc.globalCompositeOperation='lighter';glow(mc,pose);
-    mc.restore();
-    c.drawImage(ml,0,0);
-  }
-  function voidBg(c,t){
-    const f=.85+.15*Math.sin(t*25)*Math.random(),cx=hx+(W/2-hx)*.5,cy=H*.45;
-    const g=c.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*.8);
-    g.addColorStop(0,'rgba(150,12,28,'+f+')');g.addColorStop(.4,'rgb(60,0,12)');g.addColorStop(1,'#000');
-    c.fillStyle=g;c.fillRect(-W,-H,3*W,3*H);
-  }
-  function handsDraw(c,t){
-    const h=sm((t-1.0)/1.2);hand(c,Hh,-1,h,t);hand(c,Hh,1,sm((t-1.2)/1.2),t);
-  }
-  function scene(c,t){
-    if(t<SH_T){
-      c.drawImage(photo,0,0);
-      c.fillStyle='rgba(8,0,24,'+(.15+.3*sm(t/3.5))+')';c.fillRect(0,0,W,H);
-      holeDraw(c,t);cracksDraw(c,t);dustDraw(c,t);
-      monsterLayer(c,t);handsDraw(c,t);
-    }else{
-      voidBg(c,t);monsterLayer(c,t);shardsDraw(c,t);
-    }
-  }
-
-  // úlomky: snímek poslední scény před výbuchem se rozletí
-  const snap=document.createElement('canvas');snap.width=W;snap.height=H;
-  const pieces=[];
-  function addPiece(sx,sy,sw,sh){
-    const x0=Math.floor(sx),y0=Math.floor(sy),w0=Math.ceil(sx+sw)-x0,h0=Math.ceil(sy+sh)-y0;
-    const cx=x0+w0/2,cy=y0+h0/2;let dx=cx-hx,dy=cy-hy;const dist=Math.hypot(dx,dy)||1;dx/=dist;dy/=dist;
-    const d=dist/rx,sp=(900/(1+d*.55))*rnd(.7,1.3);
-    pieces.push({sx:x0,sy:y0,sw:w0,sh:h0,cx:cx,cy:cy,vx:dx*sp+rnd(-60,60),vy:dy*sp-rnd(80,260),rot:0,vr:rnd(-4,4),vz:rnd(.4,1.8),delay:d*.018+rnd(0,.05)});
-  }
-  {const cols=8,rows=Math.max(8,Math.round(8*H/W)),cw=W/cols,ch=H/rows;
-   for(let r=0;r<rows;r++)for(let q=0;q<cols;q++){
-     const x=q*cw,y=r*ch,d=Math.hypot(x+cw/2-hx,y+ch/2-hy)/rx,n=d<2.4?3:d<4.2?2:1;
-     for(let i=0;i<n;i++)for(let j=0;j<n;j++)addPiece(x+i*cw/n,y+j*ch/n,cw/n,ch/n);
-   }}
-  function shardsDraw(c,t){
-    const u=t-SH_T;
-    for(const p of pieces){
-      const v=u-p.delay;
-      if(v<=0){c.drawImage(snap,p.sx,p.sy,p.sw,p.sh,p.sx,p.sy,p.sw,p.sh);continue}
-      const a=1-cl((v-.6)/.7);if(a<=0)continue;
-      const x=p.cx+p.vx*v,y=p.cy+p.vy*v+.5*1500*v*v,sc=1+p.vz*v;
-      c.save();c.globalAlpha=a;c.translate(x,y);c.rotate(p.rot+p.vr*v);c.scale(sc,sc);
-      c.drawImage(snap,p.sx,p.sy,p.sw,p.sh,-p.sw/2,-p.sh/2,p.sw,p.sh);c.restore();
-    }
-  }
-  scene(snap.getContext('2d'),SH_T-.001);
-
-  function overlays(c,t){
-    const R=Math.hypot(W,H);
-    const vg=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,R*.55);
-    vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,'+(.4+.45*sm(t/4))+')');
-    c.fillStyle=vg;c.fillRect(0,0,W,H);
-    const ra=(.05+.06*Math.sin(t*10))*sm((t-2)/1);
-    if(ra>0){c.fillStyle='rgba(255,0,30,'+ra+')';c.fillRect(0,0,W,H)}
-    if(t>2&&t<5&&Math.random()<.035){c.fillStyle='rgba(0,0,0,.55)';c.fillRect(0,0,W,H)}
-    c.save();c.globalAlpha=.08;c.translate(-Math.random()*128,-Math.random()*128);
-    c.fillStyle=c.createPattern(nz,'repeat');c.fillRect(0,0,W+128,H+128);c.restore();
-    if(t>=SH_T&&t<SH_T+.3){c.fillStyle='rgba(255,235,235,'+((1-(t-SH_T)/.3)*.85)+')';c.fillRect(0,0,W,H)}
-    if(t>=5.95){
-      const tt=t-5.95;
-      if(tt<.15){c.fillStyle='rgba(255,255,255,'+(tt/.15)+')'}
-      else{const v=Math.round(255*(1-cl((tt-.15)/.3)));c.fillStyle='rgb('+v+','+v+','+v+')'}
-      c.fillRect(0,0,W,H);
-    }
-  }
-  return{D:D,W:W,H:H,draw:function(ctx,t){
-    ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-    if(t>=6.4)return;
-    const amp=t<1?1.5:t<4.4?1.5+9*sm((t-1)/3.4):t<5?20:28;
-    ctx.save();
-    ctx.translate((Math.random()-.5)*amp,(Math.random()-.5)*amp);
-    const z=1+.12*sm(t/4.4);
-    ctx.translate(hx,hy);ctx.scale(z,z);ctx.translate(-hx,-hy);
-    scene(ctx,t);
-    ctx.restore();
-    overlays(ctx,t);
-  }};
-}
-
-// Zvuk celé scény (naplánovaný dopředu do audio grafu)
-function audio(ac,out){
-  const t0=ac.currentTime+.05;
-  function noise(dur){const n=Math.floor(ac.sampleRate*dur),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
-    for(let i=0;i<n;i++)d[i]=Math.random()*2-1;const s=ac.createBufferSource();s.buffer=b;return s}
-  function burst(at,dur,type,freq,q,vol,sweepTo){
-    const s=noise(dur),f=ac.createBiquadFilter(),k=ac.createGain();
-    f.type=type;f.frequency.setValueAtTime(freq,t0+at);if(sweepTo)f.frequency.exponentialRampToValueAtTime(sweepTo,t0+at+dur);f.Q.value=q;
-    k.gain.setValueAtTime(.0001,t0+at);k.gain.exponentialRampToValueAtTime(vol,t0+at+dur*.15);k.gain.exponentialRampToValueAtTime(.0001,t0+at+dur);
-    s.connect(f);f.connect(k);k.connect(out);s.start(t0+at);s.stop(t0+at+dur+.05)}
-  function kick(at,vol,f0){
-    const o=ac.createOscillator(),k=ac.createGain();
-    o.frequency.setValueAtTime(f0||90,t0+at);o.frequency.exponentialRampToValueAtTime(34,t0+at+.22);
-    k.gain.setValueAtTime(vol,t0+at);k.gain.exponentialRampToValueAtTime(.001,t0+at+.3);
-    o.connect(k);k.connect(out);o.start(t0+at);o.stop(t0+at+.32)}
-  function tone(type,f0,f1,at,dur,vol,node){
-    const o=ac.createOscillator(),k=ac.createGain();o.type=type;
-    o.frequency.setValueAtTime(f0,t0+at);o.frequency.linearRampToValueAtTime(f1,t0+at+dur);
-    k.gain.setValueAtTime(.0001,t0+at);k.gain.exponentialRampToValueAtTime(vol,t0+at+Math.min(.15,dur/3));k.gain.exponentialRampToValueAtTime(.0001,t0+at+dur);
-    o.connect(node||k);if(node)node.connect(k);k.connect(out);o.start(t0+at);o.stop(t0+at+dur+.05)}
-  // nízké hučení
-  {const o=ac.createOscillator(),f=ac.createBiquadFilter(),k=ac.createGain();
-   o.type='sawtooth';o.frequency.value=42;f.type='lowpass';f.frequency.value=140;
-   k.gain.setValueAtTime(0,t0);k.gain.linearRampToValueAtTime(.55,t0+4.8);k.gain.setValueAtTime(.55,t0+5.0);k.gain.linearRampToValueAtTime(0,t0+6.4);
-   o.connect(f);f.connect(k);k.connect(out);o.start(t0);o.stop(t0+6.5)}
-  // tlukot srdce, zrychluje
-  [.6,1.4,2.1,2.7,3.2,3.65,4.05,4.4].forEach((a,i)=>{kick(a,.8);kick(a+.18,.5)});
-  // škrábání pařátů
-  burst(1.15,.5,'bandpass',1800,6,.35,900);burst(1.6,.45,'bandpass',2200,5,.3,1000);burst(2.0,.5,'bandpass',1500,5,.3,700);
-  // praskání
-  [2.8,3.1,3.5,3.7,4.0,4.2,4.6].forEach(a=>burst(a,.12,'highpass',2500,1,.35));
-  // řev
-  burst(4.4,1.1,'lowpass',400,2,.9,1800);
-  {const sh=ac.createWaveShaper(),cv=new Float32Array(256);for(let i=0;i<256;i++)cv[i]=Math.tanh((i/128-1)*6);sh.curve=cv;
-   tone('sawtooth',70,130,4.4,1.4,.45,sh)}
-  // roztříštění
-  kick(5.0,1.2,70);burst(5.0,.9,'lowpass',9000,.7,1.0,600);
-  for(let i=0;i<14;i++){tone('triangle',rnd(2200,5200),rnd(1800,4000),5.0+rnd(0,.5),.35,.12)}
-  // závěrečný jekot
-  tone('sawtooth',780,1500,5.0,1.4,.28);tone('sawtooth',830,1590,5.0,1.4,.22);
-}
-return{make:make,audio:audio,D:D};
-})();
-</script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
-const $=s=>document.querySelector(s);
-const v=$('#v'),cv=document.createElement('canvas');cv.width=32;cv.height=24;
-const cx=cv.getContext('2d',{willReadFrequently:true});
-let ref=null,state='intro',thr=.4,score=0,timers=[],tick=null,left=4,live=null;
-
-// Zmenšený šedotónový snímek, normalizovaný (nezávislý na jasu a kontrastu)
-function grab(){
-  const w=v.videoWidth,h=v.videoHeight;if(!w)return null;
-  let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
-  cx.drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,32,24);
-  const d=cx.getImageData(0,0,32,24).data,g=new Float32Array(768);let m=0;
-  for(let i=0;i<768;i++){g[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];m+=g[i]}
-  m/=768;let s=0;for(let i=0;i<768;i++){g[i]-=m;s+=g[i]*g[i]}
-  s=Math.sqrt(s/768)||1;for(let i=0;i<768;i++)g[i]/=s;return g;
-}
-function sim(a,b){let s=0;for(let i=0;i<768;i++)s+=a[i]*b[i];return Math.max(0,s/768)}
-
-// Zvuk a vibrace
-let ac;function beep(f,d,t='sine',g=.15){try{ac=ac||new AudioContext();const o=ac.createOscillator(),k=ac.createGain();o.type=t;o.frequency.value=f;k.gain.value=g;o.connect(k);k.connect(ac.destination);o.start();k.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+const $=s=>document.querySelector(s),v=$('#v');
+const ROUNDS=5,THR=.4;
+let solo=false,need=2,room=null,host=false,code='',ref=null,phase='lobby',ready=new Set(),round=0,att=null,done=-1,sc={me:0,opp:0},ac,tmr=[];
+const g32=document.createElement('canvas');g32.width=32;g32.height=24;const gx=g32.getContext('2d',{willReadFrequently:true});
+function crop(){const w=v.videoWidth,h=v.videoHeight;if(!w)return null;let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}return[(w-sw)/2,(h-sh)/2,sw,sh]}
+function grab(){const c=crop();if(!c)return null;gx.drawImage(v,...c,0,0,32,24);
+ const d=gx.getImageData(0,0,32,24).data,g=new Float32Array(768);let m=0;
+ for(let i=0;i<768;i++){g[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];m+=g[i]}
+ m/=768;let s=0;for(let i=0;i<768;i++){g[i]-=m;s+=g[i]*g[i]}
+ s=Math.sqrt(s/768)||1;for(let i=0;i<768;i++)g[i]/=s;return g}
+const sim=(a,b)=>{let s=0;for(let i=0;i<768;i++)s+=a[i]*b[i];return Math.max(0,s/768)};
+function beep(f,d,t='sine',g=.15){try{ac=ac||new AudioContext();const o=ac.createOscillator(),k=ac.createGain();o.type=t;o.frequency.value=f;k.gain.value=g;o.connect(k);k.connect(ac.destination);o.start();k.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
 const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+const say=t=>{$('#msg').textContent=t};
+const err=t=>{$('#err').textContent=t};
+const later=(f,ms)=>tmr.push(setTimeout(f,ms));
 
-function clearAll(){timers.forEach(clearTimeout);timers=[];clearInterval(tick);tick=null}
-function say(t){$('#msg').textContent=t}
-
-$('#go').onclick=async()=>{
-  try{
-    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
-    v.srcObject=s;await v.play();
-    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
-    try{const sm=await claude.use('sample');if(sm)sm('Odpověz jen: OK',{modelTier:'quick'}).catch(()=>{})}catch(e){}
-    $('#intro').hidden=true;showModes();
-  }catch(e){$('#err').textContent='Kamera se nespustila. Povol přístup ke kameře a otevři hru přes https.'}
-};
-
-function setup(){
-  state='setup';score=0;ref=null;clearAll();
-  $('#hud').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);
-  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
-  $('#modebtn').hidden=false;
-  say('Zaměř domeček a vyfoť ho');
-}
-
-function startPlay(){
-  state='play';
-  $('#hud').hidden=false;$('#shutter').hidden=true;
-  clearInterval(window.mt);window.mt=setInterval(()=>{if(!ref||state==='over')return;const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %'},300);
-  $('#score').textContent='Přežito: 0';
-  schedule();
-}
-
-function schedule(){
-  state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;
-  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
-  $('#modebtn').hidden=false;
-  say('Schovej se. Příšera tě hledá…');
-    const delay=(5+Math.random()*25)*1000; // 5–30 s, úplně náhodně
-  timers.push(setTimeout(warn,Math.max(delay-2000,3000)));
-  timers.push(setTimeout(attack,Math.max(delay,5000)));
-}
-
-function warn(){ // varování ~2 s předem: vibrace, zvuk, červené okraje
-  $('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2);
-}
-
-function attack(){
-  state='attack';left=4;
-  $('#modebtn').hidden=true;
-  $('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);beep(180,.9,'sawtooth',.12);setTimeout(()=>beep(95,.7,'sawtooth',.2),250);
-  $('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';$('#tune').hidden=true;
-  say('Najdi domeček a vyfoť ho!');
-  let last=performance.now();paused=false;
-  tick=setInterval(()=>{
-    const now=performance.now();if(!paused)left-=(now-last)/1000;last=now;
-    $('#bar i').style.width=Math.max(0,left/4*100)+'%';
-    const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %';
-    if(left<=0)lose();
-  },100);
-}
-
-function lose(){
-  clearAll();state='over';
-  $('#mon').style.transform='translate(-50%,-50%) scale(2.2)';buzz(600);beep(60,.9,'sawtooth',.3);
-  setTimeout(()=>{
-    $('#mon').style.transform='';$('#mon').classList.remove('on');
-    $('#hud').hidden=true;$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;$('#modebtn').hidden=true;clearInterval(window.mt);$('#vig').classList.remove('warn');say('');
-    $('#final').textContent='Přežil jsi příšer: '+score;$('#over').hidden=false;
-  },900);
-}
-
-$('#shutter').onclick=()=>{
-  if(state==='scare-shoot'){scareShot();return}
-  const g=grab();if(!g)return;
-  if(state==='setup'){
-    ref=g;snap().then(b=>refBlob=b);
-    const t=document.createElement('canvas');t.width=104;t.height=78;
-    const w=v.videoWidth,h=v.videoHeight;let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
-    t.getContext('2d').drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,104,78);
-    $('#thumb').src=t.toDataURL();beep(660,.15);startPlay();return;
-  }
-  if(state==='attack'){judgeShot(g);return}
-};
-
-let refBlob=null,paused=false,busy=false;
-function snap(){return new Promise(r=>{const w=v.videoWidth,h=v.videoHeight,k=Math.min(1,640/w),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(r,'image/jpeg',.7)})}
-function win(){clearAll();score++;$('#score').textContent='Přežito: '+score;beep(880,.25);buzz(60);say('Zachráněn! Příšera zmizela.');$('#mon').classList.remove('on');$('#vig').classList.remove('warn');$('#bar').style.display='none';$('#match').style.display='none';$('#shutter').hidden=true;timers.push(setTimeout(schedule,1800))}
-function fail(h){const m=$('#msg');m.textContent='Nesedí. '+(h||'Zkus to znovu!');m.classList.remove('bad');void m.offsetWidth;m.classList.add('bad');beep(200,.2,'square')}
-async function judgeShot(g){
-  if(busy)return;
-  if(sim(g,ref)>=thr){win();return}
-  busy=true;paused=true;say('Příšera zkoumá fotku…');
-  let ok=false,hint='';
-  try{
-    const sample=await claude.use('sample');
-    if(!sample||!refBlob)throw 0;
-    const lim=await sample.limits();if(!lim.images)throw 0;
-    const cur=await snap();
-    const r=await sample.json('První obrázek je referenční fotka domečku, druhý je nová fotka. Rozhodni, jestli obě fotky zachycují stejné místo nebo stejný předmět. Buď velmi shovívavý: stačí, když je to zhruba stejné místo a podobný pohled. Úhel, vzdálenost, světlo, ostrost i posun se mohou lišit. Odmítni jen tehdy, když je jasné, že jde o jiné místo. Odpověz pouze JSON: {"score":číslo 0 až 100 (poctivé procento podobnosti obou míst: 100 = naprosto stejné místo, 0 = úplně jiné; úhel a světlo ho nesnižují),"same":true nebo false,"hint":"krátká rada česky, max 8 slov"}',{images:[refBlob,cur],modelTier:'quick'});
-    ok=Number(r.score)>=thr*100;hint=r.hint||'';
-  }catch(e){ok=sim(g,ref)>=thr*.7}
-  busy=false;paused=false;
-  if(state!=='attack')return;
-  ok?win():fail(hint);
-}
-$('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
-$('#again').onclick=()=>{$('#over').hidden=true;setup()};
-$('#rules2').onclick=()=>{$('#over').hidden=true;$('#intro').hidden=false;$('#go').textContent='Rozumím, pokračovat';$('#go').onclick=()=>{$('#intro').hidden=true;showModes()}};
-
-// ================== VÝBĚR REŽIMU ==================
-const cl=(x,a,b)=>Math.max(a,Math.min(b,x));
-const SC={token:0,W:0,H:0,photo:null,hx:0,hy:0,baseRx:0,ratio:.6,k:1,touched:false,raf:0,url:null,blob:null};
-
-function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),3500)}
-
-function scareCleanup(){
-  cancelAnimationFrame(SC.raf);SC.token++;
-  $('#sc').hidden=true;$('#scui').hidden=true;$('#rv').hidden=true;$('#scx').hidden=true;
-  try{$('#rvv').pause()}catch(e){}
-  if(SC.url){URL.revokeObjectURL(SC.url);SC.url=null}
-  SC.blob=null;$('#rvv').removeAttribute('src');
-}
-function stopAll(){
-  clearAll();clearInterval(window.mt);scareCleanup();
-  $('#hud').hidden=true;$('#shutter').hidden=true;$('#modebtn').hidden=true;
-  $('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;
-  $('#mon').classList.remove('on');$('#mon').style.transform='';$('#vig').classList.remove('warn');
-  $('#over').hidden=true;say('');
-}
-function showModes(){stopAll();state='modes';$('#modes').hidden=false}
-$('#m1').onclick=()=>{$('#modes').hidden=true;stopAll();setup()};
-$('#m2').onclick=()=>{$('#modes').hidden=true;scareStart()};
-$('#modebtn').onclick=showModes;
-$('#chmode').onclick=()=>{$('#over').hidden=true;showModes()};
-
-// ================== REŽIM STRAŠENÍ PŘÍŠER ==================
-function scareStart(){
-  stopAll();state='scare-shoot';
-  $('#shutter').hidden=false;$('#modebtn').hidden=false;
-  say('Zaměř předmět s dírou (hrnek, trubku, krabici, noru…) a vyfoť ho');
-}
-
-function holeNow(){const rx=Math.max(SC.W*.05,SC.baseRx*SC.k);return{x:SC.hx,y:SC.hy,rx:rx,ry:rx*SC.ratio}}
-
-function drawAdjust(){
-  const c=$('#sc').getContext('2d'),h=holeNow();
-  c.setTransform(1,0,0,1,0,0);c.drawImage(SC.photo,0,0);
-  c.save();c.beginPath();c.ellipse(h.x,h.y,h.rx,h.ry,0,0,Math.PI*2);
-  c.fillStyle='rgba(242,193,78,.2)';c.fill();
-  c.setLineDash([16,10]);c.strokeStyle='#f2c14e';c.lineWidth=6;c.stroke();
-  c.setLineDash([]);c.lineWidth=4;c.beginPath();c.moveTo(h.x-14,h.y);c.lineTo(h.x+14,h.y);c.moveTo(h.x,h.y-14);c.lineTo(h.x,h.y+14);c.stroke();
-  c.restore();
-}
-
-function scareShot(){
-  const vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;
-  const iw=innerWidth,ih=innerHeight,L=1024;
-  let W,H;if(iw<ih){H=L;W=Math.round(L*iw/ih)}else{W=L;H=Math.round(L*ih/iw)}
-  W-=W%2;H-=H%2;
-  const c=document.createElement('canvas');c.width=W;c.height=H;
-  const k=Math.max(W/vw,H/vh),dw=vw*k,dh=vh*k;
-  c.getContext('2d').drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh);
-  SC.W=W;SC.H=H;SC.photo=c;SC.hx=W/2;SC.hy=H/2;SC.baseRx=W*.16;SC.ratio=.6;SC.k=1;SC.touched=false;
-  const cvs=$('#sc');cvs.width=W;cvs.height=H;cvs.hidden=false;
-  $('#hsz').value=1;
-  state='scare-adjust';
-  $('#shutter').hidden=true;$('#modebtn').hidden=true;say('');
-  $('#scui').hidden=false;$('#scx').hidden=false;
-  $('#scmsg').textContent='Hledám díru…';
-  beep(660,.12);
-  drawAdjust();
-  detectHole(++SC.token);
-}
-
-async function detectHole(token){
-  let found=false;
-  try{
-    const sample=await claude.use('sample');
-    if(!sample)throw 0;
-    const lim=await sample.limits();if(!lim.images)throw 0;
-    const k=640/Math.max(SC.W,SC.H),t=document.createElement('canvas');t.width=Math.round(SC.W*k);t.height=Math.round(SC.H*k);
-    t.getContext('2d').drawImage(SC.photo,0,0,t.width,t.height);
-    const blob=await new Promise(r=>t.toBlob(r,'image/jpeg',.7));
-    const r=await sample.json('Na fotce najdi otvor nebo díru, ze které by mohla vylézt příšera (otvor v hrnku, trubce, krabici, zdi, nora, tmavá skulina, otvor v zásuvce). Odpověz pouze JSON: {"found":true nebo false,"x":střed otvoru jako číslo 0 až 1 (podíl šířky obrázku zleva),"y":střed otvoru jako číslo 0 až 1 (podíl výšky obrázku shora),"w":šířka otvoru jako podíl šířky obrázku (0 až 1),"h":výška otvoru jako podíl výšky obrázku (0 až 1)}. Když žádný otvor nevidíš, dej found=false a vyber nejtmavší místo nebo střed předmětu.',{images:[blob],modelTier:'quick'});
-    const x=Number(r.x),y=Number(r.y),w=Number(r.w),h=Number(r.h);
-    if(![x,y,w,h].every(Number.isFinite)||x<0||x>1||y<0||y>1||w<=0||h<=0)throw 0;
-    if(token!==SC.token||state!=='scare-adjust')return;
-    found=r.found!==false;
-    if(!SC.touched){
-      SC.hx=x*SC.W;SC.hy=y*SC.H;
-      SC.baseRx=cl(w*SC.W/2,SC.W*.06,SC.W*.4);
-      SC.ratio=cl((h*SC.H)/(w*SC.W),.35,1.1);
-      SC.k=1;$('#hsz').value=1;drawAdjust();
-    }
-  }catch(e){found=false}
-  if(token!==SC.token||state!=='scare-adjust')return;
-  $('#scmsg').textContent=found?'Zkontroluj, jestli žlutý ovál sedí na díře. Klepnutím ho přesuň, posuvníkem změň velikost.':'Klepni na díru a posuvníkem nastav její velikost.';
-}
-
-function scPt(e){
-  const r=$('#sc').getBoundingClientRect(),s=Math.max(r.width/SC.W,r.height/SC.H),dw=SC.W*s,dh=SC.H*s;
-  return{x:(e.clientX-r.left-(r.width-dw)/2)/s,y:(e.clientY-r.top-(r.height-dh)/2)/s};
-}
-function movePt(e){const p=scPt(e);SC.hx=cl(p.x,0,SC.W);SC.hy=cl(p.y,0,SC.H);SC.touched=true;drawAdjust()}
-$('#sc').addEventListener('pointerdown',e=>{if(state!=='scare-adjust')return;try{e.target.setPointerCapture(e.pointerId)}catch(_){}movePt(e)});
-$('#sc').addEventListener('pointermove',e=>{if(state!=='scare-adjust'||!(e.buttons&1))return;movePt(e)});
-$('#hsz').oninput=e=>{SC.k=Number(e.target.value);if(state==='scare-adjust')drawAdjust()};
-$('#gen').onclick=()=>{if(state==='scare-adjust')runScare()};
-$('#scx').onclick=()=>{scareStart()};
-
-function pickMime(){
-  if(!window.MediaRecorder)return '';
-  const c=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  return c.find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(e){return false}})||'';
-}
-
-function runScare(){
-  state='scare-render';
-  $('#scui').hidden=true;$('#scx').hidden=true;
-  const fx=ScareFX.make(SC.photo,SC.W,SC.H,holeNow());
-  const cvs=$('#sc'),ctx=cvs.getContext('2d');
-  let master=null,dest=null;
-  try{
-    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
-    if(ac.resume)ac.resume();
-    master=ac.createGain();master.gain.value=.9;master.connect(ac.destination);
-    dest=ac.createMediaStreamDestination();master.connect(dest);
-  }catch(e){master=null;dest=null}
-  let rec=null;const chunks=[],mime=pickMime();
-  try{
-    const st=cvs.captureStream(30);
-    if(dest)dest.stream.getAudioTracks().forEach(tr=>st.addTrack(tr));
-    if(window.MediaRecorder){
-      rec=mime?new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:4000000}):new MediaRecorder(st);
-      rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
-      rec.start();
-    }
-  }catch(e){rec=null}
-  if(master)ScareFX.audio(ac,master);
-  [.6,1.4,2.1,2.7].forEach(a=>setTimeout(()=>buzz(50),a*1000));
-  setTimeout(()=>buzz([300,80,300]),4400);setTimeout(()=>buzz(600),5000);
-  const start=performance.now();
-  function loop(now){
-    const t=Math.max(0,(now-start)/1000);
-    fx.draw(ctx,Math.min(t,fx.D));
-    if(t<fx.D){SC.raf=requestAnimationFrame(loop)}else finish();
-  }
-  function finish(){
-    if(rec&&rec.state!=='inactive'){
-      rec.onstop=()=>{
-        SC.blob=new Blob(chunks,{type:rec.mimeType||mime||'video/webm'});
-        showReview();
-      };
-      setTimeout(()=>{try{rec.stop()}catch(e){rec.onstop&&rec.onstop()}},250);
-    }else{
-      state='scare-adjust';$('#scui').hidden=false;$('#scx').hidden=false;drawAdjust();
-      $('#scmsg').textContent='Tohle zařízení neumí nahrát video, takže se animace nedá uložit.';
-    }
-  }
-  SC.raf=requestAnimationFrame(loop);
-}
-
-function showReview(){
-  if(state!=='scare-render')return;
-  state='scare-review';
-  $('#sc').hidden=true;
-  SC.url=URL.createObjectURL(SC.blob);
-  const rv=$('#rvv');rv.src=SC.url;
-  $('#rv').hidden=false;$('#scx').hidden=false;
-  rv.currentTime=0;rv.play().catch(()=>{});
-}
-
-async function saveClip(){
-  if(!SC.blob)return;
-  const ext=(SC.blob.type||'').includes('mp4')?'mp4':'webm';
-  const file=new File([SC.blob],'prisera-'+Date.now()+'.'+ext,{type:SC.blob.type||('video/'+ext)});
-  try{
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'Příšera z díry'});
-      toast('V nabídce sdílení vyber „Uložit video“.');return;
-    }
-  }catch(e){if(e&&e.name==='AbortError')return}
-  const a=document.createElement('a');a.href=SC.url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
-  toast('Video se stáhlo do zařízení.');
-}
-$('#savebtn').onclick=saveClip;
-
-(function(){
-if(!window.THREE)return;
-const cvs=document.getElementById('mon');
-const R=new THREE.WebGLRenderer({canvas:cvs,alpha:true,antialias:true});
-R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));R.setSize(520,520,false);
-const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(40,1,.1,50);C.position.set(0,.2,5.4);
-S.add(new THREE.AmbientLight(0x553344,.9));
-const L1=new THREE.DirectionalLight(0xffd8b8,1.15);L1.position.set(2,3,4);S.add(L1);
-const L2=new THREE.PointLight(0xff1133,1.8,14);L2.position.set(-2.5,-1,3);S.add(L2);
-const skin=new THREE.MeshStandardMaterial({color:0x4a5d3f,roughness:.55,metalness:.05});
-const dark=new THREE.MeshStandardMaterial({color:0x2d3a2b,roughness:.7});
-const bone=new THREE.MeshStandardMaterial({color:0xe8dfc0,roughness:.4});
-const gum=new THREE.MeshStandardMaterial({color:0x4a0010,roughness:.8,emissive:0x2a0008});
-const tm=new THREE.MeshStandardMaterial({color:0xc2234a,roughness:.35,emissive:0x400010});
-const eyeMat=new THREE.MeshStandardMaterial({color:0xffd23f,emissive:0xffb000,emissiveIntensity:1});
-const black=new THREE.MeshBasicMaterial({color:0x000000});
-const root=new THREE.Group();S.add(root);
-// hlava s hrbolatou kůží
-const hg=new THREE.SphereGeometry(1,48,36),p=hg.attributes.position;
-for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
- const n=1+.07*Math.sin(x*7+y*5)*Math.cos(z*6+x*3)+.04*Math.sin(y*13+z*9);p.setXYZ(i,x*n*1.1,y*n,z*n)}
-hg.computeVertexNormals();
-const head=new THREE.Mesh(hg,skin);head.position.y=.25;head.rotation.x=.18;root.add(head);
-const add=(m,x,y,z,par)=>{m.position.set(x,y,z);(par||root).add(m);return m};
-const ball=(r,mat)=>new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);
-for(const s of[-1,1]){
- const e=add(ball(.2,eyeMat),s*.4,.72,.78);e.scale.y=.6;
- const pu=ball(1,black);pu.scale.set(.04,.1,.04);add(pu,s*.4,.72,.97);
- const br=ball(1,dark);br.scale.set(.42,.15,.26);br.rotation.z=s*.6;add(br,s*.4,.9,.93);
- const h=new THREE.Mesh(new THREE.ConeGeometry(.17,.95,14),bone);h.rotation.z=-s*.45;add(h,s*.68,1.35,-.05);
- const nz=ball(.06,black);add(nz,s*.12,.38,1.04);
-}
-// dutina a horní zuby
-const cav=ball(1,gum);cav.scale.set(.72,.3,.62);add(cav,0,-.12,.5);
-for(let k=-6;k<=6;k++){const a=k*.2,t=new THREE.Mesh(new THREE.ConeGeometry(.07,.26,8),bone);
- t.rotation.x=Math.PI;add(t,Math.sin(a)*.72,-.12,.28+Math.cos(a)*.62);}
-// čelist
-const jaw=new THREE.Group();jaw.position.set(0,-.12,-.1);root.add(jaw);
-const jm=ball(1,skin);jm.scale.set(.85,.3,.88);add(jm,0,-.1,.65,jaw);
-for(let k=-5;k<=5;k++){const a=k*.22,t=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,8),bone);
- add(t,Math.sin(a)*.7,.22,.65+Math.cos(a)*.7,jaw);}
-// jazyk
-const tongue=new THREE.Mesh(new THREE.BufferGeometry(),tm);root.add(tongue);
-const tip=ball(.2,tm);tip.scale.set(1.15,.5,1.3);root.add(tip);
-function setTongue(len,t){
- const pts=[],n=10;
- for(let i=0;i<=n;i++){const u=i/n,l=u*len;
-  pts.push(new THREE.Vector3(Math.sin(t*9+u*6)*.14*u,-.5-l*.3+Math.sin(t*7+u*5)*.06*u,.7+l*.75))}
- const g=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.15,10,false);
- tongue.geometry.dispose();tongue.geometry=g;
- const e=pts[n];tip.position.copy(e);
-}
-let t0=0,was=false;
-function loop(ms){requestAnimationFrame(loop);
- if(!cvs.classList.contains('on')){was=false;return}
- if(!was){was=true;t0=ms}
- const t=(ms-t0)/1000,e=1-Math.pow(1-Math.min(1,t),3);
- root.position.z=-2.5+e*2.4;root.position.y=Math.sin(t*3)*.05;
- root.rotation.y=Math.sin(t*1.7)*.25;root.rotation.z=Math.sin(t*2.3)*.07;
- root.scale.setScalar(1+Math.sin(t*5)*.015+Math.max(0,t-2.5)*.07);
- jaw.rotation.x=.3+.5*Math.min(1,t/1.1)+.12*Math.sin(t*10);
- setTongue(.3+Math.max(0,Math.min(1,(t-.8)/.9))*1.6,t);
- eyeMat.emissiveIntensity=1+.4*Math.sin(t*14);
- R.render(S,C)}
-requestAnimationFrame(loop);
+// příšera
+(function(){const c=$('#mon').getContext('2d');c.translate(150,150);
+ c.fillStyle='#1a0a24';c.beginPath();c.moveTo(-90,-60);c.lineTo(-60,-140);c.lineTo(-30,-90);c.lineTo(30,-90);c.lineTo(60,-140);c.lineTo(90,-60);c.fill();
+ c.beginPath();c.ellipse(0,10,105,115,0,0,7);c.fillStyle='#2b1238';c.fill();c.strokeStyle='#000';c.lineWidth=5;c.stroke();
+ for(const x of[-45,45]){c.beginPath();c.ellipse(x,-25,26,22,0,0,7);c.fillStyle='#ff3b30';c.fill();c.beginPath();c.ellipse(x,-25,5,17,0,0,7);c.fillStyle='#000';c.fill()}
+ c.beginPath();c.moveTo(-70,35);c.quadraticCurveTo(0,10,70,35);c.quadraticCurveTo(80,100,0,115);c.quadraticCurveTo(-80,100,-70,35);c.fillStyle='#12020a';c.fill();
+ c.fillStyle='#f3ecd8';for(let i=0;i<7;i++){const x=-56+i*19;c.beginPath();c.moveTo(x-8,30);c.lineTo(x,58);c.lineTo(x+8,30);c.fill();c.beginPath();c.moveTo(x-6,108);c.lineTo(x,84);c.lineTo(x+6,108);c.fill()}
 })();
+
+async function enter(c,h,s){
+ err('');code=c;host=h;solo=!!s;if(!solo&&h)showQR(c);
+ if(!solo&&!window.claude){err('Hra potřebuje sdílenou místnost. Otevři ji z odkazu na claude.ai.');return}
+ try{const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});v.srcObject=s;await v.play()}
+ catch(e){err('Kamera se nespustila. Povol přístup ke kameře.');return}
+ let R=null;if(!solo)R=await claude.use('room');
+ if(!solo&&!R){err('Sdílená místnost není dostupná. Přihlas se a otevři hru z odkazu.');return}
+ try{room=solo?fakeRoom():await R.join('hra'+c)}catch(e){err('Připojení se nepodařilo, zkus to znovu.');return}
+ $('#lobby').hidden=true;$('#hud').hidden=false;$('#shut').hidden=false;phase='setup';
+ if(solo){need=1;$('#oc').style.display='none';$('#sc').textContent='Body: 0 / '+ROUNDS}else if(host)showQR(c);
+ say((host&&!solo?'Kód hry: '+c+'. ':'')+'Zaměř svůj domeček a vyfoť ho');
+ wire();
+}
+$('#mk').onclick=()=>enter(String(1000+Math.floor(Math.random()*9000)),true);
+$('#solo').onclick=()=>enter('0000',true,true);
+const hm=(location.hash||'').match(/kod=(\d{4})/);if(hm)$('#code').value=hm[1];
+function fakeRoom(){const h={};return{emit:async(t,d)=>{(h[t]||[]).forEach(f=>setTimeout(()=>f({topic:t,data:d,isMe:true,peer:'me'}),0))},on:(t,f)=>{(h[t]=h[t]||[]).push(f)},onPeers:()=>{}}}
+function showQR(c){$('#sh').textContent='Kód: '+c;$('#share').hidden=false;
+ if(!window.qrcode)return;
+ try{const q=qrcode(0,'M');q.addData('https://claude.ai/artifact/1YDZSEd8eHEEkM8M3mKBeH#kod='+c);q.make();
+  const n=q.getModuleCount(),s=6,m=4,cv=$('#qr'),x=cv.getContext('2d');cv.width=cv.height=(n+2*m)*s;
+  x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);x.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))x.fillRect((k+m)*s,(r+m)*s,s,s)}catch(e){}}
+$('#jn').onclick=()=>{const c=$('#code').value.trim();if(!/^\d{4}$/.test(c)){err('Zadej čtyřmístný kód.');return}enter(c,false)};
+
+function wire(){
+ room.onPeers(ch=>{const n=ch.peers.filter(p=>p.kind==='viewer').length;if(phase==='setup'&&ref&&n<2)say('Čekám na soupeře. Kód hry: '+code)});
+ room.on('ready',m=>{ready.add(m.peer);start()});
+ room.on('warn',m=>{if(phase==='play'){$('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2);say('Pozor, příšera se blíží…')}});
+ room.on('attack',m=>{const r=Number(m.data&&m.data.r);if(phase!=='play'||!r||att||r<=round)return;
+  round=r;att={r,t0:performance.now(),o:-1,m:-1};done=-1;
+  $('#vig').classList.remove('warn');$('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);
+  say('Vyfoť domeček dřív než soupeř!');later(()=>resolve(r),6000)});
+ room.on('done',m=>{if(m.isMe||!att||Number(m.data.r)!==att.r)return;att.o=Number(m.data.ms)||9999;if(att.m>=0)resolve(att.r)});
+ room.on('cam',m=>{if(!m.isMe&&typeof m.data==='string'&&m.data.startsWith('data:image/jpeg'))$('#oc').src=m.data});
+ setInterval(()=>{const c=crop();if(!c)return;const k=document.createElement('canvas');k.width=64;k.height=48;k.getContext('2d').drawImage(v,...c,0,0,64,48);
+  const u=k.toDataURL('image/jpeg',.4);if(u.length<3500)room.emit('cam',u).catch(()=>{})},1500);
+ setInterval(()=>{if(phase==='setup'&&ref)room.emit('ready',1).catch(()=>{})},2000);
+ setInterval(()=>{const g=grab();if(g&&ref&&phase==='play')$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %'},300);
+}
+
+$('#shut').onclick=()=>{
+ const g=grab();if(!g)return;
+ if(phase==='setup'&&!ref){ref=g;const c=crop(),t=$('#th'),k=document.createElement('canvas');k.width=84;k.height=63;k.getContext('2d').drawImage(v,...c,0,0,84,63);t.src=k.toDataURL();
+  beep(660,.15);say('Domeček uložen. Čekám na soupeře…');room.emit('ready',1).catch(()=>{});ready.add('me');start();return}
+ if(phase==='play'&&att&&att.m<0){
+  if(sim(g,ref)>=THR){att.m=performance.now()-att.t0;room.emit('done',{r:att.r,ms:Math.round(att.m)}).catch(()=>{});beep(880,.2);if(solo||att.o>=0)resolve(att.r);else say('Máš to! Čekám na soupeře…')}
+  else{const m=$('#msg');m.textContent='Nesedí, zkus to znovu!';m.classList.remove('bad');void m.offsetWidth;m.classList.add('bad');beep(200,.2,'square')}
+ }
+};
+
+let started=false;
+function start(){
+ if(started||!ref||ready.size<need)return;
+ started=true;phase='play';$('#share').hidden=true;$('#shut').hidden=false;say(solo?'Schovej se, příšera přijde…':'Soupeř je připraven. Schovej se, příšera přijde…');
+ if(host)later(next,2500);
+}
+function next(){
+ later(()=>{room.emit('warn',1).catch(()=>{});later(()=>room.emit('attack',{r:round+1}).catch(()=>{}),2000)},3000+Math.random()*7000);
+}
+function resolve(r){
+ if(!att||att.r!==r)return;const a=att;att=null;
+ $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+ let w='none';if(a.m>=0&&a.o>=0)w=a.m<a.o?'me':a.o<a.m?'opp':'none';else if(a.m>=0)w='me';else if(a.o>=0)w='opp';
+ if(w!=='none')sc[w]++;
+ $('#sc').textContent=solo?'Body: '+sc.me+' / '+ROUNDS:'Ty '+sc.me+' : '+sc.opp+' Soupeř';
+ say(w==='me'?'Bod pro tebe!':w==='opp'?'Bod pro soupeře.':'Nikdo nestihl, příšera vyhrála kolo.');
+ if(w==='me')beep(880,.25);else buzz(200);
+ if(r>=ROUNDS){later(finish,1800)}else if(host)later(next,2500);
+}
+function finish(){
+ phase='over';$('#hud').hidden=true;$('#shut').hidden=true;$('#match').textContent='';say('');
+ $('#fin').textContent=solo?sc.me+' z '+ROUNDS:sc.me+' : '+sc.opp;
+ $('#verd').textContent=solo?(sc.me>=3?'Zvládl jsi to!':'Příšera vyhrála'):sc.me>sc.opp?'Vyhrál jsi!':sc.me<sc.opp?'Soupeř vyhrál':'Remíza';
+ $('#end').hidden=false;
+}
 </script>
 </body></html>
