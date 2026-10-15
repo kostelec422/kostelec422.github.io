@@ -1,3479 +1,831 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Rytířský Souboj - Knight Arena</title>
-<meta name="theme-color" content="#070a12">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<!-- PeerJS knihovna pro WebRTC -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<!-- QRCode.js pro snadné skenování druhým telefonem -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Domeček a příšera</title>
 <style>
-:root {
-  --bg: #070a12;
-  --panel: rgba(14, 19, 32, 0.80);
-  --line: rgba(255, 255, 255, 0.09);
-  --text: #e9edf6;
-  --muted: #9aa6bd;
-  --accent: #fbbf24;
-  --blue: #3b82f6;
-  --red: #ef4444;
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --joy: 130px;
-  --btn: 65px;
-}
-@media (max-height: 420px) { :root { --joy: 112px; --btn: 58px; } }
-@media (max-height: 340px) { :root { --joy: 96px;  --btn: 52px; } }
+:root{--bg:#0e1424;--ink:#f3ecd8;--win:#f2c14e;--mon:#d9435f;--ok:#5fd0a0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+#v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 var(--mon);transition:box-shadow .4s}
+#vig.warn{animation:pulse .6s infinite alternate}
+@keyframes pulse{to{box-shadow:inset 0 0 120px 30px var(--mon)}}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;padding:28px;text-align:center;background:var(--bg);z-index:5;overflow-y:auto}
+.screen .in{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;width:100%}
+.screen h1{font-size:2.2rem;margin:0;line-height:1.1}
+.screen p{max-width:34ch;margin:0;line-height:1.5;opacity:.85}
+.rules{list-style:none;margin:0;padding:0;max-width:44ch;width:100%;text-align:left;display:flex;flex-direction:column;gap:10px;counter-reset:r}
+.rules li{counter-increment:r;position:relative;padding:12px 14px 12px 52px;background:#ffffff0f;border-radius:14px;line-height:1.45;font-size:.97rem}
+.rules li::before{content:counter(r);position:absolute;left:12px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--win);color:#241a05;font-weight:800;display:grid;place-items:center}
+.rules b{color:var(--win)}
+.tips{max-width:44ch;width:100%;text-align:left;font-size:.9rem;line-height:1.5;padding:12px 14px;border:1px dashed #f3ecd855;border-radius:14px}
+.tips b{color:var(--ok)}
+.tips.warnbox b{color:var(--mon)}
+button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:14px 28px;background:var(--win);color:#241a05;cursor:pointer}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+#hud{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);display:flex;justify-content:space-between;align-items:center;padding:12px 16px;z-index:3;text-shadow:0 1px 6px #000}
+#hud img{width:52px;height:39px;object-fit:cover;border:2px solid var(--win);border-radius:6px}
+#msg{position:fixed;left:16px;right:16px;bottom:calc(120px + env(safe-area-inset-bottom,0px));text-align:center;font-weight:700;font-size:1.15rem;text-shadow:0 1px 8px #000;z-index:3}
+#bar{position:fixed;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));height:10px;background:#0008;border-radius:9px;overflow:hidden;z-index:3;display:none}
+#bar i{display:block;height:100%;width:100%;background:var(--mon);transition:width .1s linear}
+#shutter{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:72px;height:72px;padding:0;border-radius:50%;background:var(--ink);border:6px solid #fff6;z-index:3}
+#shutter[hidden]{display:none}
+#match{position:fixed;left:16px;bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:3;font-weight:700;text-shadow:0 1px 6px #000;display:none}
+#mon{position:fixed;left:50%;top:38%;width:min(92vw,440px);aspect-ratio:1;transform:translate(-50%,-50%) scale(.2);opacity:0;z-index:2;pointer-events:none;transition:transform 1.2s cubic-bezier(.2,.9,.3,1.2),opacity .3s}
+#mon.on{opacity:1;transform:translate(-50%,-50%) scale(1.15);filter:drop-shadow(0 0 28px #d9435f) drop-shadow(0 0 70px #000)}
+.b{animation:tw .09s infinite;transform-origin:100px 110px}
+@keyframes tw{50%{transform:translate(2px,-3px) rotate(1deg)}}
+.eye{animation:glow .45s infinite alternate}
+@keyframes glow{from{opacity:.65}to{opacity:1}}
+#tune{position:fixed;left:16px;right:16px;top:calc(74px + env(safe-area-inset-top,0px));z-index:3;display:flex;align-items:center;gap:10px;font-weight:700;text-shadow:0 1px 6px #000}#tune input{flex:1;accent-color:var(--win)}#tune span{min-width:3ch;text-align:right}
+.bad{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@media (prefers-reduced-motion:reduce){#vig.warn{animation:none;box-shadow:inset 0 0 90px 20px var(--mon)}}
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg);
-  font-family: var(--font);
-  color: var(--text);
-}
+/* ===== Výběr režimu ===== */
+.big{display:block;width:min(100%,360px);border-radius:20px;text-align:left;padding:16px 18px;background:#ffffff14;color:var(--ink);border:2px solid #f3ecd833}
+.big small{display:block;font-weight:400;opacity:.8;margin-top:4px;line-height:1.4}
+.big.scary{border-color:var(--mon)}
+#modebtn{position:fixed;right:16px;bottom:calc(30px + env(safe-area-inset-bottom,0px));z-index:3;width:48px;height:48px;padding:0;border-radius:50%;background:#000a;color:var(--ink);border:2px solid #f3ecd855;font-size:1.3rem;line-height:1}
 
-.ic {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-#rotate-warning {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #05070d;
-  z-index: 99999;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 20px;
-}
-#rotate-warning .icon { font-size: 72px; margin-bottom: 18px; animation: rotateAnim 2s infinite ease-in-out; }
-#rotate-warning h1 {
-  color: var(--accent);
-  font-size: 22px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-@keyframes rotateAnim {
-  0% { transform: rotate(0deg); }
-  50% { transform: rotate(90deg); }
-  100% { transform: rotate(0deg); }
-}
-@media screen and (orientation: portrait) {
-  #rotate-warning { display: flex !important; }
-}
-
-#game-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: radial-gradient(ellipse at 50% 40%, #121a2e 0%, #05070d 75%);
-}
-
-canvas#gameCanvas {
-  background: #10151f;
-  box-shadow: 0 12px 60px rgba(0, 0, 0, .75), 0 0 0 1px rgba(255, 255, 255, .06);
-  border-radius: 14px;
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(5, 8, 16, 0.58);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 8px;
-}
-
-.hidden { display: none !important; }
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06);
-  border-radius: 22px;
-  padding: 26px 30px;
-  text-align: center;
-  max-width: 680px;
-  width: 94%;
-  max-height: calc(100% - 4px);
-  overflow-y: auto;
-}
-.panel.flexcol { display: flex; flex-direction: column; overflow: hidden; }
-.panel.flexcol > .title { flex: 0 0 auto; }
-.panel.flexcol > .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.panel.flexcol > .foot { flex: 0 0 auto; }
-.scroll::-webkit-scrollbar { width: 6px; }
-.scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
-.panel::-webkit-scrollbar { width: 6px; }
-.panel::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
-
-h1, .title {
-  font-weight: 800;
-  font-size: clamp(20px, 5.4vh, 32px);
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  background: linear-gradient(90deg, #fde68a, #f59e0b);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-h2 {
-  color: var(--text);
-  font-size: 15px;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  margin: 14px 0 8px;
-  text-align: left;
-}
-p, li {
-  color: #c4cde0;
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 10px;
-  text-align: left;
-}
-p.lead { text-align: center; color: var(--muted); margin-bottom: 4px; }
-p.version { text-align: center; font-size: 11px; color: #5d6a85; margin: 14px 0 0; letter-spacing: .1em; }
-ul { margin-left: 20px; margin-bottom: 10px; }
-.logo { width: 54px; height: 54px; color: var(--accent); margin-bottom: 6px; }
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  padding: 12px 22px;
-  border: 0;
-  border-radius: 14px;
-  font: 700 14px/1 var(--font);
-  letter-spacing: .02em;
-  color: #1c1405;
-  background: linear-gradient(180deg, #fcd34d, #f59e0b);
-  box-shadow: 0 6px 18px rgba(245, 158, 11, .28), inset 0 1px 0 rgba(255, 255, 255, .5);
-  cursor: pointer;
-  transition: transform .12s, filter .12s, box-shadow .12s;
-}
-.btn .ic { width: 18px; height: 18px; }
-.btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
-.btn:active { transform: scale(.97); }
-.btn-secondary {
-  color: var(--text);
-  background: rgba(255, 255, 255, .07);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15);
-}
-.btn-group {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.choices {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-  margin-top: 16px;
-}
-.choice {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 18px 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, .11);
-  background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .03));
-  color: var(--text);
-  font: 700 15px/1.2 var(--font);
-  cursor: pointer;
-  transition: transform .12s, border-color .12s, background .12s;
-}
-.choice .ic { width: 30px; height: 30px; color: var(--accent); }
-.choice small { font-weight: 500; color: var(--muted); font-size: 12px; }
-.choice:hover { transform: translateY(-2px); border-color: rgba(251, 191, 36, .65); background: linear-gradient(180deg, rgba(251, 191, 36, .14), rgba(255, 255, 255, .04)); }
-.choice:active { transform: scale(.97); }
-.choice .dotlvl { width: 14px; height: 14px; border-radius: 50%; margin: 8px 0; }
-
-input[type="text"] {
-  padding: 11px;
-  font: 700 20px var(--font);
-  letter-spacing: 6px;
-  text-align: center;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255, 255, 255, .18);
-  background: rgba(0, 0, 0, .35);
-  color: #fff;
-  width: 190px;
-  margin: 10px 0;
-  text-transform: uppercase;
-  outline: none;
-  user-select: text;
-  -webkit-user-select: text;
-}
-input[type="text"]:focus { border-color: var(--accent); }
-
-#qrcode-box {
-  background: #fff;
-  padding: 10px;
-  display: inline-block;
-  border-radius: 12px;
-  margin: 12px auto;
-}
-.wait-text { text-align: center; color: var(--accent); font-weight: 700; margin-top: 10px; }
-
-/* ---------- výběr výbavy ---------- */
-.panel.cust { max-width: 1000px; padding: 20px 22px; }
-.panel.cust h1 { margin-bottom: 10px; }
-.cust-slots { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-.slot {
-  flex: 1 1 400px;
-  min-width: 300px;
-  text-align: left;
-  border-radius: 18px;
-  padding: 12px 14px 14px;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(255, 255, 255, .08);
-  border-top: 3px solid var(--tc);
-}
-.slot-head {
-  display: flex; align-items: center; gap: 8px;
-  font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
-  margin-bottom: 8px; color: var(--tc-l);
-}
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--tc); box-shadow: 0 0 10px var(--tc); }
-.slot-body { display: flex; gap: 12px; align-items: center; }
-.slot-preview {
-  width: 112px;
-  height: auto;
-  aspect-ratio: 4 / 5;
-  flex: 0 0 auto;
-  border-radius: 14px;
-  background: radial-gradient(ellipse at 50% 72%, rgba(255, 255, 255, .13), rgba(255, 255, 255, .02) 70%);
-}
-.slot-rows { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
-.row { display: flex; align-items: center; gap: 8px; }
-.row-label {
-  width: 54px; flex: 0 0 auto;
-  font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted);
-}
-.chips { display: flex; gap: 6px; flex-wrap: nowrap; }
-.chip {
-  width: 54px; height: 58px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-  border-radius: 12px;
-  border: 1.5px solid rgba(255, 255, 255, .10);
-  background: rgba(255, 255, 255, .05);
-  color: var(--muted);
-  font: 700 9.5px var(--font);
-  cursor: pointer;
-  padding: 3px 0 2px;
-  transition: transform .1s, border-color .12s, background .12s;
-}
-.chip canvas { width: 36px; height: 36px; display: block; }
-.chip:active { transform: scale(.94); }
-.chip.sel {
-  border-color: var(--tc, var(--accent));
-  background: rgba(255, 255, 255, .13);
-  color: #fff;
-  box-shadow: 0 0 14px -3px var(--tc, var(--accent));
-}
-.chip.gen { width: 76px; height: 34px; font-size: 12px; }
-.arena {
-  margin-top: 12px;
-  text-align: left;
-  border-radius: 18px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, .04);
-  border: 1px solid rgba(255, 255, 255, .08);
-}
-.arena .row { align-items: center; }
-.arena .row-label { width: 54px; }
-.chip.bg { width: 84px; height: 62px; --tc: var(--accent); }
-.chip.bg canvas { width: 70px; height: auto; aspect-ratio: 35 / 18; border-radius: 6px; }
-.arena .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
-.cust-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-
-input[type="password"] {
-  padding: 10px; font: 700 16px var(--font); letter-spacing: 3px; text-align: center;
-  border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
-  color: #fff; width: 100%; max-width: 260px; margin: 4px 0; outline: none;
-  user-select: text; -webkit-user-select: text;
-}
-input[type="password"]:focus, textarea:focus { border-color: var(--accent); outline: none; }
-textarea#code-text {
-  width: 100%; height: 84px; margin: 6px 0; padding: 8px; border-radius: 12px; resize: none;
-  border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35); color: #cbd5e1;
-  font: 11px/1.3 monospace; user-select: text; -webkit-user-select: text;
-}
-.code-box { text-align: center; padding: 12px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); margin-top: 10px; }
-.code-box h2 { text-align: center; margin-top: 0; }
-#code-msg { text-align: center; font-weight: 700; min-height: 20px; margin: 10px 0 0; }
-
-input[type="number"] {
-  padding: 10px; font: 800 22px var(--font); text-align: center; width: 110px; margin: 4px 0;
-  border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(0,0,0,.35);
-  color: #fff; outline: none; user-select: text; -webkit-user-select: text;
-}
-input[type="number"]:focus { border-color: var(--accent); }
-
-/* obchod */
-.shop-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
-.shop-row span { color: var(--muted); font-size: 13px; }
-.shop-row .btn { min-width: 150px; }
-.btn:disabled { opacity: .55; cursor: default; transform: none; filter: none; }
-
-/* týmové menu */
-.slotbtn { border-left: 8px solid var(--tc); min-width: 230px; }
-
-@media (max-height: 420px) {
-  .panel { padding: 14px 18px; border-radius: 18px; }
-  .panel.cust { padding: 10px 14px; }
-  .panel.cust h1 { margin-bottom: 6px; font-size: 17px; }
-  .logo { display: none; }
-  .choices { margin-top: 10px; }
-  .choice { padding: 12px 10px; }
-  .choice .ic { width: 24px; height: 24px; }
-  h1, .title { margin-bottom: 8px; }
-  .slot { padding: 8px 10px 10px; }
-  .slot-head { margin-bottom: 4px; }
-  .slot-preview { width: 84px; }
-  .row-label { width: 46px; font-size: 9.5px; }
-  .chip { width: 48px; height: 46px; font-size: 9px; border-radius: 10px; }
-  .chip canvas { width: 27px; height: 27px; }
-  .chip.gen { width: 66px; height: 30px; }
-  .arena { margin-top: 6px; padding: 5px 10px; }
-  .chip.bg { width: 68px; height: 46px; }
-  .chip.bg canvas { width: 52px; }
-  .cust-actions { margin-top: 8px; }
-  .btn { padding: 10px 18px; }
-  .arena .row + .hint { display: none; }
-  .panel.flexcol > .foot { padding-top: 6px; }
-}
-@media (max-height: 380px) {
-  .panel.cust > .title, #instructions-screen .panel > .title, #menu-team .panel > .title { display: none; }
-}
-
-/* ---------- ovládání na displeji ---------- */
-.touch-controls {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 50;
-  --team: #3b82f6;
-}
-.joystick-zone {
-  position: absolute;
-  left: max(16px, env(safe-area-inset-left));
-  bottom: 16px;
-  width: var(--joy);
-  height: var(--joy);
-  border-radius: 50%;
-  pointer-events: auto;
-  touch-action: none;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .14) 0%, rgba(255, 255, 255, .05) 62%, rgba(255, 255, 255, .02) 100%);
-  border: 1.5px solid rgba(255, 255, 255, .32);
-  box-shadow: inset 0 0 22px rgba(255, 255, 255, .08), 0 6px 20px rgba(0, 0, 0, .35);
-}
-.joystick-zone::before {
-  content: "";
-  position: absolute;
-  inset: 20%;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, .2);
-}
-.joystick-knob {
-  position: absolute;
-  top: 27%; left: 27%;
-  width: 46%; height: 46%;
-  border-radius: 50%;
-  pointer-events: none;
-  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .95), var(--team) 64%);
-  box-shadow: 0 0 18px var(--team), 0 4px 10px rgba(0, 0, 0, .5);
-  border: 1.5px solid rgba(255, 255, 255, .75);
-}
-.action-buttons {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: 16px;
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-  pointer-events: auto;
-}
-.action-btn {
-  flex: 0 0 auto;
-  width: var(--btn);
-  height: var(--btn);
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 2px;
-  color: #fff;
-  font: 800 9.5px var(--font);
-  letter-spacing: .1em;
-  touch-action: manipulation;
-  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .28), rgba(255, 255, 255, .06) 70%);
-  border: 1.5px solid rgba(255, 255, 255, .42);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .4), inset 0 0 14px rgba(255, 255, 255, .08);
-}
-.action-btn .ic { width: calc(var(--btn) * .42); height: calc(var(--btn) * .42); stroke-width: 2.2; }
-.action-btn.attack {
-  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .5), var(--team) 78%);
-  border-color: rgba(255, 255, 255, .75);
-  box-shadow: 0 0 18px var(--team), 0 6px 18px rgba(0, 0, 0, .4);
-}
-.action-btn:active { transform: scale(.92); filter: brightness(1.25); }
-
-#pc-hud-guide {
-  position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(8, 12, 22, .72);
-  border: 1px solid rgba(255, 255, 255, .12);
-  padding: 6px 16px;
-  border-radius: 999px;
-  font-size: 12px;
-  color: #c9d2e6;
-  pointer-events: none;
-  z-index: 40;
-  white-space: nowrap;
-}
-#pc-hud-guide b {
-  color: #fff;
-  background: rgba(255, 255, 255, .13);
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-weight: 700;
-}
-#pc-hud-guide span.sep { opacity: .35; margin: 0 6px; }
-</style>
-</head>
+/* ===== Režim Strašení příšer ===== */
+#sc{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;touch-action:none;background:#000}
+#scui{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:40px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;align-items:stretch;background:linear-gradient(transparent,#000d 45%)}
+#scmsg{margin:0;text-align:center;font-weight:700;text-shadow:0 1px 6px #000;line-height:1.35}
+#scui label{font-weight:700;font-size:.95rem;display:flex;gap:10px;align-items:center;text-shadow:0 1px 6px #000}
+#scui input{flex:1;accent-color:var(--win)}
+#gen{background:var(--mon);color:#fff}
+#scx{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:14px;z-index:6;width:46px;height:46px;padding:0;border-radius:50%;background:#000b;color:var(--ink);border:2px solid #f3ecd866;font-size:1.4rem;line-height:1}
+#rv{position:fixed;inset:0;z-index:4;background:#000;display:flex;flex-direction:column;align-items:center}
+#rv video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+#savebar{padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;gap:12px;width:100%}
+#savebtn{width:min(100%,360px);background:var(--ok);color:#052214}
+#toast{position:fixed;left:16px;right:16px;top:calc(70px + env(safe-area-inset-top,0px));z-index:7;text-align:center;font-weight:700;background:#000c;border-radius:12px;padding:10px 14px;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.on{opacity:1}
+</style></head>
 <body>
+<video id="v" playsinline muted autoplay></video>
+<div id="vig"></div>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <defs>
-    <symbol id="i-sword" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></symbol>
-    <symbol id="i-swords" viewBox="0 0 24 24"><use href="#i-sword"/><use href="#i-sword" transform="translate(24 0) scale(-1 1)"/></symbol>
-    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.6-3.2 7.8-8 9-4.8-1.2-8-4.4-8-9V6z"/></symbol>
-    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
-    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
-    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V5"/><circle cx="12" cy="3.6" r="1.2"/><circle cx="9" cy="13" r="1.1"/><circle cx="15" cy="13" r="1.1"/><path d="M2.5 13v2.5M21.5 13v2.5"/></symbol>
-    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14.2c2.6.2 4.5 2.2 4.5 4.8"/></symbol>
-    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.4 3 14.6 0 18M12 3c-3 3.4-3 14.6 0 18"/></symbol>
-    <symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
-    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
-    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
-    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
-  </defs>
-</svg>
+<canvas id="mon" width="520" height="520" aria-hidden="true"></canvas>
 
-<div id="rotate-warning">
-  <div class="icon">📱</div>
-  <h1>Otoč telefon na šířku, aby hra fungovala!</h1>
+<div id="hud" hidden><span id="score">Přežito: 0</span><img id="thumb" alt="Fotka domečku"></div>
+<div id="msg"></div>
+<div id="bar"><i></i></div>
+<div id="match"></div>
+<div id="tune" hidden><label for="sens">Shoda domečků</label><input id="sens" type="range" min="10" max="90" step="1" value="40"><span id="thr">40 %</span></div>
+<button id="shutter" aria-label="Vyfotit" hidden></button>
+<button id="modebtn" aria-label="Změnit režim" hidden>⇄</button>
+
+<!-- Režim Strašení příšer -->
+<canvas id="sc" hidden></canvas>
+<div id="scui" hidden>
+  <p id="scmsg"></p>
+  <label for="hsz">Velikost díry<input id="hsz" type="range" min="0.4" max="2.6" step="0.02" value="1"></label>
+  <button id="gen">Vygenerovat strašení</button>
 </div>
-
-<div id="game-container">
-  <canvas id="gameCanvas" width="900" height="500"></canvas>
-
-  <!-- HLAVNÍ MENU -->
-  <div id="menu-main" class="overlay">
-    <div class="panel">
-      <svg class="ic logo"><use href="#i-swords"/></svg>
-      <h1 class="title">Rytířský souboj</h1>
-      <p class="lead">Na čem budeš hrát?</p>
-      <div class="choices">
-        <button class="choice" onclick="selectDevice('pc')"><svg class="ic"><use href="#i-monitor"/></svg>Notebook / PC<small>ovládání klávesnicí</small></button>
-        <button class="choice" onclick="selectDevice('mobile')"><svg class="ic"><use href="#i-phone"/></svg>Mobil / Tablet<small>dotykové ovládání</small></button>
-        <button class="choice" onclick="openShop()"><svg class="ic"><use href="#i-key"/></svg>Obchod<small id="shop-keys-label">0 klíčů</small></button>
-        <button class="choice" onclick="openCode()"><svg class="ic"><use href="#i-refresh"/></svg>Můj kód<small>přenos klíčů na jiné zařízení</small></button>
-        <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
-      </div>
-      <p class="version">VERZE 10 · převod klíčů bez QR</p>
-    </div>
-  </div>
-
-  <!-- OBCHOD -->
-  <div id="menu-shop" class="overlay hidden">
-    <div class="panel flexcol">
-      <h1 class="title">Obchod</h1>
-      <div class="scroll">
-        <p id="shop-keys" class="lead" style="font-size:18px;color:var(--accent);font-weight:800"></p>
-        <p class="lead">Za výhru kola dostaneš 1 klíč. Vylepšení platí 2 dny od koupě, i když zrovna nehraješ.</p>
-        <div id="shop-items" style="display:flex;flex-direction:column;gap:10px;margin-top:10px"></div>
-      </div>
-      <div class="btn-group foot">
-        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- BANKA -->
-  <div id="menu-bank" class="overlay hidden">
-    <div class="panel">
-      <h1 class="title">Banka</h1>
-      <p class="lead">Klíče v bance jsou v bezpečí a v obchodě je nemůžeš utratit. Dokud je nevybereš, nic za ně nekoupíš ani omylem.</p>
-      <p id="bank-wallet" class="lead" style="font-size:18px;color:var(--accent);font-weight:800;margin-top:12px"></p>
-      <p id="bank-safe" class="lead" style="font-size:18px;color:#7dd3fc;font-weight:800"></p>
-      <div class="btn-group">
-        <button class="btn" id="bank-in-1" onclick="bankMove('in', false)">Vložit 1</button>
-        <button class="btn" id="bank-in-all" onclick="bankMove('in', true)">Vložit všechny</button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" id="bank-out-1" onclick="bankMove('out', false)">Vybrat 1</button>
-        <button class="btn btn-secondary" id="bank-out-all" onclick="bankMove('out', true)">Vybrat všechny</button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MŮJ KÓD A PŘENOS -->
-  <div id="menu-code" class="overlay hidden">
-    <div class="panel flexcol">
-      <h1 class="title">Můj kód</h1>
-      <div class="scroll">
-        <div class="code-box">
-          <h2>Přenést klíče na jiné zařízení</h2>
-          <p id="xfer-have" class="lead" style="text-align:center;font-weight:800;color:var(--accent);margin-bottom:6px"></p>
-          <p class="lead" style="font-size:12px;text-align:center">Klíče z peněženky, kolik si vybereš, se přesunou na druhé zařízení a tady zmizí, takže je nejde použít dvakrát. Banka a vylepšení z obchodu zůstanou tady. Obě zařízení potřebují internet a otevřenou hru.</p>
-          <div class="btn-group" style="margin-top:6px">
-            <button class="btn" onclick="xferShowSend()">Poslat klíče</button>
-            <button class="btn btn-secondary" onclick="xferShowReceive()">Přijmout klíče</button>
-          </div>
-          <div id="xfer-send" class="hidden">
-            <div id="xfer-amount-box">
-              <p id="xfer-amount-label" class="lead" style="margin:10px 0 2px;text-align:center">Kolik klíčů pošleš?</p>
-              <input type="number" id="xfer-amount" min="1" step="1" inputmode="numeric" value="1"><br>
-              <div class="btn-group" style="margin-top:4px">
-                <button class="btn btn-secondary" onclick="xferAmountAll()">Všechny</button>
-                <button class="btn" onclick="xferStartSend()">Vytvořit kód</button>
-              </div>
-            </div>
-            <div id="xfer-code-box" class="hidden">
-              <p id="xfer-amount-sent" class="lead" style="margin:10px 0 0;text-align:center;font-weight:800;color:var(--accent)"></p>
-              <p class="lead" style="margin:6px 0 0">Na druhém zařízení otevři hru ve svém obvyklém prohlížeči, klikni na <b>Přijmout klíče</b> a zadej tento kód ručně:</p>
-              <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
-            </div>
-            <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
-          </div>
-          <div id="xfer-recv" class="hidden">
-            <p class="lead" style="margin:10px 0 0">Zadej kód z prvního zařízení:</p>
-            <input type="text" id="xfer-code-in" maxlength="6" placeholder="KÓD"><br>
-            <button class="btn" onclick="xferReceive()">Přijmout</button>
-            <p id="xfer-recv-status" class="lead" style="margin-top:6px;font-weight:700"></p>
-          </div>
-        </div>
-
-      </div>
-      <div class="btn-group foot">
-        <button class="btn btn-secondary" onclick="closeXfer();showScreen('menu-main')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- OBTÍŽNOST AI -->
-  <div id="menu-difficulty" class="overlay hidden">
-    <div class="panel">
-      <h1 class="title">Obtížnost počítače</h1>
-      <div class="choices">
-        <button class="choice" onclick="startSinglePlayer('easy')"><span class="dotlvl" style="background:#4ade80"></span>Nejlehčí</button>
-        <button class="choice" onclick="startSinglePlayer('medium')"><span class="dotlvl" style="background:#fbbf24"></span>Střední</button>
-        <button class="choice" onclick="startSinglePlayer('hard')"><span class="dotlvl" style="background:#f87171"></span>Nejtěžší</button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TÝMY A SOUBOJE (až 4 bojovníci) -->
-  <div id="menu-team" class="overlay hidden">
-    <div class="panel flexcol">
-      <h1 class="title">Týmy a souboje</h1>
-      <div class="scroll">
-        <h2>Formát</h2>
-        <div id="team-formats" class="btn-group" style="margin-top:0"></div>
-        <h2>Bojovníci</h2>
-        <div id="team-slots" class="btn-group" style="margin-top:0"></div>
-        <p id="team-hint" class="lead" style="margin-top:10px"></p>
-      </div>
-      <div class="btn-group foot">
-        <button class="btn btn-secondary" onclick="teamBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-        <button class="btn btn-secondary" id="team-diff" onclick="cycleTeamDiff()"></button>
-        <button class="btn" onclick="createCodeForFriend()"><svg class="ic"><use href="#i-plus"/></svg>Vytvořit kód pro kamaráda</button>
-        <button class="btn btn-secondary" onclick="openJoinFromTeam()"><svg class="ic"><use href="#i-key"/></svg>Mám kód od kamaráda</button>
-        <button class="btn" id="team-next" onclick="teamNext()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TYP PVP -->
-  <div id="menu-pvp" class="overlay hidden">
-    <div class="panel">
-      <h1 class="title">Kde budete hrát?</h1>
-      <div class="choices">
-        <button class="choice" onclick="showScreen('menu-web')"><svg class="ic"><use href="#i-globe"/></svg>Na 2 zařízeních<small>přes internet</small></button>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="showScreen('menu-mode')"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- WEB MULTIPLAYER (PeerJS + QR) -->
-  <div id="menu-web" class="overlay hidden">
-    <div class="panel">
-      <h1 class="title">Hra s kamarády</h1>
-      <p class="lead">Zadej kód místnosti od kamaráda, nebo naskenuj jeho QR kód.</p>
-      <div id="room-display" class="hidden" style="margin-top:12px;">
-        <p style="text-align:center;margin-bottom:0;">Kód místnosti: <strong id="room-code-num" style="font-size:26px; color:var(--accent); letter-spacing:.12em;">---</strong></p>
-        <div id="qrcode-box"></div>
-        <div class="btn-group" style="margin-top:4px">
-          <button class="btn" onclick="shareRoomLink()"><svg class="ic"><use href="#i-next"/></svg>Sdílet odkaz</button>
-          <button class="btn btn-secondary" id="copy-link-btn" onclick="copyRoomLink()">Kopírovat odkaz</button>
-        </div>
-        <p id="room-status-text" style="text-align:center; font-size:13px; color:var(--muted);">Připojuji k síti...</p>
-        <p class="lead" style="font-size:12px;text-align:center;margin-top:4px">Po odeslání odkazu se vrať do hry a nech ji otevřenou, než se kamarád připojí.</p>
-      </div>
-
-      <div id="room-input-zone" class="hidden" style="margin-top:12px;">
-        <input type="text" id="join-code-input" maxlength="6" placeholder="KÓD">
-        <br>
-        <button class="btn" onclick="joinRoom()">Připojit se</button>
-        <p id="join-status-text" style="text-align:center; font-size:13px; color:#fca5a5; margin-top:8px;"></p>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-secondary" onclick="backFromWeb()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- NÁVOD -->
-  <div id="instructions-screen" class="overlay hidden">
-    <div class="panel flexcol">
-      <h1 class="title">Pravidla a ovládání</h1>
-      <div class="scroll">
-      <h2>Pravidla hry</h2>
-      <ul>
-        <li>Každý hráč začíná s <strong>50 životy (HP)</strong>.</li>
-        <li>Zásah mečem odebere <strong>5 HP</strong> (s vylepšeními z obchodu se to mění).</li>
-        <li><strong>ŠTÍT:</strong> když ho držíš, <strong>odrazíš každý útok</strong>. Při držení štítu ale nemůžeš sekat.</li>
-        <li><strong>LÉKÁRNIČKY</strong> padají z nebe a doplní <strong>+10 HP</strong>.</li>
-        <li>V týmové hře spoluhráče neraníš. Vyhrává poslední tým, který zůstane stát.</li>
-      </ul>
-      <h2>Ovládání</h2>
-      <div id="controls-desc"></div>
-      </div>
-      <div class="btn-group foot">
-        <button class="btn btn-secondary" onclick="goToCustomize(custReturn)"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-        <button class="btn" id="start-battle-btn" onclick="confirmAndStartGame()"><svg class="ic"><use href="#i-sword"/></svg>Do boje!</button>
-      </div>
-      <p id="wait-text-rules" class="wait-text hidden">Čekám na soupeře...</p>
-    </div>
-  </div>
-
-  <!-- VÝBĚR VÝBAVY -->
-  <div id="customize-screen" class="overlay hidden">
-    <div class="panel cust flexcol">
-      <h1 class="title">Příprava na boj</h1>
-      <div class="scroll">
-        <div id="cust-slots" class="cust-slots"></div>
-        <div id="cust-arena" class="arena"></div>
-      </div>
-      <div class="cust-actions foot">
-        <button class="btn btn-secondary" onclick="custBack()"><svg class="ic"><use href="#i-back"/></svg>Zpět</button>
-        <button class="btn" onclick="showRulesBeforeBattle()">Dál<svg class="ic"><use href="#i-next"/></svg></button>
-      </div>
-      <p id="wait-text-cust" class="wait-text hidden">Čekám na soupeře...</p>
-    </div>
-  </div>
-
-  <!-- VÝSLEDKY -->
-  <div id="game-over-screen" class="overlay hidden">
-    <div class="panel">
-      <h1 id="winner-announcement" class="title" style="font-size:26px;">---</h1>
-      <p id="key-reward" class="lead hidden" style="color:var(--accent);font-weight:800;font-size:16px;text-align:center"></p>
-      <div class="btn-group">
-        <button class="btn" onclick="restartCurrentGame()"><svg class="ic"><use href="#i-refresh"/></svg>Hrát znovu</button>
-        <button class="btn btn-secondary" onclick="goToCustomize('game-over-screen')"><svg class="ic"><use href="#i-shield"/></svg>Změnit výbavu</button>
-        <button class="btn btn-secondary" onclick="returnToMainMenu()">Hlavní menu</button>
-      </div>
-      <p id="wait-text-over" class="wait-text hidden">Čekám na soupeře...</p>
-    </div>
-  </div>
-
-  <!-- TOUCH OVLÁDÁNÍ -->
-  <div id="touch-controls" class="touch-controls hidden">
-    <div id="p1-joystick-zone" class="joystick-zone">
-      <div id="p1-joystick-knob" class="joystick-knob"></div>
-    </div>
-    <div id="p1-action-buttons" class="action-buttons">
-      <div class="action-btn attack" id="p1-btn-attack"><svg class="ic"><use href="#i-sword"/></svg>MEČ</div>
-      <div class="action-btn" id="p1-btn-shield"><svg class="ic"><use href="#i-shield"/></svg>ŠTÍT</div>
-    </div>
-  </div>
-
-  <div id="pc-hud-guide" class="hidden"></div>
+<div id="rv" hidden>
+  <video id="rvv" playsinline loop></video>
+  <div id="savebar"><button id="savebtn">Uložit do fotek</button></div>
 </div>
+<button id="scx" aria-label="Zrušit" hidden>✕</button>
+<div id="toast" role="status"></div>
+
+<div class="screen" id="intro"><div class="in">
+  <h1>Domeček a příšera</h1>
+  <p>Hra, ve které utíkáš před příšerou a domeček je tvoje jediná záchrana.</p>
+  <ol class="rules">
+    <li><b>Vyfoť domeček.</b> Zapni kameru, zaměř na jedno místo nebo předmět (třeba dveře, gauč nebo obraz) a stiskni velké kulaté tlačítko. To je tvůj domeček.</li>
+    <li><b>Pohybuj se po domě.</b> Fotka domečku zůstane v rohu obrazovky. Chodí po bytě, prozkoumávej, kamera pořád běží.</li>
+    <li><b>Příšera přijde náhodně.</b> Může to být za 5 sekund i za půl minuty. Asi 2 sekundy předem tě varuje: červené blikající okraje, zvuk a vibrace.</li>
+    <li><b>Máš 4 sekundy.</b> Když se příšera objeví, vrať se k domečku a vyfoť ho znovu. Červený pruh ukazuje, kolik času zbývá.</li>
+    <li><b>Fotka musí sedět.</b> Dole vidíš <b>Shodu</b> v procentech. Když je dost vysoká, příšera zmizí a dostaneš bod. Když ne, zkoušej to znovu, dokud nevyprší čas.</li>
+    <li><b>Konec hry.</b> Pokud čas vyprší, příšera tě dostane. Skóre je počet příšer, které jsi přežil.</li>
+  </ol>
+  <div class="tips"><b>Tipy:</b> Vyber domeček s výrazným vzorem, ne jen holou zeď. Při focení ho zaměř podobně jako poprvé. Nastavení „Shoda domečků“ nahoře můžeš upravit: nižší procento = hra je snazší. Zapni si zvuk.</div>
+  <div class="tips"><b>Dva režimy:</b> Po potvrzení si vybereš, jestli budeš utíkat před příšerou, nebo budeš příšery strašit: vyfotíš předmět s dírou a z ní vyleze příšera ve strašidelném videu, které si můžeš uložit.</div>
+  <div class="tips warnbox"><b>Bezpečí:</b> Neběhej, dávej pozor na schody, nábytek a ostatní lidi. Hraj jen doma a v klidu. Kamera se nikam neodesílá a nic se neukládá, fotky se používají jen přímo ve hře.</div>
+  <button id="go">Rozumím, zapnout kameru</button>
+  <p id="err" style="color:var(--mon)"></p>
+</div></div>
+
+<div class="screen" id="modes" hidden><div class="in">
+  <h1>Vyber režim</h1>
+  <button class="big" id="m1"><b>Útěk před příšerou</b><small>Vyfoť domeček a vrať se k němu dřív, než tě příšera dostane.</small></button>
+  <button class="big scary" id="m2"><b>Strašení příšer</b><small>Vyfoť předmět s dírou. Z díry vyleze příšera a vygeneruje se strašidelné video, které můžeš uložit.</small></button>
+</div></div>
+
+<div class="screen" id="over" hidden><div class="in">
+  <h1>Příšera tě dostala</h1>
+  <p id="final"></p>
+  <button id="again">Hrát znovu</button>
+  <button id="chmode" style="background:transparent;color:var(--ink);border:2px solid #f3ecd855">Změnit režim</button>
+  <button id="rules2" style="background:transparent;color:var(--ink);border:2px solid #f3ecd855">Zobrazit pravidla</button>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- Animační engine pro režim Strašení příšer (kreslí na 2D canvas, žádné další knihovny) -->
+<script id="fx">
+const ScareFX=(function(){
+const D=7.0,SH_T=5.0;
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const sm=x=>{x=cl(x);return x*x*(3-2*x)};
+const eo=x=>{x=cl(x);return 1-Math.pow(1-x,3)};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+
+// mini parser SVG cest (M L C Q Z, absolutní souřadnice)
+function parse(d){const out=[],re=/([MLCQZ])|(-?\d*\.?\d+)/g;let m,cur=null;
+  while((m=re.exec(d))){if(m[1]){cur=[m[1]];out.push(cur)}else cur.push(parseFloat(m[2]))}return out}
+function trace(c,cmds){c.beginPath();
+  for(const k of cmds){const n=k;
+    switch(k[0]){
+      case'M':c.moveTo(n[1],n[2]);break;
+      case'L':c.lineTo(n[1],n[2]);break;
+      case'C':c.bezierCurveTo(n[1],n[2],n[3],n[4],n[5],n[6]);break;
+      case'Q':c.quadraticCurveTo(n[1],n[2],n[3],n[4]);break;
+      case'Z':c.closePath();break}}}
+const SH={
+  hl:parse("M50 58 C24 42 24 16 40 3 C50 22 68 34 84 42Z"),
+  hr:parse("M150 58 C176 42 176 16 160 3 C150 22 132 34 116 42Z"),
+  body:parse("M18 205 C-2 112 18 40 100 34 C182 40 202 112 182 205 L166 180 L150 214 L128 184 L100 220 L72 184 L50 214 L34 180 Z"),
+  scr:parse("M30 120 L52 134 M170 120 L148 134 M38 150 L56 156 M162 150 L144 156"),
+  bl:parse("M36 70 L94 94 L92 80 L40 54Z"),
+  br:parse("M164 70 L106 94 L108 80 L160 54Z"),
+  mouth:parse("M42 128 Q100 108 158 128 Q172 176 100 196 Q28 176 42 128Z"),
+  up:parse("M47 127 L58 156 L68 124 L80 160 L90 122 L100 162 L110 122 L120 160 L132 124 L142 156 L153 127 Z"),
+  lo:parse("M64 176 L74 150 L84 182 L94 154 L100 188 L106 154 L116 182 L126 150 L136 176 Z"),
+  tg:parse("M78 160 Q100 150 122 160 L120 232 Q100 266 80 232 Z"),
+  dr1:parse("M84 182 L83 206"),dr2:parse("M116 182 L117 214")
+};
+
+// Příšera v lokálních souřadnicích 200x270, kotva = střed spodku těla (100,215)
+function monster(c,p){
+  c.save();c.translate(p.ax,p.ay);c.rotate(p.rot||0);c.scale(p.s,p.s);c.translate(-100,-215);
+  c.lineJoin='round';c.lineCap='round';
+  c.fillStyle='#0b0410';c.strokeStyle='#000';c.lineWidth=3;
+  for(const k of[SH.hl,SH.hr]){trace(c,k);c.fill();c.stroke()}
+  const g=c.createRadialGradient(100,100,10,100,120,115);g.addColorStop(0,'#3a1a46');g.addColorStop(1,'#0e0614');
+  trace(c,SH.body);c.fillStyle=g;c.fill();c.strokeStyle='#05010a';c.lineWidth=5;c.stroke();
+  trace(c,SH.scr);c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
+  for(const ex of[68,132]){
+    c.save();c.translate(ex,94);
+    const eg=c.createRadialGradient(0,0,0,0,0,25);eg.addColorStop(0,'#fff6a0');eg.addColorStop(.55,'#ff3b30');eg.addColorStop(1,'#7a0010');
+    c.beginPath();c.ellipse(0,0,25,21,0,0,Math.PI*2);c.fillStyle=eg;c.fill();c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
+    c.beginPath();c.ellipse(0,0,4,17,0,0,Math.PI*2);c.fillStyle='#000';c.fill();
+    c.restore();
+  }
+  c.fillStyle='#05010a';for(const k of[SH.bl,SH.br]){trace(c,k);c.fill()}
+  trace(c,SH.mouth);c.fillStyle='#12020a';c.fill();c.strokeStyle='#05010a';c.lineWidth=3;c.stroke();
+  c.fillStyle='#f3ecd8';c.strokeStyle='#2a1a1a';c.lineWidth=1.5;
+  for(const k of[SH.up,SH.lo]){trace(c,k);c.fill();c.stroke()}
+  c.strokeStyle='rgba(190,255,200,.5)';c.lineWidth=2;
+  for(const k of[SH.dr1,SH.dr2]){trace(c,k);c.stroke()}
+  if(p.tg>.02){
+    c.save();c.translate(100,160);c.rotate(p.wag||0);c.scale(1,p.tg);c.translate(-100,-160);
+    const tg=c.createLinearGradient(0,160,0,262);tg.addColorStop(0,'#ff7a93');tg.addColorStop(1,'#a80f2c');
+    trace(c,SH.tg);c.fillStyle=tg;c.fill();c.strokeStyle='#4a0612';c.lineWidth=3;c.stroke();
+    c.strokeStyle='#7a0a20';c.beginPath();c.moveTo(100,162);c.lineTo(100,238);c.stroke();
+    c.strokeStyle='#c4284a';c.lineWidth=2;c.beginPath();c.moveTo(86,190);c.quadraticCurveTo(100,194,114,190);c.moveTo(86,212);c.quadraticCurveTo(100,216,114,212);c.stroke();
+    c.restore();
+  }
+  c.restore();
+}
+// záře očí (aditivně)
+function glow(c,p){
+  const cs=Math.cos(p.rot||0),sn=Math.sin(p.rot||0);
+  for(const lx of[68,132]){
+    const dx=(lx-100)*p.s,dy=(94-215)*p.s,X=p.ax+dx*cs-dy*sn,Y=p.ay+dx*sn+dy*cs,r=62*p.s;
+    const g=c.createRadialGradient(X,Y,0,X,Y,r);
+    g.addColorStop(0,'rgba(255,70,40,'+(.7*(p.flick||1))+')');g.addColorStop(1,'rgba(255,0,0,0)');
+    c.fillStyle=g;c.beginPath();c.arc(X,Y,r,0,Math.PI*2);c.fill();
+  }
+}
+// pařát svírající okraj díry
+function hand(c,Hh,side,h,t){
+  if(h<=.001)return;
+  const x=Hh.x,y=Hh.y,rx=Hh.rx,ry=Hh.ry;
+  const rimX=x+side*rx*.93,rimY=y+ry*.25,slide=(1-eo(h))*rx*.55;
+  const px=rimX-side*.8*slide,py=rimY+.55*slide;
+  c.save();c.globalAlpha=sm(h*1.8);c.lineCap='round';c.lineJoin='round';
+  // paže uvnitř díry
+  c.save();c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.clip();
+  c.beginPath();c.moveTo(x+side*rx*.15,y+ry*1.4);c.lineTo(px,py);
+  c.strokeStyle='#05100a';c.lineWidth=ry*1.0;c.stroke();
+  c.strokeStyle='#33482f';c.lineWidth=ry*.72;c.stroke();
+  c.restore();
+  // prsty s drápy
+  const base=side<0?Math.PI+.1:-.1,fw=ry*.26;
+  for(let i=0;i<4;i++){
+    const a=base+(i-1.5)*.42,cu=Math.sin(t*5+i*1.3)*.12*h,Lf=rx*(.24+.05*(i%2))+ry*.3;
+    const sx=px+Math.cos(a)*ry*.3,sy=py+Math.sin(a)*ry*.3;
+    const tx=px+Math.cos(a+cu)*Lf,ty=py+Math.sin(a+cu)*Lf;
+    const mx=(sx+tx)/2+Math.cos(a+Math.PI/2)*ry*.15,my=(sy+ty)/2+Math.sin(a+Math.PI/2)*ry*.15;
+    c.beginPath();c.moveTo(sx,sy);c.quadraticCurveTo(mx,my,tx,ty);
+    c.strokeStyle='#05100a';c.lineWidth=fw+5;c.stroke();
+    c.strokeStyle='#4a6642';c.lineWidth=fw;c.stroke();
+    const ex=tx+Math.cos(a)*ry*.36,ey=ty+Math.sin(a)*ry*.36,qx=-Math.sin(a)*ry*.09,qy=Math.cos(a)*ry*.09;
+    c.beginPath();c.moveTo(tx+qx,ty+qy);c.lineTo(ex,ey);c.lineTo(tx-qx,ty-qy);c.closePath();
+    c.fillStyle='#e8dfc0';c.fill();c.strokeStyle='#2a1a1a';c.lineWidth=1.5;c.stroke();
+  }
+  c.beginPath();c.ellipse(px,py,ry*.6,ry*.52,0,0,Math.PI*2);
+  c.fillStyle='#4a6642';c.fill();c.strokeStyle='#05100a';c.lineWidth=4;c.stroke();
+  c.restore();
+}
+
+function make(photo,W,H,hole){
+  const hx=hole.x,hy=hole.y,rx=hole.rx,ry=hole.ry,ms=(rx*1.8)/200;
+  const Hh={x:hx,y:hy,rx:rx,ry:ry};
+  const ml=document.createElement('canvas');ml.width=W;ml.height=H;const mc=ml.getContext('2d');
+  const nz=document.createElement('canvas');nz.width=nz.height=128;
+  {const x=nz.getContext('2d'),id=x.createImageData(128,128);
+   for(let i=0;i<id.data.length;i+=4){const v=Math.random()*255;id.data[i]=id.data[i+1]=id.data[i+2]=v;id.data[i+3]=255}
+   x.putImageData(id,0,0)}
+
+  // praskliny
+  function mkCrack(x,y,ang,segs,seglen){
+    const pts=[{x:x,y:y}],cum=[0];let a=ang,tot=0;
+    for(let i=0;i<segs;i++){a+=rnd(-.5,.5);const l=seglen*rnd(.6,1.3);x+=Math.cos(a)*l;y+=Math.sin(a)*l;tot+=l;pts.push({x:x,y:y});cum.push(tot)}
+    return{pts:pts,cum:cum,total:tot}}
+  const cracks=[];
+  for(let i=0;i<11;i++){
+    const th=i*Math.PI*2/11+rnd(-.15,.15),px=hx+Math.cos(th)*rx,py=hy+Math.sin(th)*ry,ang=Math.atan2(py-hy,px-hx);
+    const cr=mkCrack(px,py,ang,8,rx*.45);cr.branch=false;cracks.push(cr);
+    const q=cr.pts[3];const b=mkCrack(q.x,q.y,ang+(Math.random()<.5?-.8:.8),4,rx*.3);b.branch=true;cracks.push(b);
+  }
+  function partial(c,cr,f){
+    const L=cr.total*f;c.beginPath();c.moveTo(cr.pts[0].x,cr.pts[0].y);
+    for(let i=1;i<cr.pts.length;i++){
+      if(cr.cum[i]<=L)c.lineTo(cr.pts[i].x,cr.pts[i].y);
+      else{const u=(L-cr.cum[i-1])/(cr.cum[i]-cr.cum[i-1]);
+        c.lineTo(cr.pts[i-1].x+(cr.pts[i].x-cr.pts[i-1].x)*u,cr.pts[i-1].y+(cr.pts[i].y-cr.pts[i-1].y)*u);break}
+    }}
+  // prach
+  const dust=[];for(let i=0;i<36;i++)dust.push({ts:rnd(.4,3.2),life:rnd(1.2,2.2),ox:rnd(-.8,.8)*rx,vx:rnd(-30,30),vy:rnd(-110,-50),r:rnd(.06,.16)*rx});
+
+  function holeDraw(c,t){
+    c.save();
+    c.beginPath();c.ellipse(hx,hy,rx,ry,0,0,Math.PI*2);
+    const g=c.createRadialGradient(hx,hy+ry*.15,0,hx,hy,rx);g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,.93)');
+    c.fillStyle=g;c.fill();c.clip();
+    const ga=cl(.12+.55*sm((t-.5)/2.2)+.1*Math.sin(t*9));
+    const gg=c.createRadialGradient(hx,hy+ry*.3,0,hx,hy+ry*.3,rx*1.15);
+    gg.addColorStop(0,'rgba(255,40,50,'+ga+')');gg.addColorStop(1,'rgba(90,0,10,0)');
+    c.fillStyle=gg;c.fillRect(hx-rx,hy-ry,rx*2,ry*2);
+    if(t>1.5&&t<2.7){
+      const a=sm((t-1.5)/.3)*(1-sm((t-2.4)/.3))*((t>2.02&&t<2.1)?0:1);
+      for(const s of[-1,1]){
+        const ex=hx+s*rx*.28,ey=hy+ry*.1,r=rx*.07;
+        const eg=c.createRadialGradient(ex,ey,0,ex,ey,r*3);
+        eg.addColorStop(0,'rgba(255,240,120,'+a+')');eg.addColorStop(.3,'rgba(255,60,40,'+(a*.8)+')');eg.addColorStop(1,'rgba(255,0,0,0)');
+        c.fillStyle=eg;c.beginPath();c.arc(ex,ey,r*3,0,Math.PI*2);c.fill();
+      }
+    }
+    c.restore();
+    c.strokeStyle='rgba(0,0,0,.7)';c.lineWidth=Math.max(3,ry*.12);c.beginPath();c.ellipse(hx,hy,rx,ry,0,0,Math.PI*2);c.stroke();
+  }
+  function cracksDraw(c,t){
+    const g=eo((t-2.7)/2.3);if(g<=0)return;
+    c.save();c.lineCap='round';c.lineJoin='round';
+    for(const cr of cracks){
+      const f=cr.branch?cl((g-.3)/.7):g;if(f<=0)continue;
+      partial(c,cr,f);c.strokeStyle='rgba(255,40,60,.35)';c.lineWidth=9;c.stroke();
+      c.strokeStyle='rgba(0,0,0,.9)';c.lineWidth=4;c.stroke();
+      c.strokeStyle='rgba(255,255,255,.22)';c.lineWidth=1;c.stroke();
+    }
+    c.restore();
+  }
+  function dustDraw(c,t){
+    for(const d of dust){
+      const u=t-d.ts;if(u<0||u>d.life)continue;
+      const a=.35*(1-u/d.life)*sm(u/.2);
+      c.fillStyle='rgba(150,140,130,'+a+')';
+      c.beginPath();c.arc(hx+d.ox+d.vx*u,hy+ry*.2+d.vy*u,d.r*(1+u),0,Math.PI*2);c.fill();
+    }
+  }
+  function monsterLayer(c,t){
+    if(t<2.2)return;
+    let pose,clip=true,r=eo((t-2.2)/2.0);
+    if(t<SH_T){
+      pose={ax:hx,ay:(hy+ry+212*ms)+r*(-212*ms-ry*.4),s:ms,rot:Math.sin(t*1.7)*.035,tg:sm((t-4.3)/.5),wag:Math.sin(t*28)*.07,flick:.8+.2*Math.random()};
+    }else{
+      const e=cl((t-SH_T)/1.1),e2=e*e,e14=Math.pow(e,1.4);
+      const sEnd=Math.max(1.2*W/200,1.05*H/220),Lend=sEnd/ms,s=ms*(1+(Lend-1)*e2);
+      const h0=hy+ry*.6-95*ms,headX=hx+(W/2-hx)*e14,headY=h0+(H*.46-h0)*e14;
+      pose={ax:headX,ay:headY+95*s,s:s,rot:Math.sin(t*40)*.05*e+Math.sin(t*1.7)*.035*(1-e),tg:1,wag:Math.sin(t*34)*.1,flick:.8+.2*Math.random()};
+      clip=false;r=1;
+    }
+    mc.setTransform(1,0,0,1,0,0);mc.globalAlpha=1;mc.globalCompositeOperation='source-over';mc.clearRect(0,0,W,H);
+    mc.save();
+    if(clip){mc.beginPath();mc.moveTo(0,0);mc.lineTo(W,0);mc.lineTo(W,hy);mc.lineTo(hx+rx,hy);mc.ellipse(hx,hy,rx,ry,0,0,Math.PI,false);mc.lineTo(0,hy);mc.closePath();mc.clip()}
+    monster(mc,pose);
+    if(clip){
+      mc.globalCompositeOperation='source-atop';
+      const fl=ry*2.2+80*ms,y1=hy+ry,y0=y1-fl;
+      const sg=mc.createLinearGradient(0,y1,0,y0);sg.addColorStop(0,'rgba(0,0,0,'+(.92*(1-.75*r))+')');sg.addColorStop(1,'rgba(0,0,0,0)');
+      mc.fillStyle=sg;mc.fillRect(0,0,W,H);
+    }
+    mc.globalCompositeOperation='lighter';glow(mc,pose);
+    mc.restore();
+    c.drawImage(ml,0,0);
+  }
+  function voidBg(c,t){
+    const f=.85+.15*Math.sin(t*25)*Math.random(),cx=hx+(W/2-hx)*.5,cy=H*.45;
+    const g=c.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H)*.8);
+    g.addColorStop(0,'rgba(150,12,28,'+f+')');g.addColorStop(.4,'rgb(60,0,12)');g.addColorStop(1,'#000');
+    c.fillStyle=g;c.fillRect(-W,-H,3*W,3*H);
+  }
+  function handsDraw(c,t){
+    const h=sm((t-1.0)/1.2);hand(c,Hh,-1,h,t);hand(c,Hh,1,sm((t-1.2)/1.2),t);
+  }
+  function scene(c,t){
+    if(t<SH_T){
+      c.drawImage(photo,0,0);
+      c.fillStyle='rgba(8,0,24,'+(.15+.3*sm(t/3.5))+')';c.fillRect(0,0,W,H);
+      holeDraw(c,t);cracksDraw(c,t);dustDraw(c,t);
+      monsterLayer(c,t);handsDraw(c,t);
+    }else{
+      voidBg(c,t);monsterLayer(c,t);shardsDraw(c,t);
+    }
+  }
+
+  // úlomky: snímek poslední scény před výbuchem se rozletí
+  const snap=document.createElement('canvas');snap.width=W;snap.height=H;
+  const pieces=[];
+  function addPiece(sx,sy,sw,sh){
+    const x0=Math.floor(sx),y0=Math.floor(sy),w0=Math.ceil(sx+sw)-x0,h0=Math.ceil(sy+sh)-y0;
+    const cx=x0+w0/2,cy=y0+h0/2;let dx=cx-hx,dy=cy-hy;const dist=Math.hypot(dx,dy)||1;dx/=dist;dy/=dist;
+    const d=dist/rx,sp=(900/(1+d*.55))*rnd(.7,1.3);
+    pieces.push({sx:x0,sy:y0,sw:w0,sh:h0,cx:cx,cy:cy,vx:dx*sp+rnd(-60,60),vy:dy*sp-rnd(80,260),rot:0,vr:rnd(-4,4),vz:rnd(.4,1.8),delay:d*.018+rnd(0,.05)});
+  }
+  {const cols=8,rows=Math.max(8,Math.round(8*H/W)),cw=W/cols,ch=H/rows;
+   for(let r=0;r<rows;r++)for(let q=0;q<cols;q++){
+     const x=q*cw,y=r*ch,d=Math.hypot(x+cw/2-hx,y+ch/2-hy)/rx,n=d<2.4?3:d<4.2?2:1;
+     for(let i=0;i<n;i++)for(let j=0;j<n;j++)addPiece(x+i*cw/n,y+j*ch/n,cw/n,ch/n);
+   }}
+  function shardsDraw(c,t){
+    const u=t-SH_T;
+    for(const p of pieces){
+      const v=u-p.delay;
+      if(v<=0){c.drawImage(snap,p.sx,p.sy,p.sw,p.sh,p.sx,p.sy,p.sw,p.sh);continue}
+      const a=1-cl((v-.6)/.7);if(a<=0)continue;
+      const x=p.cx+p.vx*v,y=p.cy+p.vy*v+.5*1500*v*v,sc=1+p.vz*v;
+      c.save();c.globalAlpha=a;c.translate(x,y);c.rotate(p.rot+p.vr*v);c.scale(sc,sc);
+      c.drawImage(snap,p.sx,p.sy,p.sw,p.sh,-p.sw/2,-p.sh/2,p.sw,p.sh);c.restore();
+    }
+  }
+  scene(snap.getContext('2d'),SH_T-.001);
+
+  function overlays(c,t){
+    const R=Math.hypot(W,H);
+    const vg=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.2,W/2,H/2,R*.55);
+    vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,'+(.4+.45*sm(t/4))+')');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+    const ra=(.05+.06*Math.sin(t*10))*sm((t-2)/1);
+    if(ra>0){c.fillStyle='rgba(255,0,30,'+ra+')';c.fillRect(0,0,W,H)}
+    if(t>2&&t<5&&Math.random()<.035){c.fillStyle='rgba(0,0,0,.55)';c.fillRect(0,0,W,H)}
+    c.save();c.globalAlpha=.08;c.translate(-Math.random()*128,-Math.random()*128);
+    c.fillStyle=c.createPattern(nz,'repeat');c.fillRect(0,0,W+128,H+128);c.restore();
+    if(t>=SH_T&&t<SH_T+.3){c.fillStyle='rgba(255,235,235,'+((1-(t-SH_T)/.3)*.85)+')';c.fillRect(0,0,W,H)}
+    if(t>=5.95){
+      const tt=t-5.95;
+      if(tt<.15){c.fillStyle='rgba(255,255,255,'+(tt/.15)+')'}
+      else{const v=Math.round(255*(1-cl((tt-.15)/.3)));c.fillStyle='rgb('+v+','+v+','+v+')'}
+      c.fillRect(0,0,W,H);
+    }
+  }
+  return{D:D,W:W,H:H,draw:function(ctx,t){
+    ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    if(t>=6.4)return;
+    const amp=t<1?1.5:t<4.4?1.5+9*sm((t-1)/3.4):t<5?20:28;
+    ctx.save();
+    ctx.translate((Math.random()-.5)*amp,(Math.random()-.5)*amp);
+    const z=1+.12*sm(t/4.4);
+    ctx.translate(hx,hy);ctx.scale(z,z);ctx.translate(-hx,-hy);
+    scene(ctx,t);
+    ctx.restore();
+    overlays(ctx,t);
+  }};
+}
+
+// Zvuk celé scény (naplánovaný dopředu do audio grafu)
+function audio(ac,out){
+  const t0=ac.currentTime+.05;
+  function noise(dur){const n=Math.floor(ac.sampleRate*dur),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=Math.random()*2-1;const s=ac.createBufferSource();s.buffer=b;return s}
+  function burst(at,dur,type,freq,q,vol,sweepTo){
+    const s=noise(dur),f=ac.createBiquadFilter(),k=ac.createGain();
+    f.type=type;f.frequency.setValueAtTime(freq,t0+at);if(sweepTo)f.frequency.exponentialRampToValueAtTime(sweepTo,t0+at+dur);f.Q.value=q;
+    k.gain.setValueAtTime(.0001,t0+at);k.gain.exponentialRampToValueAtTime(vol,t0+at+dur*.15);k.gain.exponentialRampToValueAtTime(.0001,t0+at+dur);
+    s.connect(f);f.connect(k);k.connect(out);s.start(t0+at);s.stop(t0+at+dur+.05)}
+  function kick(at,vol,f0){
+    const o=ac.createOscillator(),k=ac.createGain();
+    o.frequency.setValueAtTime(f0||90,t0+at);o.frequency.exponentialRampToValueAtTime(34,t0+at+.22);
+    k.gain.setValueAtTime(vol,t0+at);k.gain.exponentialRampToValueAtTime(.001,t0+at+.3);
+    o.connect(k);k.connect(out);o.start(t0+at);o.stop(t0+at+.32)}
+  function tone(type,f0,f1,at,dur,vol,node){
+    const o=ac.createOscillator(),k=ac.createGain();o.type=type;
+    o.frequency.setValueAtTime(f0,t0+at);o.frequency.linearRampToValueAtTime(f1,t0+at+dur);
+    k.gain.setValueAtTime(.0001,t0+at);k.gain.exponentialRampToValueAtTime(vol,t0+at+Math.min(.15,dur/3));k.gain.exponentialRampToValueAtTime(.0001,t0+at+dur);
+    o.connect(node||k);if(node)node.connect(k);k.connect(out);o.start(t0+at);o.stop(t0+at+dur+.05)}
+  // nízké hučení
+  {const o=ac.createOscillator(),f=ac.createBiquadFilter(),k=ac.createGain();
+   o.type='sawtooth';o.frequency.value=42;f.type='lowpass';f.frequency.value=140;
+   k.gain.setValueAtTime(0,t0);k.gain.linearRampToValueAtTime(.55,t0+4.8);k.gain.setValueAtTime(.55,t0+5.0);k.gain.linearRampToValueAtTime(0,t0+6.4);
+   o.connect(f);f.connect(k);k.connect(out);o.start(t0);o.stop(t0+6.5)}
+  // tlukot srdce, zrychluje
+  [.6,1.4,2.1,2.7,3.2,3.65,4.05,4.4].forEach((a,i)=>{kick(a,.8);kick(a+.18,.5)});
+  // škrábání pařátů
+  burst(1.15,.5,'bandpass',1800,6,.35,900);burst(1.6,.45,'bandpass',2200,5,.3,1000);burst(2.0,.5,'bandpass',1500,5,.3,700);
+  // praskání
+  [2.8,3.1,3.5,3.7,4.0,4.2,4.6].forEach(a=>burst(a,.12,'highpass',2500,1,.35));
+  // řev
+  burst(4.4,1.1,'lowpass',400,2,.9,1800);
+  {const sh=ac.createWaveShaper(),cv=new Float32Array(256);for(let i=0;i<256;i++)cv[i]=Math.tanh((i/128-1)*6);sh.curve=cv;
+   tone('sawtooth',70,130,4.4,1.4,.45,sh)}
+  // roztříštění
+  kick(5.0,1.2,70);burst(5.0,.9,'lowpass',9000,.7,1.0,600);
+  for(let i=0;i<14;i++){tone('triangle',rnd(2200,5200),rnd(1800,4000),5.0+rnd(0,.5),.35,.12)}
+  // závěrečný jekot
+  tone('sawtooth',780,1500,5.0,1.4,.28);tone('sawtooth',830,1590,5.0,1.4,.22);
+}
+return{make:make,audio:audio,D:D};
+})();
+</script>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+const $=s=>document.querySelector(s);
+const v=$('#v'),cv=document.createElement('canvas');cv.width=32;cv.height=24;
+const cx=cv.getContext('2d',{willReadFrequently:true});
+let ref=null,state='intro',thr=.4,score=0,timers=[],tick=null,left=4,live=null;
 
-// ======================================================================
-//  DATA: týmové barvy (pevné!) a nabídka výbavy
-// ======================================================================
-const TEAM = {
-  1: { name: 'MODRÝ',   main: '#3b82f6', dark: '#1e4fb8', light: '#9cc3ff', rgb: '59,130,246' },
-  2: { name: 'ČERVENÝ', main: '#ef4444', dark: '#a81f1f', light: '#ffa3a3', rgb: '239,68,68' },
-  3: { name: 'ŽLUTÝ',   main: '#eab308', dark: '#a16207', light: '#fde047', rgb: '234,179,8' },
-  4: { name: 'ZELENÝ',  main: '#22c55e', dark: '#15803d', light: '#86efac', rgb: '34,197,94' },
-  5: { name: 'ORANŽOVÝ', main: '#f97316', dark: '#b4500a', light: '#fdba74', rgb: '249,115,22' },
-  6: { name: 'FIALOVÝ', main: '#a855f7', dark: '#6b21a8', light: '#d8b4fe', rgb: '168,85,247' },
-  7: { name: 'RŮŽOVÝ',  main: '#ec4899', dark: '#9d174d', light: '#f9a8d4', rgb: '236,72,153' },
-  8: { name: 'TYRKYSOVÝ', main: '#14b8a6', dark: '#0f766e', light: '#99f6e4', rgb: '20,184,166' }
+// Zmenšený šedotónový snímek, normalizovaný (nezávislý na jasu a kontrastu)
+function grab(){
+  const w=v.videoWidth,h=v.videoHeight;if(!w)return null;
+  let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
+  cx.drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,32,24);
+  const d=cx.getImageData(0,0,32,24).data,g=new Float32Array(768);let m=0;
+  for(let i=0;i<768;i++){g[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];m+=g[i]}
+  m/=768;let s=0;for(let i=0;i<768;i++){g[i]-=m;s+=g[i]*g[i]}
+  s=Math.sqrt(s/768)||1;for(let i=0;i<768;i++)g[i]/=s;return g;
+}
+function sim(a,b){let s=0;for(let i=0;i<768;i++)s+=a[i]*b[i];return Math.max(0,s/768)}
+
+// Zvuk a vibrace
+let ac;function beep(f,d,t='sine',g=.15){try{ac=ac||new AudioContext();const o=ac.createOscillator(),k=ac.createGain();o.type=t;o.frequency.value=f;k.gain.value=g;o.connect(k);k.connect(ac.destination);o.start();k.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+
+function clearAll(){timers.forEach(clearTimeout);timers=[];clearInterval(tick);tick=null}
+function say(t){$('#msg').textContent=t}
+
+$('#go').onclick=async()=>{
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    v.srcObject=s;await v.play();
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    try{const sm=await claude.use('sample');if(sm)sm('Odpověz jen: OK',{modelTier:'quick'}).catch(()=>{})}catch(e){}
+    $('#intro').hidden=true;showModes();
+  }catch(e){$('#err').textContent='Kamera se nespustila. Povol přístup ke kameře a otevři hru přes https.'}
 };
-const CHARACTERS = [
-  { id: 'knight',  name: 'Rytíř' },
-  { id: 'viking',  name: 'Viking' },
-  { id: 'samurai', name: 'Samuraj' },
-  { id: 'pirate',  name: 'Pirát' }
-];
-const SWORDS = [
-  { id: 'broad',  name: 'Meč' },
-  { id: 'saber',  name: 'Šavle' },
-  { id: 'katana', name: 'Katana' },
-  { id: 'flame',  name: 'Plamenný' }
-];
-const SHIELDS = [
-  { id: 'round',  name: 'Kulatý' },
-  { id: 'heater', name: 'Erbovní' },
-  { id: 'scutum', name: 'Římský' },
-  { id: 'star',   name: 'Hvězdný' }
-];
-const BACKGROUNDS = [
-  { id: 'desert', name: 'Poušť' },
-  { id: 'forest', name: 'Les' },
-  { id: 'rocks',  name: 'Skály' }
-];
-// holčičí varianty (stejné pořadí = stejný index postavy)
-const GIRL_CHARACTERS = [
-  { id: 'knight',  name: 'Rytířka' },
-  { id: 'viking',  name: 'Vikinka' },
-  { id: 'samurai', name: 'Samurajka' },
-  { id: 'pirate',  name: 'Pirátka' }
-];
-const GIRL_SWORDS = [
-  { id: 'rapier',  name: 'Rapír' },
-  { id: 'crystal', name: 'Krystal' },
-  { id: 'rose',    name: 'Růže' },
-  { id: 'wand',    name: 'Hůlka' }
-];
-const GIRL_SHIELDS = [
-  { id: 'heart',     name: 'Srdce' },
-  { id: 'flower',    name: 'Květ' },
-  { id: 'butterfly', name: 'Motýl' },
-  { id: 'moon',      name: 'Měsíc' }
-];
-const charList   = st => (st && st.g) ? GIRL_CHARACTERS : CHARACTERS;
-const swordList  = st => (st && st.g) ? GIRL_SWORDS : SWORDS;
-const shieldList = st => (st && st.g) ? GIRL_SHIELDS : SHIELDS;
-const isGirlSword  = k => GIRL_SWORDS.some(x => x.id === k);
-const isGirlShield = k => GIRL_SHIELDS.some(x => x.id === k);
 
-// ======================================================================
-//  NASTAVENÍ (pamatuje se v prohlížeči, když to jde)
-// ======================================================================
-const STORE_KEY = 'ka-v5';
-const settings = { l: { 1: { c: 0, s: 0, h: 0, g: 0 }, 2: { c: 0, s: 0, h: 0, g: 0 } }, bg: 0 };
-
-function clampIdx(v, n) {
-  v = parseInt(v, 10);
-  return (v >= 0 && v < n) ? v : 0;
-}
-function cleanLoadout(o) {
-  o = o || {};
-  return { c: clampIdx(o.c, CHARACTERS.length), s: clampIdx(o.s, SWORDS.length), h: clampIdx(o.h, SHIELDS.length), g: clampIdx(o.g, 2) };
-}
-function randomLoadout() {
-  const r = n => Math.floor(Math.random() * n);
-  return { c: r(CHARACTERS.length), s: r(SWORDS.length), h: r(SHIELDS.length), g: r(2) };
-}
-function loadSettings() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return;
-    const o = JSON.parse(raw);
-    settings.l[1] = cleanLoadout(o.l && o.l[1]);
-    settings.l[2] = cleanLoadout(o.l && o.l[2]);
-    settings.bg = clampIdx(o.bg, BACKGROUNDS.length);
-  } catch (e) { /* bez uložení to prostě půjde dál */ }
-}
-function saveSettings() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (e) {}
-}
-loadSettings();
-
-// ======================================================================
-//  OBCHOD A KLÍČE (ukládá se v prohlížeči; vylepšení vyprší po 2 dnech reálného času)
-// ======================================================================
-const SHOP_KEY = 'ka-shop';
-const PERK_MS = 2 * 24 * 3600 * 1000;
-const SHOP_ITEMS = [
-  { id: 'sword', name: 'Ostrý meč',    cost: 10, desc: 'Každý zásah dává 10 poškození místo 5.' },
-  { id: 'boots', name: 'Rychlé boty',  cost: 5,  desc: 'Běháš rychleji.' },
-  { id: 'armor', name: 'Pancíř',       cost: 7,  desc: 'Dostáváš menší poškození: zásah tě bolí jen za 3 životy místo 5. Štít dál odrazí útok na 100 %.' }
-];
-const shop = { keys: 0, bank: 0, sword: 0, boots: 0, armor: 0 };   // keys = peněženka, bank = klíče v bezpečí v bance
-function loadShop() {
-  try {
-    const o = JSON.parse(localStorage.getItem(SHOP_KEY) || 'null');
-    if (!o) return;
-    shop.keys = Math.max(0, parseInt(o.keys, 10) || 0);
-    shop.bank = Math.max(0, parseInt(o.bank, 10) || 0);
-    ['sword', 'boots', 'armor'].forEach(k => { shop[k] = +o[k] || 0; });
-  } catch (e) {}
-}
-function saveShop() { try { localStorage.setItem(SHOP_KEY, JSON.stringify(shop)); } catch (e) {} }
-// Před každou změnou si znovu přečteme uložený stav, aby se nikdy nepřepsaly klíče z jiného okna/karty.
-function refreshShop() { loadShop(); }
-window.addEventListener('storage', e => { if (e.key === SHOP_KEY) { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); if (typeof updateXferHave === 'function') updateXferHave(); } });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); } });
-window.addEventListener('pageshow', () => { loadShop(); if (typeof updateShopLabel === 'function') updateShopLabel(); });
-function perkActive(k) { return shop[k] > Date.now(); }
-function activePerks() { return { sword: perkActive('sword'), boots: perkActive('boots'), armor: perkActive('armor') }; }
-function applyPerks(p, pk) {
-  if (!p || !pk) return;
-  if (pk.sword) p.dmg = 10;
-  if (pk.boots) p.speed = 5.5;
-  if (pk.armor) p.dmgTaken = 0.6;      // 5 → 3 (a 10 → 6)
-}
-function keysText(n) { return n === 1 ? '1 klíč' : (n >= 2 && n <= 4 ? n + ' klíče' : n + ' klíčů'); }
-function updateShopLabel() {
-  const el = document.getElementById('shop-keys-label');
-  if (el) el.textContent = keysText(shop.keys);
-  const bl = document.getElementById('bank-label');
-  if (bl) bl.textContent = 'v bance ' + keysText(shop.bank);
-}
-function timeLeft(t) {
-  const d = Math.max(0, t - Date.now());
-  const days = Math.floor(d / 86400000), h = Math.floor(d % 86400000 / 3600000), m = Math.floor(d % 3600000 / 60000);
-  return days ? days + ' d ' + h + ' h' : (h ? h + ' h ' + m + ' min' : Math.max(1, m) + ' min');
-}
-const val = id => document.getElementById(id).value;
-
-function openCode() {
-  closeXfer();
-  updateXferHave();
-  document.getElementById('xfer-send').classList.add('hidden');
-  document.getElementById('xfer-recv').classList.add('hidden');
-  showScreen('menu-code');
+function setup(){
+  state='setup';score=0;ref=null;clearAll();
+  $('#hud').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;clearInterval(window.mt);
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+  $('#modebtn').hidden=false;
+  say('Zaměř domeček a vyfoť ho');
 }
 
-// ---------- přenos klíčů přímo mezi dvěma zařízeními (PeerJS) ----------
-let xferPeer = null;
-function storageWorks() { try { localStorage.setItem('ka-t', '1'); localStorage.removeItem('ka-t'); return true; } catch (e) { return false; } }
-function updateXferHave() {
-  const el = document.getElementById('xfer-have');
-  if (!el) return;
-  el.textContent = 'Na tomto zařízení teď máš: ' + keysText(shop.keys) + ' v peněžence a ' + keysText(shop.bank) + ' v bance.'
-    + (storageWorks() ? '' : ' ⚠ Tento prohlížeč si klíče neukládá (třeba anonymní okno), po zavření zmizí.');
+function startPlay(){
+  state='play';
+  $('#hud').hidden=false;$('#shutter').hidden=true;
+  clearInterval(window.mt);window.mt=setInterval(()=>{if(!ref||state==='over')return;const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %'},300);
+  $('#score').textContent='Přežito: 0';
+  schedule();
 }
-function closeXfer() { if (xferPeer) { try { xferPeer.destroy(); } catch (e) {} xferPeer = null; } }
-function hasStuff() { return shop.keys > 0 || shop.bank > 0 || perkActive('sword') || perkActive('boots') || perkActive('armor'); }
-function setSt(id, t, ok) { const el = document.getElementById(id); el.textContent = t; el.style.color = ok === true ? '#86efac' : (ok === false ? '#fca5a5' : ''); }
 
-// 1. krok: zobrazí se pole "kolik klíčů pošleš"
-function xferShowSend() {
-  closeXfer();
-  document.getElementById('xfer-send').classList.remove('hidden');
-  document.getElementById('xfer-recv').classList.add('hidden');
-  document.getElementById('xfer-code-box').classList.add('hidden');
-  const box = document.getElementById('xfer-amount-box');
-  if (shop.keys < 1) {
-    box.classList.add('hidden');
-    setSt('xfer-send-status', 'V peněžence nemáš žádné klíče' + (shop.bank > 0 ? ' (v bance máš ' + keysText(shop.bank) + ', nejdřív je vyber).' : '.'), false);
-    return;
+function schedule(){
+  state='play';$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;
+  $('#mon').classList.remove('on');$('#vig').classList.remove('warn');
+  $('#modebtn').hidden=false;
+  say('Schovej se. Příšera tě hledá…');
+    const delay=(5+Math.random()*25)*1000; // 5–30 s, úplně náhodně
+  timers.push(setTimeout(warn,Math.max(delay-2000,3000)));
+  timers.push(setTimeout(attack,Math.max(delay,5000)));
+}
+
+function warn(){ // varování ~2 s předem: vibrace, zvuk, červené okraje
+  $('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2);
+}
+
+function attack(){
+  state='attack';left=4;
+  $('#modebtn').hidden=true;
+  $('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);beep(180,.9,'sawtooth',.12);setTimeout(()=>beep(95,.7,'sawtooth',.2),250);
+  $('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';$('#tune').hidden=true;
+  say('Najdi domeček a vyfoť ho!');
+  let last=performance.now();paused=false;
+  tick=setInterval(()=>{
+    const now=performance.now();if(!paused)left-=(now-last)/1000;last=now;
+    $('#bar i').style.width=Math.max(0,left/4*100)+'%';
+    const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,ref)*100)+' %';
+    if(left<=0)lose();
+  },100);
+}
+
+function lose(){
+  clearAll();state='over';
+  $('#mon').style.transform='translate(-50%,-50%) scale(2.2)';buzz(600);beep(60,.9,'sawtooth',.3);
+  setTimeout(()=>{
+    $('#mon').style.transform='';$('#mon').classList.remove('on');
+    $('#hud').hidden=true;$('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;$('#modebtn').hidden=true;clearInterval(window.mt);$('#vig').classList.remove('warn');say('');
+    $('#final').textContent='Přežil jsi příšer: '+score;$('#over').hidden=false;
+  },900);
+}
+
+$('#shutter').onclick=()=>{
+  if(state==='scare-shoot'){scareShot();return}
+  const g=grab();if(!g)return;
+  if(state==='setup'){
+    ref=g;snap().then(b=>refBlob=b);
+    const t=document.createElement('canvas');t.width=104;t.height=78;
+    const w=v.videoWidth,h=v.videoHeight;let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
+    t.getContext('2d').drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,104,78);
+    $('#thumb').src=t.toDataURL();beep(660,.15);startPlay();return;
   }
-  box.classList.remove('hidden');
-  document.getElementById('xfer-amount-label').textContent = 'Kolik klíčů pošleš? (máš ' + keysText(shop.keys) + ')';
-  const inp = document.getElementById('xfer-amount');
-  inp.max = shop.keys;
-  inp.value = shop.keys;
-  setSt('xfer-send-status', '');
-}
-function xferAmountAll() { document.getElementById('xfer-amount').value = shop.keys; }
-
-// 2. krok: po "Vytvořit kód" se otevře spojení a pošle se jen zadané množství
-function xferStartSend(amountArg) {
-  const amount = parseInt(typeof amountArg === 'number' ? amountArg : val('xfer-amount'), 10);
-  if (!(amount >= 1)) { setSt('xfer-send-status', 'Zadej, kolik klíčů pošleš (aspoň 1).', false); return; }
-  if (amount > shop.keys) { setSt('xfer-send-status', 'Máš jen ' + keysText(shop.keys) + '.', false); return; }
-  closeXfer();
-  document.getElementById('xfer-amount-box').classList.add('hidden');
-  document.getElementById('xfer-code-box').classList.remove('hidden');
-  document.getElementById('xfer-amount-sent').textContent = 'Posíláš: ' + keysText(amount);
-  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) code += abc[Math.floor(Math.random() * abc.length)];
-  document.getElementById('xfer-code').textContent = code;
-  setSt('xfer-send-status', 'Připravuji spojení...');
-  const pr = new Peer('KAX-' + code);
-  xferPeer = pr;
-  let used = false;
-  pr.on('open', () => {
-    setSt('xfer-send-status', 'Čekám na druhé zařízení...');
-  });
-  pr.on('connection', (c) => {
-    if (used) { try { c.close(); } catch (e) {} return; }
-    used = true;
-    refreshShop();
-    const sent = { keys: Math.min(amount, shop.keys), bank: 0, sword: 0, boots: 0, armor: 0 };
-    c.on('open', () => { c.send({ type: 'xfer', data: sent }); setSt('xfer-send-status', 'Posílám...'); });
-    c.on('data', (d) => {
-      if (!d || d.type !== 'ack') return;
-      refreshShop();
-      shop.keys = Math.max(0, shop.keys - sent.keys);
-      saveShop(); updateShopLabel(); updateXferHave();
-      setSt('xfer-send-status', '✔ Hotovo! ' + keysText(sent.keys) + ' je teď na druhém zařízení. Tady ti zbývá ' + keysText(shop.keys) + '.', true);
-      setTimeout(closeXfer, 800);
-    });
-  });
-  pr.on('disconnected', () => {
-    if (xferPeer !== pr || pr.destroyed) return;
-    setTimeout(() => { if (xferPeer === pr) revivePeer(pr); }, document.visibilityState === 'visible' ? 300 : 3000);
-  });
-  pr.on('error', (err) => {
-    if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed')) {
-      setTimeout(() => { if (xferPeer === pr) revivePeer(pr); }, 2000);
-      return;
-    }
-    setSt('xfer-send-status', 'Chyba spojení. Zkus to znovu.', false);
-  });
-}
-
-function xferShowReceive() {
-  closeXfer();
-  document.getElementById('xfer-recv').classList.remove('hidden');
-  document.getElementById('xfer-send').classList.add('hidden');
-  setSt('xfer-recv-status', '');
-}
-
-function xferReceive(auto) {
-  const code = String(typeof auto === 'string' ? auto : val('xfer-code-in')).trim().toUpperCase();
-  if (code.length < 4) { setSt('xfer-recv-status', 'Zadej kód z prvního zařízení.', false); return; }
-  refreshShop();
-  if (shop.keys === 0 && shop.bank === 0 && typeof auto !== 'string' && !window.__xferWarned) {
-    window.__xferWarned = true;
-    setSt('xfer-recv-status', '⚠ V tomto prohlížeči máš 0 klíčů. Pokud máš klíče jinde, otevři hru v prohlížeči, kde obvykle hraješ, a zadej kód tam. Chceš-li přijmout i tak, klepni na Přijmout ještě jednou.', false);
-    return;
-  }
-  window.__xferWarned = false;
-  closeXfer();
-  setSt('xfer-recv-status', 'Připojuji se...');
-  const pr = new Peer();
-  xferPeer = pr;
-  let done = false;
-  const num = v => Math.min(1000000, Math.max(0, parseInt(v, 10) || 0));
-  pr.on('open', () => {
-    const c = pr.connect('KAX-' + code, { reliable: true });
-    c.on('data', (d) => {
-      if (done || !d || d.type !== 'xfer' || !d.data) return;
-      done = true;
-      const o = d.data;
-      refreshShop();
-      const before = { k: shop.keys, b: shop.bank };
-      shop.keys += num(o.keys);
-      shop.bank += num(o.bank);
-      ['sword', 'boots', 'armor'].forEach(k => { shop[k] = Math.max(shop[k], +o[k] || 0); });
-      saveShop(); updateShopLabel();
-      try { c.send({ type: 'ack' }); } catch (e) {}
-      updateXferHave();
-      setSt('xfer-recv-status', '✔ Přijato ' + keysText(num(o.keys)) + (num(o.bank) ? ' a ' + keysText(num(o.bank)) + ' v bance' : '') + '. Měl jsi ' + keysText(before.k) + ', teď máš ' + keysText(shop.keys) + (shop.bank ? ' (v bance ' + shop.bank + ')' : '') + '.', true);
-      setTimeout(closeXfer, 1000);
-    });
-    c.on('error', () => setSt('xfer-recv-status', 'Chyba spojení. Zkus to znovu.', false));
-  });
-  pr.on('error', (err) => setSt('xfer-recv-status', err && err.type === 'peer-unavailable' ? 'Kód nesedí nebo už vypršel.' : 'Nedaří se připojit k internetu.', false));
-}
-function openShop() { renderShop(); showScreen('menu-shop'); }
-
-// ---------- banka: vložené klíče se nedají utratit v obchodě, dokud je nevybereš ----------
-function openBank() { renderBank(); showScreen('menu-bank'); }
-function bankMove(dir, all) {
-  refreshShop();
-  if (dir === 'in') {
-    const n = all ? shop.keys : Math.min(1, shop.keys);
-    shop.keys -= n; shop.bank += n;
-  } else {
-    const n = all ? shop.bank : Math.min(1, shop.bank);
-    shop.bank -= n; shop.keys += n;
-  }
-  saveShop();
-  renderBank();
-}
-function renderBank() {
-  document.getElementById('bank-wallet').textContent = '🔑 V peněžence: ' + keysText(shop.keys);
-  document.getElementById('bank-safe').textContent = '🏦 V bance: ' + keysText(shop.bank);
-  document.getElementById('bank-in-1').disabled = document.getElementById('bank-in-all').disabled = shop.keys < 1;
-  document.getElementById('bank-out-1').disabled = document.getElementById('bank-out-all').disabled = shop.bank < 1;
-  updateShopLabel();
-}
-function buyItem(id) {
-  const it = SHOP_ITEMS.find(x => x.id === id);
-  refreshShop();
-  if (!it || perkActive(id) || shop.keys < it.cost) return;
-  shop.keys -= it.cost;
-  shop[id] = Date.now() + PERK_MS;
-  saveShop();
-  renderShop();
-}
-function renderShop() {
-  document.getElementById('shop-keys').textContent = '🔑 Máš ' + keysText(shop.keys);
-  const box = document.getElementById('shop-items');
-  box.innerHTML = '';
-  SHOP_ITEMS.forEach(it => {
-    const row = document.createElement('div');
-    row.className = 'shop-row';
-    const info = document.createElement('div');
-    info.style.cssText = 'text-align:left;flex:1';
-    const nm = document.createElement('strong'); nm.textContent = it.name + ' · ' + keysText(it.cost);
-    const ds = document.createElement('span'); ds.textContent = it.desc + ' Platí 2 dny.';
-    info.appendChild(nm); info.appendChild(document.createElement('br')); info.appendChild(ds);
-    const b = document.createElement('button');
-    if (perkActive(it.id)) {
-      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Aktivní · ' + timeLeft(shop[it.id]);
-    } else if (shop.keys < it.cost) {
-      b.className = 'btn btn-secondary'; b.disabled = true; b.textContent = 'Málo klíčů';
-    } else {
-      b.className = 'btn'; b.textContent = 'Koupit'; b.onclick = () => buyItem(it.id);
-    }
-    row.appendChild(info); row.appendChild(b);
-    box.appendChild(row);
-  });
-}
-loadShop();
-try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-setTimeout(updateShopLabel, 0);
-
-// ======================================================================
-//  KRESLENÍ: pomocné funkce
-// ======================================================================
-const OUT = 'rgba(8,10,18,.88)';
-
-function rr(g, x, y, w, h, r) {
-  g.beginPath();
-  g.moveTo(x + r, y);
-  g.arcTo(x + w, y, x + w, y + h, r);
-  g.arcTo(x + w, y + h, x, y + h, r);
-  g.arcTo(x, y + h, x, y, r);
-  g.arcTo(x, y, x + w, y, r);
-  g.closePath();
-}
-function mulberry(a) {
-  return function () {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-function starPath(g, cx, cy, R, r) {
-  g.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / 5, d = i % 2 ? r : R;
-    const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
-    if (i) g.lineTo(x, y); else g.moveTo(x, y);
-  }
-  g.closePath();
-}
-
-// ======================================================================
-//  KRESLENÍ: postava (všechno se kreslí otočené doprava, pak se zrcadlí)
-// ======================================================================
-function drawKnightFigure(g, team, st, dir, walk, shielding, swing, opts) {
-  opts = opts || {};
-  const T = TEAM[team];
-  g.save();
-  g.scale(dir, 1);
-
-  if (!opts.noShadow) {
-    g.beginPath();
-    g.ellipse(0, 23, 17, 6, 0, 0, Math.PI * 2);
-    g.fillStyle = 'rgba(0,0,0,.33)';
-    g.fill();
-  }
-
-  if (st.g) drawHairBack(g, st.c);
-  drawLegs(g, walk, st.c);
-  drawBody(g, T, st.c);
-  if (st.g) drawSkirt(g, T);
-  drawHead(g, T, st.c);
-  if (st.g) drawBow(g);
-
-  if (shielding && !opts.noShield) {
-    g.save();
-    g.translate(21, -1);
-    drawShield(g, shieldList(st)[st.h].id, T, 1);
-    g.restore();
-  }
-  if (!opts.noSword) {
-    g.save();
-    g.translate(8, 3);
-    g.rotate(swing != null ? Math.sin(swing) * 1.8 : 0.2);
-    drawSword(g, swordList(st)[st.s].id, T);
-    g.restore();
-  }
-  g.restore();
-}
-
-// ---- holčičí doplňky ----
-function drawHairBack(g, c) {
-  g.fillStyle = ['#e9b949', '#d9822b', '#1c1c28', '#7a3b1d'][c] || '#7a3b1d';
-  g.strokeStyle = OUT; g.lineWidth = 1.6; g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(-8, -22);
-  g.bezierCurveTo(-24, -24, -28, -6, -18, 8);
-  g.bezierCurveTo(-16, 2, -10, -6, -6, -10);
-  g.closePath(); g.fill(); g.stroke();
-}
-function drawSkirt(g, T) {
-  g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8; g.lineJoin = 'round';
-  g.beginPath(); g.moveTo(-12, 5); g.lineTo(12, 5); g.lineTo(18, 18); g.lineTo(-18, 18); g.closePath();
-  g.fill(); g.stroke();
-  g.fillStyle = T.light; g.fillRect(-12, 5, 24, 3);
-}
-function drawBow(g) {
-  g.fillStyle = '#f472b6'; g.strokeStyle = OUT; g.lineWidth = 1.2; g.lineJoin = 'round';
-  g.beginPath();
-  g.moveTo(-12, -20); g.lineTo(-20, -26); g.lineTo(-20, -14); g.closePath();
-  g.moveTo(-12, -20); g.lineTo(-4, -27);  g.lineTo(-4, -15);  g.closePath();
-  g.fill(); g.stroke();
-  g.fillStyle = '#fbcfe8';
-  g.beginPath(); g.arc(-12, -20, 2.4, 0, Math.PI * 2); g.fill(); g.stroke();
-}
-
-function drawLegs(g, walk, c) {
-  const off = Math.sin(walk) * 8;
-  g.lineCap = 'round';
-  g.strokeStyle = c === 3 ? '#4a3524' : '#1b2030';
-  g.lineWidth = 5;
-  g.beginPath();
-  g.moveTo(-6, 10); g.lineTo(-6 - off, 21);
-  g.moveTo(6, 10);  g.lineTo(6 + off, 21);
-  g.stroke();
-  g.fillStyle = c === 3 ? '#2a1d12' : '#0e121b';
-  rr(g, -10 - off, 19, 8, 5, 2); g.fill();
-  rr(g, 2 + off, 19, 8, 5, 2);   g.fill();
-}
-
-function belt(g, leather, buckle) {
-  g.fillStyle = leather;
-  g.fillRect(-12, 5, 24, 4);
-  g.fillStyle = buckle;
-  rr(g, -3, 4, 6, 6, 1.5); g.fill();
-}
-
-function drawBody(g, T, c) {
-  const gr = g.createLinearGradient(0, -8, 0, 13);
-  gr.addColorStop(0, T.light); gr.addColorStop(0.35, T.main); gr.addColorStop(1, T.dark);
-  g.fillStyle = gr; g.strokeStyle = OUT; g.lineWidth = 2;
-  rr(g, -12, -8, 24, 21, 5); g.fill(); g.stroke();
-
-  if (c === 0) {
-    g.fillStyle = 'rgba(255,255,255,.22)';
-    rr(g, -8, -6, 7, 12, 3); g.fill();
-    belt(g, '#4a3320', '#f5c542');
-  } else if (c === 1) {
-    belt(g, '#3b2616', '#cbd5e1');
-    g.fillStyle = '#e0cfae'; g.strokeStyle = OUT; g.lineWidth = 1.4;
-    rr(g, -13, -10, 26, 7, 3.5); g.fill(); g.stroke();
-    g.fillStyle = '#c9b48f';
-    for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-8 + i * 5.3, -3, 2.1, 0, Math.PI * 2); g.fill(); }
-  } else if (c === 2) {
-    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
-    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-11, -3 + i * 4); g.lineTo(11, -3 + i * 4); g.stroke(); }
-    g.fillStyle = '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.5;
-    rr(g, -16, -10, 9, 8, 2); g.fill(); g.stroke();
-    rr(g, 7, -10, 9, 8, 2);   g.fill(); g.stroke();
-    g.fillStyle = T.main; g.fillRect(-15, -5, 7, 1.8); g.fillRect(8, -5, 7, 1.8);
-    belt(g, '#161b26', '#fbbf24');
-  } else {
-    g.save();
-    rr(g, -12, -8, 24, 21, 5); g.clip();
-    g.fillStyle = 'rgba(255,255,255,.82)';
-    for (let y = -5; y < 12; y += 5) g.fillRect(-12, y, 24, 2.2);
-    g.restore();
-    g.strokeStyle = OUT; g.lineWidth = 2;
-    rr(g, -12, -8, 24, 21, 5); g.stroke();
-    belt(g, '#17110b', '#f5c542');
-  }
-}
-
-function drawHead(g, T, c) {
-  const skin = '#f2c9a3';
-  g.lineJoin = 'round';
-  if (c === 0) {
-    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.8;
-    g.beginPath();
-    g.moveTo(1, -26);
-    g.bezierCurveTo(-4, -37, -16, -35, -21, -24);
-    g.bezierCurveTo(-14, -28, -8, -24, -3, -22);
-    g.closePath(); g.fill(); g.stroke();
-    const hg = g.createRadialGradient(-4, -19, 2, 0, -14, 16);
-    hg.addColorStop(0, '#f1f5fa'); hg.addColorStop(0.55, '#a3b0bf'); hg.addColorStop(1, '#5b697b');
-    g.fillStyle = hg; g.lineWidth = 2;
-    g.beginPath(); g.arc(0, -14, 13, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = '#0f141e'; rr(g, 1, -18, 12, 5, 2); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(-9, -21); g.quadraticCurveTo(-4, -26, 3, -26); g.stroke();
-  } else if (c === 1) {
-    g.fillStyle = '#f5ecd5'; g.strokeStyle = OUT; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(-9, -21); g.bezierCurveTo(-18, -24, -20, -33, -14, -38); g.bezierCurveTo(-16, -31, -12, -27, -6, -25); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(9, -21);  g.bezierCurveTo(18, -24, 20, -33, 14, -38);   g.bezierCurveTo(16, -31, 12, -27, 6, -25);  g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = skin; g.lineWidth = 1.8;
-    g.beginPath(); g.arc(0, -14, 12.5, 0, Math.PI * 2); g.fill(); g.stroke();
-    const bg = g.createLinearGradient(0, -8, 0, 4);
-    bg.addColorStop(0, '#e08a3c'); bg.addColorStop(1, '#a8501c');
-    g.fillStyle = bg; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(-10, -11); g.quadraticCurveTo(-11, 5, 1, 5); g.quadraticCurveTo(12, 5, 11, -11); g.quadraticCurveTo(0, -5, -10, -11); g.closePath(); g.fill(); g.stroke();
-    const dg = g.createLinearGradient(0, -27, 0, -15);
-    dg.addColorStop(0, '#b5bfcb'); dg.addColorStop(1, '#5f6b7a');
-    g.fillStyle = dg; g.lineWidth = 2;
-    g.beginPath(); g.arc(0, -14, 13, Math.PI, Math.PI * 2); g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = '#6b7685'; rr(g, -13.5, -17, 27, 4, 2); g.fill(); g.stroke();
-    g.fillStyle = '#8f9bab'; g.fillRect(2.5, -14, 3, 8);
-    g.fillStyle = '#10151f';
-    g.beginPath(); g.arc(8, -11, 1.6, 0, Math.PI * 2); g.fill();
-  } else if (c === 2) {
-    for (let i = 0; i < 3; i++) {
-      g.fillStyle = i % 2 === 0 ? T.main : '#232a38'; g.strokeStyle = OUT; g.lineWidth = 1.3;
-      rr(g, -19 + i * 0.8, -18 + i * 4.2, 13, 4.6, 2); g.fill(); g.stroke();
-    }
-    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(-2, -26); g.quadraticCurveTo(-4, -37, -13, -41); g.quadraticCurveTo(-8, -32, -1, -24); g.closePath(); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(2, -26);  g.quadraticCurveTo(4, -37, 13, -41);   g.quadraticCurveTo(8, -32, 1, -24);  g.closePath(); g.fill(); g.stroke();
-    const kg = g.createRadialGradient(-4, -20, 2, 0, -14, 16);
-    kg.addColorStop(0, '#4a5468'); kg.addColorStop(1, '#141922');
-    g.fillStyle = kg; g.lineWidth = 2;
-    g.beginPath(); g.arc(0, -14, 13, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1;
-    for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 4, -26); g.lineTo(i * 5, -17); g.stroke(); }
-    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.4;
-    rr(g, -13, -18, 26, 3.6, 1.8); g.fill(); g.stroke();
-    g.fillStyle = skin; rr(g, 2, -14.5, 10, 3.2, 1.4); g.fill();
-    g.fillStyle = '#10151f'; g.beginPath(); g.arc(8, -13, 1.1, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#2b3140'; g.strokeStyle = OUT; g.lineWidth = 1.4;
-    rr(g, 0, -11, 13.5, 10, 4); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(5, -10); g.lineTo(5, -2); g.moveTo(9, -10); g.lineTo(9, -2); g.stroke();
-    g.fillStyle = '#fbbf24'; g.beginPath(); g.arc(0, -27, 2.2, 0, Math.PI * 2); g.fill();
-  } else {
-    g.fillStyle = skin; g.strokeStyle = OUT; g.lineWidth = 1.8;
-    g.beginPath(); g.arc(0, -14, 12.5, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = '#10151f'; g.lineWidth = 1.4;
-    g.beginPath(); g.moveTo(-12, -19); g.lineTo(11, -10); g.stroke();
-    g.fillStyle = '#10151f';
-    g.beginPath(); g.arc(6, -13, 3.4, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(-3.5, -14, 1.9, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#7a3b1d'; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(-1, -7); g.quadraticCurveTo(3, -4, 8, -7); g.stroke();
-    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-12, -10, 1.8, 0, Math.PI * 2); g.fill();
-    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.8;
-    g.beginPath(); g.ellipse(0, -22, 18, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    const hg = g.createLinearGradient(0, -36, 0, -22);
-    hg.addColorStop(0, T.light); hg.addColorStop(0.4, T.main); hg.addColorStop(1, T.dark);
-    g.fillStyle = hg;
-    g.beginPath(); g.moveTo(-10.5, -22.5); g.quadraticCurveTo(-11, -36, 0, -36.5); g.quadraticCurveTo(11, -36, 10.5, -22.5); g.closePath(); g.fill(); g.stroke();
-    g.strokeStyle = '#f5c542'; g.lineWidth = 1.4;
-    g.beginPath(); g.moveTo(-10.5, -24); g.quadraticCurveTo(0, -20.5, 10.5, -24); g.stroke();
-    g.fillStyle = '#fff';
-    g.beginPath(); g.arc(0, -30, 3, 0, Math.PI * 2); g.fill();
-    g.fillRect(-1.6, -28.5, 3.2, 3);
-    g.fillStyle = '#10151f';
-    g.beginPath(); g.arc(-1.1, -30.4, 0.8, 0, Math.PI * 2); g.arc(1.1, -30.4, 0.8, 0, Math.PI * 2); g.fill();
-  }
-}
-
-// ======================================================================
-//  KRESLENÍ: meče (rukojeť v bodě 0,0, čepel míří doprava, délka do ~40)
-// ======================================================================
-function drawGirlSword(g, kind, T) {
-  g.lineJoin = 'round'; g.lineCap = 'round';
-  g.fillStyle = '#f472b6'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
-  g.fillStyle = '#fde68a'; g.beginPath(); g.arc(-8, 0, 2.5, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = OUT; g.lineWidth = 1.2;
-  if (kind === 'rapier') {
-    g.fillStyle = '#fbbf24'; g.beginPath(); g.ellipse(2, 0, 3, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = '#8c99ab'; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(4, 0); g.lineTo(43, 0); g.stroke();
-    g.strokeStyle = '#f4f8fc'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(5, 0); g.lineTo(42, 0); g.stroke();
-  } else if (kind === 'crystal') {
-    g.fillStyle = '#fbbf24'; rr(g, 0, -6, 3.4, 12, 1.6); g.fill(); g.stroke();
-    const gr = g.createLinearGradient(3, 0, 42, 0);
-    gr.addColorStop(0, '#f9a8d4'); gr.addColorStop(1, '#ffffff');
-    g.fillStyle = gr;
-    g.beginPath(); g.moveTo(3.4, -2.6); g.lineTo(20, -6.5); g.lineTo(42, 0); g.lineTo(20, 6.5); g.lineTo(3.4, 2.6); g.closePath();
-    g.fill(); g.strokeStyle = 'rgba(190,60,130,.8)'; g.lineWidth = 1; g.stroke();
-    g.beginPath(); g.moveTo(8, 0); g.lineTo(38, 0); g.stroke();
-  } else if (kind === 'rose') {
-    g.fillStyle = T.main; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    g.beginPath(); g.arc(2, -3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.beginPath(); g.arc(2, 3.4, 3.4, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = '#f9a8d4'; g.lineWidth = 5;
-    g.beginPath(); g.moveTo(5, 0); g.lineTo(40, 0); g.stroke();
-    g.strokeStyle = '#fff1f8'; g.lineWidth = 2.4;
-    g.beginPath(); g.moveTo(6, 0); g.lineTo(39, 0); g.stroke();
-    g.fillStyle = T.light; g.beginPath(); g.arc(-8, 0, 3.2, 0, Math.PI * 2); g.fill();
-  } else { // wand
-    g.fillStyle = '#fbbf24'; rr(g, 0, -5, 3.2, 10, 1.6); g.fill(); g.stroke();
-    g.strokeStyle = '#fbbf24'; g.lineWidth = 3.2;
-    g.beginPath(); g.moveTo(3, 0); g.lineTo(33, 0); g.stroke();
-    g.fillStyle = '#fde047'; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    starPath(g, 37, 0, 7, 3); g.fill(); g.stroke();
-  }
-}
-
-function drawSword(g, kind, T) {
-  g.lineJoin = 'round';
-  g.lineCap = 'round';
-  if (isGirlSword(kind)) { drawGirlSword(g, kind, T); return; }
-  const steel = (y0, y1) => {
-    const gr = g.createLinearGradient(0, y0, 0, y1);
-    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.5, '#d2dae5'); gr.addColorStop(1, '#8c99ab');
-    return gr;
-  };
-  if (kind === 'broad') {
-    g.fillStyle = '#6b3f1d'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
-    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-8, 0, 2.6, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#f5c542'; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    rr(g, 0, -7, 3.6, 14, 1.6); g.fill(); g.stroke();
-    g.fillStyle = steel(-3.4, 3.4);
-    g.beginPath(); g.moveTo(3.6, -3.4); g.lineTo(33, -3.4); g.lineTo(40, 0); g.lineTo(33, 3.4); g.lineTo(3.6, 3.4); g.closePath();
-    g.fill(); g.strokeStyle = 'rgba(60,72,90,.9)'; g.lineWidth = 1; g.stroke();
-    g.strokeStyle = 'rgba(90,105,125,.7)'; g.beginPath(); g.moveTo(7, 0); g.lineTo(31, 0); g.stroke();
-  } else if (kind === 'saber') {
-    g.fillStyle = '#5a2a14'; rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
-    g.fillStyle = '#f5c542'; g.beginPath(); g.arc(-8, 0, 2.4, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#f5c542'; g.lineWidth = 2.4;
-    g.beginPath(); g.moveTo(1, -6); g.lineTo(1, 6); g.moveTo(1, 6); g.quadraticCurveTo(-4, 9.5, -8, 3); g.stroke();
-    g.strokeStyle = '#6f7d90'; g.lineWidth = 6;
-    g.beginPath(); g.moveTo(2, 0); g.quadraticCurveTo(24, -9, 40, -2); g.stroke();
-    g.strokeStyle = '#eaf0f7'; g.lineWidth = 3.4;
-    g.beginPath(); g.moveTo(3, 0); g.quadraticCurveTo(24, -9, 39.5, -2); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(8, -1.6); g.quadraticCurveTo(24, -9.6, 36, -4); g.stroke();
-  } else if (kind === 'katana') {
-    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    rr(g, -12, -2.4, 13, 4.8, 2); g.fill(); g.stroke();
-    g.strokeStyle = T.light; g.lineWidth = 1;
-    for (let i = -10; i < 0; i += 3) { g.beginPath(); g.moveTo(i, -2.2); g.lineTo(i + 3, 2.2); g.moveTo(i + 3, -2.2); g.lineTo(i, 2.2); g.stroke(); }
-    g.fillStyle = '#2d3342'; g.strokeStyle = '#f5c542'; g.lineWidth = 1.2;
-    g.beginPath(); g.ellipse(2, 0, 2, 6.2, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = '#7b8aa0'; g.lineWidth = 4.4;
-    g.beginPath(); g.moveTo(4, 0); g.quadraticCurveTo(22, -4.5, 40, -1.2); g.stroke();
-    g.strokeStyle = '#f4f8fc'; g.lineWidth = 2.4;
-    g.beginPath(); g.moveTo(5, -0.2); g.quadraticCurveTo(22, -4.7, 39.4, -1.6); g.stroke();
-    g.strokeStyle = 'rgba(120,135,155,.8)'; g.lineWidth = 0.8;
-    g.beginPath(); g.moveTo(8, 0.9); g.quadraticCurveTo(22, -2.8, 36, -0.2); g.stroke();
-  } else { // flame
-    const blade = () => {
-      g.beginPath();
-      g.moveTo(4, -3.5);
-      [[10, -6], [15, -3], [21, -6.5], [27, -3.5], [33, -6], [40, 0],
-       [33, 6], [27, 3.5], [21, 6.5], [15, 3], [10, 6], [4, 3.5]].forEach(p => g.lineTo(p[0], p[1]));
-      g.closePath();
-    };
-    g.fillStyle = T.dark; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    rr(g, -7, -2.2, 8, 4.4, 2); g.fill();
-    g.fillStyle = T.light; g.beginPath(); g.arc(-8, 0, 2.5, 0, Math.PI * 2); g.fill();
-    g.fillStyle = T.dark; rr(g, 0, -7.5, 3.8, 15, 1.8); g.fill(); g.stroke();
-    g.fillStyle = T.light; g.beginPath(); g.arc(1.9, 0, 1.4, 0, Math.PI * 2); g.fill();
-    blade();
-    g.strokeStyle = 'rgba(' + T.rgb + ',.38)'; g.lineWidth = 8; g.stroke();
-    const fg = g.createLinearGradient(4, 0, 40, 0);
-    fg.addColorStop(0, T.dark); fg.addColorStop(0.55, T.main); fg.addColorStop(1, '#ffffff');
-    g.fillStyle = fg; g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 1; g.stroke();
-  }
-}
-
-// ======================================================================
-//  KRESLENÍ: štíty (střed v 0,0; sx = roztažení do šířky pro náhledy)
-// ======================================================================
-function drawGirlShield(g, kind, T) {
-  g.lineJoin = 'round'; g.lineWidth = 2; g.strokeStyle = OUT;
-  const gr = g.createLinearGradient(-9, -18, 9, 18);
-  gr.addColorStop(0, T.light); gr.addColorStop(0.45, T.main); gr.addColorStop(1, T.dark);
-  g.fillStyle = gr;
-  if (kind === 'heart') {
-    g.beginPath();
-    g.moveTo(0, -8);
-    g.bezierCurveTo(-3, -18, -10, -17, -9, -8);
-    g.bezierCurveTo(-8, 2, -2, 8, 0, 17);
-    g.bezierCurveTo(2, 8, 8, 2, 9, -8);
-    g.bezierCurveTo(10, -17, 3, -18, 0, -8);
-    g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.55)';
-    g.beginPath(); g.ellipse(-4, -8, 2.2, 3.4, -0.5, 0, Math.PI * 2); g.fill();
-  } else if (kind === 'flower') {
-    for (let i = 0; i < 6; i++) {
-      const a = i * Math.PI / 3;
-      g.beginPath(); g.ellipse(Math.cos(a) * 5, Math.sin(a) * 10, 4.6, 7.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    }
-    g.fillStyle = '#fde047';
-    g.beginPath(); g.ellipse(0, 0, 3.6, 5.5, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-  } else if (kind === 'butterfly') {
-    g.beginPath(); g.ellipse(0, -9, 8.5, 9, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.beginPath(); g.ellipse(0, 9.5, 6.5, 8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.7)';
-    g.beginPath(); g.arc(0, -9, 3, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#2b3140'; rr(g, -1.3, -17, 2.6, 34, 1.3); g.fill();
-  } else { // moon
-    g.beginPath();
-    g.ellipse(0, 0, 8.5, 17, 0, 0, Math.PI * 2);
-    g.moveTo(8.7, 0);
-    g.ellipse(3.5, 0, 5.2, 13.5, 0, 0, Math.PI * 2);
-    g.fill('evenodd'); g.stroke();
-    g.fillStyle = '#fde047'; starPath(g, -2, -1, 4.5, 1.9); g.fill();
-  }
-}
-
-function drawShield(g, kind, T, sx) {
-  g.save();
-  g.scale(sx || 1, 1);
-  if (isGirlShield(kind)) { drawGirlShield(g, kind, T); g.restore(); return; }
-  g.lineJoin = 'round';
-  g.lineWidth = 2; g.strokeStyle = OUT;
-  const grad = () => {
-    const gr = g.createLinearGradient(-9, -18, 9, 18);
-    gr.addColorStop(0, T.light); gr.addColorStop(0.45, T.main); gr.addColorStop(1, T.dark);
-    return gr;
-  };
-  if (kind === 'round') {
-    g.fillStyle = grad();
-    g.beginPath(); g.ellipse(0, 0, 8.5, 17, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.4;
-    g.beginPath(); g.ellipse(0, 0, 5.6, 12.4, 0, 0, Math.PI * 2); g.stroke();
-    const bg = g.createRadialGradient(-1, -2, 0.5, 0, 0, 5);
-    bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#9aa7b8');
-    g.fillStyle = bg; g.strokeStyle = OUT; g.lineWidth = 1.2;
-    g.beginPath(); g.ellipse(0, 0, 3.4, 4.6, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-  } else if (kind === 'heater') {
-    g.fillStyle = grad();
-    g.beginPath(); g.moveTo(-8, -17); g.lineTo(8, -17); g.lineTo(8, 1);
-    g.quadraticCurveTo(8, 13, 0, 19); g.quadraticCurveTo(-8, 13, -8, 1); g.closePath();
-    g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.88)';
-    g.fillRect(-1.6, -14, 3.2, 27); g.fillRect(-6, -8, 12, 3.2);
-  } else if (kind === 'scutum') {
-    g.fillStyle = grad(); rr(g, -8, -18, 16, 36, 7); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.3;
-    rr(g, -5.5, -15.5, 11, 31, 5); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.35)';
-    g.beginPath(); g.moveTo(0, -15); g.lineTo(0, 15); g.stroke();
-    g.fillStyle = '#f5c542'; g.strokeStyle = OUT; g.lineWidth = 1;
-    g.beginPath(); g.ellipse(0, 0, 2.8, 3.8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-  } else { // star
-    g.fillStyle = grad();
-    g.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4 + Math.PI / 8;
-      const x = Math.cos(a) * 8.6, y = Math.sin(a) * 17.5;
-      if (i) g.lineTo(x, y); else g.moveTo(x, y);
-    }
-    g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.92)';
-    g.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const r = i % 2 ? 3.2 : 7.4, a = -Math.PI / 2 + i * Math.PI / 5;
-      const x = Math.cos(a) * r * 0.9, y = Math.sin(a) * r;
-      if (i) g.lineTo(x, y); else g.moveTo(x, y);
-    }
-    g.closePath(); g.fill();
-  }
-  g.restore();
-}
-
-// ======================================================================
-//  POZADÍ (kreslí se jednou do skryté plochy a pak už jen kopíruje)
-// ======================================================================
-const HZ = 72;
-const bgCache = [];
-
-function getBackground(idx) {
-  if (!bgCache[idx]) {
-    const c = document.createElement('canvas');
-    c.width = 900; c.height = 500;
-    const g = c.getContext('2d');
-    const rnd = mulberry(1234 + idx * 77);
-    [paintDesert, paintForest, paintRocks][idx](g, rnd, 900, 500);
-    const v = g.createRadialGradient(450, 260, 190, 450, 260, 560);
-    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.40)');
-    g.fillStyle = v; g.fillRect(0, 0, 900, 500);
-    bgCache[idx] = c;
-  }
-  return bgCache[idx];
-}
-
-function paintDesert(g, rnd, W, H) {
-  let gr = g.createLinearGradient(0, 0, 0, HZ + 14);
-  gr.addColorStop(0, '#ffa95f'); gr.addColorStop(0.6, '#ffd7a0'); gr.addColorStop(1, '#fff0d2');
-  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 14);
-  const sg = g.createRadialGradient(720, 38, 2, 720, 38, 70);
-  sg.addColorStop(0, 'rgba(255,252,230,1)'); sg.addColorStop(0.2, 'rgba(255,238,185,.9)'); sg.addColorStop(1, 'rgba(255,200,120,0)');
-  g.fillStyle = sg; g.fillRect(630, 0, 180, HZ + 14);
-  g.fillStyle = '#fff7dc'; g.beginPath(); g.arc(720, 38, 15, 0, Math.PI * 2); g.fill();
-
-  const dune = (color, base, amp, f1, f2, ph) => {
-    g.fillStyle = color; g.beginPath(); g.moveTo(0, HZ + 24);
-    for (let x = 0; x <= W; x += 10) g.lineTo(x, base + Math.sin(x * f1 + ph) * amp + Math.sin(x * f2 + ph * 2) * amp * 0.5);
-    g.lineTo(W, HZ + 24); g.closePath(); g.fill();
-  };
-  dune('#f0c27e', HZ - 10, 7, 0.011, 0.031, 1);
-  dune('#e6b36c', HZ - 2, 6, 0.016, 0.04, 3);
-
-  gr = g.createLinearGradient(0, HZ, 0, H);
-  gr.addColorStop(0, '#e8c07a'); gr.addColorStop(0.5, '#dcae65'); gr.addColorStop(1, '#c79852');
-  g.fillStyle = gr; g.fillRect(0, HZ + 4, W, H - HZ - 4);
-  dune('#e8c07a', HZ + 6, 3, 0.02, 0.05, 5);
-
-  g.lineWidth = 1.2; g.lineCap = 'round';
-  for (let i = 0; i < 190; i++) {
-    const x = rnd() * W, y = HZ + 14 + rnd() * (H - HZ - 14), len = 20 + rnd() * 55;
-    g.strokeStyle = rnd() > 0.5 ? 'rgba(255,240,200,.24)' : 'rgba(150,100,40,.16)';
-    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + len / 2, y - 3 - rnd() * 3, x + len, y); g.stroke();
-  }
-  for (let i = 0; i < 70; i++) {
-    const x = rnd() * W, y = HZ + 12 + rnd() * (H - HZ - 12), r = 1 + rnd() * 2.4;
-    g.fillStyle = 'rgba(140,100,55,.55)'; g.beginPath(); g.ellipse(x, y, r * 1.3, r, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = 'rgba(255,240,205,.35)'; g.beginPath(); g.ellipse(x - 0.6, y - 0.7, r * 0.6, r * 0.4, 0, 0, Math.PI * 2); g.fill();
-  }
-  const cactus = (x, y, s) => {
-    g.save(); g.translate(x, y); g.scale(s, s);
-    g.fillStyle = 'rgba(110,65,20,.25)'; g.beginPath(); g.ellipse(3, 0, 17, 4, 0, 0, Math.PI * 2); g.fill();
-    g.lineCap = 'round'; g.lineJoin = 'round';
-    [[-4, -12, -11, -12, -11, -22], [4, -18, 11, -18, 11, -27]].forEach(a => {
-      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(a[2], a[3]); g.lineTo(a[4], a[5]);
-      g.strokeStyle = '#2f6038'; g.lineWidth = 8; g.stroke();
-      g.strokeStyle = '#57a05e'; g.lineWidth = 5.4; g.stroke();
-    });
-    const cg = g.createLinearGradient(-5, 0, 5, 0);
-    cg.addColorStop(0, '#3a7343'); cg.addColorStop(0.5, '#62a766'); cg.addColorStop(1, '#2f6038');
-    g.fillStyle = cg; g.strokeStyle = 'rgba(20,50,25,.65)'; g.lineWidth = 1.2;
-    rr(g, -5.5, -37, 11, 37, 5.5); g.fill(); g.stroke();
-    g.restore();
-  };
-  cactus(70, HZ + 20, 1.1); cactus(835, HZ + 24, 0.95); cactus(470, HZ + 10, 0.7);
-  cactus(30, 440, 1.0); cactus(870, 455, 1.15);
-  for (const p of [[250, HZ + 16], [640, HZ + 18], [180, 470], [700, 475]]) {
-    g.strokeStyle = '#8a6a3a'; g.lineWidth = 1.4;
-    for (let k = 0; k < 7; k++) {
-      const a = -Math.PI / 2 + (k - 3) * 0.32;
-      g.beginPath(); g.moveTo(p[0], p[1]); g.quadraticCurveTo(p[0] + Math.cos(a) * 9, p[1] + Math.sin(a) * 9, p[0] + Math.cos(a) * 17, p[1] + Math.sin(a) * 15); g.stroke();
-    }
-  }
-}
-
-function paintForest(g, rnd, W, H) {
-  let gr = g.createLinearGradient(0, 0, 0, HZ + 20);
-  gr.addColorStop(0, '#9fd3bd'); gr.addColorStop(1, '#e6f5e2');
-  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 20);
-  const pine = (x, base, h, color) => {
-    g.fillStyle = color;
-    for (let k = 0; k < 3; k++) {
-      const w = h * (0.62 - k * 0.12), top = base - h + k * h * 0.22, bot = top + h * 0.5;
-      g.beginPath(); g.moveTo(x, top); g.lineTo(x + w / 2, bot); g.lineTo(x - w / 2, bot); g.closePath(); g.fill();
-    }
-    g.fillRect(x - 1.5, base - h * 0.1, 3, h * 0.1);
-  };
-  const row = (color, base, size, step, jit) => {
-    for (let x = -10; x < W + 20; x += step) pine(x + rnd() * jit, base, size * (0.8 + rnd() * 0.5), color);
-  };
-  row('#7bb792', HZ + 2, 44, 15, 8);
-  row('#52996d', HZ + 10, 52, 21, 10);
-  row('#2f7650', HZ + 20, 60, 28, 14);
-
-  gr = g.createLinearGradient(0, HZ + 18, 0, H);
-  gr.addColorStop(0, '#4f9d58'); gr.addColorStop(0.5, '#3f8b48'); gr.addColorStop(1, '#337640');
-  g.fillStyle = gr; g.fillRect(0, HZ + 20, W, H - HZ - 20);
-  const sh = g.createLinearGradient(0, HZ + 20, 0, HZ + 44);
-  sh.addColorStop(0, 'rgba(10,40,20,.38)'); sh.addColorStop(1, 'rgba(10,40,20,0)');
-  g.fillStyle = sh; g.fillRect(0, HZ + 20, W, 24);
-
-  const dirt = g.createRadialGradient(450, 300, 40, 450, 300, 380);
-  dirt.addColorStop(0, 'rgba(140,108,66,.34)'); dirt.addColorStop(0.6, 'rgba(140,108,66,.16)'); dirt.addColorStop(1, 'rgba(140,108,66,0)');
-  g.save(); g.translate(0, 300); g.scale(1, 0.47); g.translate(0, -300);
-  g.fillStyle = dirt; g.fillRect(0, 0, W, 700); g.restore();
-
-  for (let i = 0; i < 60; i++) {
-    g.fillStyle = rnd() > 0.5 ? 'rgba(160,220,120,.07)' : 'rgba(10,50,20,.09)';
-    g.beginPath(); g.ellipse(rnd() * W, HZ + 30 + rnd() * (H - HZ - 30), 20 + rnd() * 40, 8 + rnd() * 16, 0, 0, Math.PI * 2); g.fill();
-  }
-  g.lineCap = 'round'; g.lineWidth = 1.3;
-  for (let i = 0; i < 900; i++) {
-    const x = rnd() * W, y = HZ + 26 + rnd() * (H - HZ - 26), l = 3 + rnd() * 5;
-    g.strokeStyle = rnd() > 0.5 ? 'rgba(170,230,120,.5)' : 'rgba(15,70,30,.5)';
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 4, y - l); g.stroke();
-  }
-  const cols = ['#ffffff', '#ffe27a', '#ffb3d1', '#c4b5fd'];
-  for (let i = 0; i < 55; i++) {
-    g.fillStyle = cols[Math.floor(rnd() * cols.length)];
-    g.beginPath(); g.arc(rnd() * W, HZ + 40 + rnd() * (H - HZ - 40), 1.2 + rnd() * 1.4, 0, Math.PI * 2); g.fill();
-  }
-  const bush = (x, y, s) => {
-    g.fillStyle = 'rgba(0,30,10,.3)'; g.beginPath(); g.ellipse(x, y + 8 * s, 26 * s, 6 * s, 0, 0, Math.PI * 2); g.fill();
-    [[-12, 0, 12], [0, -6, 15], [13, 0, 12], [0, 3, 13]].forEach((c, i) => {
-      g.fillStyle = i % 2 ? '#2f7a45' : '#3c9355';
-      g.beginPath(); g.arc(x + c[0] * s, y + c[1] * s, c[2] * s, 0, Math.PI * 2); g.fill();
-    });
-    g.fillStyle = 'rgba(190,255,170,.2)'; g.beginPath(); g.arc(x - 4 * s, y - 10 * s, 6 * s, 0, Math.PI * 2); g.fill();
-  };
-  bush(32, 120, 0.9); bush(868, 112, 1.0); bush(40, 462, 1.1); bush(862, 468, 1.2); bush(450, 480, 0.8);
-  for (const p of [[150, 440], [740, 130], [300, 100]]) {
-    g.fillStyle = '#8c9aa0'; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
-    g.beginPath(); g.ellipse(p[0], p[1], 11, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(p[0] - 3, p[1] - 2, 5, 2.6, 0, 0, Math.PI * 2); g.fill();
-  }
-}
-
-function paintRocks(g, rnd, W, H) {
-  let gr = g.createLinearGradient(0, 0, 0, HZ + 20);
-  gr.addColorStop(0, '#7289a6'); gr.addColorStop(1, '#cfd8e4');
-  g.fillStyle = gr; g.fillRect(0, 0, W, HZ + 20);
-  const ridge = (color, snow, base, amp, step) => {
-    g.fillStyle = color; g.beginPath(); g.moveTo(0, HZ + 24);
-    const pts = [];
-    for (let x = 0; x <= W + step; x += step) pts.push([x, base - rnd() * amp]);
-    pts.forEach(p => g.lineTo(p[0], p[1]));
-    g.lineTo(W + step, HZ + 24); g.closePath(); g.fill();
-    if (snow) {
-      g.fillStyle = 'rgba(255,255,255,.75)';
-      pts.forEach(p => { if (base - p[1] > amp * 0.7) { g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(p[0] + 8, p[1] + 9); g.lineTo(p[0] - 8, p[1] + 9); g.closePath(); g.fill(); } });
-    }
-  };
-  ridge('#8696ad', true, HZ + 4, 54, 46);
-  ridge('#5d6a80', false, HZ + 12, 36, 30);
-
-  gr = g.createLinearGradient(0, HZ + 6, 0, H);
-  gr.addColorStop(0, '#858a93'); gr.addColorStop(1, '#6a6f78');
-  g.fillStyle = gr; g.fillRect(0, HZ + 10, W, H - HZ - 10);
-  const sh = g.createLinearGradient(0, HZ + 10, 0, HZ + 34);
-  sh.addColorStop(0, 'rgba(10,14,24,.35)'); sh.addColorStop(1, 'rgba(10,14,24,0)');
-  g.fillStyle = sh; g.fillRect(0, HZ + 10, W, 24);
-
-  g.lineCap = 'round'; g.lineJoin = 'round';
-  for (let i = 0; i < 46; i++) {
-    let x = rnd() * W, y = HZ + 20 + rnd() * (H - HZ - 20);
-    const seg = 4 + Math.floor(rnd() * 3);
-    const pts = [[x, y]];
-    for (let k = 0; k < seg; k++) { x += (rnd() - 0.4) * 55; y += (rnd() - 0.5) * 30; pts.push([x, y]); }
-    g.strokeStyle = 'rgba(25,28,36,.5)'; g.lineWidth = 1.5;
-    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1;
-    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1] + 1.5) : g.moveTo(p[0], p[1] + 1.5)); g.stroke();
-  }
-  for (let i = 0; i < 1100; i++) {
-    g.fillStyle = rnd() > 0.5 ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.08)';
-    g.fillRect(rnd() * W, HZ + 12 + rnd() * (H - HZ - 12), 1.6, 1.6);
-  }
-  for (let i = 0; i < 18; i++) {
-    g.fillStyle = 'rgba(200,170,120,.07)';
-    g.beginPath(); g.ellipse(rnd() * W, HZ + 30 + rnd() * (H - HZ - 30), 30 + rnd() * 50, 8 + rnd() * 14, 0, 0, Math.PI * 2); g.fill();
-  }
-  const boulder = (x, y, r) => {
-    g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(x + r * 0.15, y + r * 0.8, r * 1.15, r * 0.34, 0, 0, Math.PI * 2); g.fill();
-    const pts = [];
-    for (let k = 0; k < 9; k++) {
-      const a = k / 9 * Math.PI * 2, rr2 = r * (0.82 + rnd() * 0.3);
-      pts.push([x + Math.cos(a) * rr2, y + Math.sin(a) * rr2 * 0.82]);
-    }
-    const bgr = g.createLinearGradient(x - r, y - r, x + r, y + r);
-    bgr.addColorStop(0, '#b3b9c4'); bgr.addColorStop(0.55, '#7d838e'); bgr.addColorStop(1, '#4d525c');
-    g.fillStyle = bgr; g.strokeStyle = 'rgba(15,18,26,.6)'; g.lineWidth = 1.3;
-    g.beginPath(); pts.forEach((p, j) => j ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill(); g.stroke();
-    g.strokeStyle = 'rgba(20,24,32,.5)'; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(x - r * 0.2, y - r * 0.6); g.lineTo(x + r * 0.05, y - r * 0.05); g.lineTo(x - r * 0.25, y + r * 0.4); g.stroke();
-  };
-  for (const b of [[70, 96, 18], [200, 88, 11], [455, 94, 9], [760, 92, 20], [852, 104, 13], [30, 300, 15], [876, 290, 18], [60, 468, 22], [842, 470, 20], [330, 478, 12]]) boulder(b[0], b[1], b[2]);
-}
-
-// ======================================================================
-//  STAV APLIKACE
-// ======================================================================
-let selectedDevice = 'pc';
-let gameMode = 'ai';              // 'ai' | 'pvp' | 'team'
-let aiDifficulty = 'medium';
-let isWebMatch = false;
-let isHost = false;
-let isOnlyRulesView = false;
-let gameRunning = false;
-let sceneActive = false;
-
-// PeerJS Networking
-let peer = null;
-let conn = null;
-const PEER_PREFIX = "KA-";
-
-let hostReady = false;
-let clientReady = false;
-let clientLoadout = null;
-
-let netEvents = [];
-let pendingClientAttack = false;
-let clientTouchShield = false;
-
-const keys = {};
-
-// Hráči & Objekty (players = všichni bojovníci v aréně, player1/player2 = první dva)
-let players = [], player1, player2, medkits = [], particles = [], floatingTexts = [];
-const match = { bg: 0 };
-
-let touchInputP1 = { vx: 0, vy: 0 };
-
-// ---------- týmové formáty (vždy férový počet v každém týmu) ----------
-const MAX_FIGHTERS = 8;
-// sizes = velikosti týmů, např. [2,2,2] = tři týmy po dvou; [1,1,1,1,1] = pět všichni proti všem
-function makeFmt(name, sizes) {
-  const n = sizes.reduce((a, b) => a + b, 0);
-  const cols = [], grp = [];
-  let k = 0;
-  const teamed = sizes.some(sz => sz > 1);     // v týmových hrách má celý tým jednu barvu
-  sizes.forEach((sz, t) => { for (let j = 0; j < sz; j++) { cols.push(teamed ? t + 1 : ++k); grp.push(t + 1); } });
-  const pos = [];
-  if (sizes.length === 2) {                       // dva týmy: každý na jedné straně arény
-    sizes.forEach((sz, t) => {
-      for (let j = 0; j < sz; j++) pos.push([t === 0 ? 130 : 770, sz === 1 ? 270 : 120 + j * (300 / (sz - 1))]);
-    });
-  } else {                                        // víc týmů / všichni proti všem: kruh kolem středu
-    for (let i = 0; i < n; i++) {
-      const a = Math.PI + i / n * Math.PI * 2;
-      pos.push([450 + 330 * Math.cos(a), 270 + 150 * Math.sin(a)]);
-    }
-  }
-  return { name: name, cols: cols, grp: grp, pos: pos, sizes: sizes };
-}
-const TEAM_FORMATS = {
-  '1v1':     makeFmt('1 proti 1', [1, 1]),
-  '2v2':     makeFmt('2 proti 2', [2, 2]),
-  '3v3':     makeFmt('3 proti 3', [3, 3]),
-  '4v4':     makeFmt('4 proti 4', [4, 4]),
-  '2v2v2':   makeFmt('3 týmy po 2', [2, 2, 2]),
-  '2v2v2v2': makeFmt('4 týmy po 2', [2, 2, 2, 2]),
-  'ffa3':    makeFmt('3 všichni proti všem', [1, 1, 1]),
-  'ffa4':    makeFmt('4 všichni proti všem', [1, 1, 1, 1]),
-  'ffa5':    makeFmt('5 všichni proti všem', [1, 1, 1, 1, 1]),
-  'ffa6':    makeFmt('6 všichni proti všem', [1, 1, 1, 1, 1, 1]),
-  'ffa7':    makeFmt('7 všichni proti všem', [1, 1, 1, 1, 1, 1, 1]),
-  'ffa8':    makeFmt('8 všichni proti všem', [1, 1, 1, 1, 1, 1, 1, 1])
+  if(state==='attack'){judgeShot(g);return}
 };
-const teamCfg = { fmt: '2v2', slots: ['p1', 'ai', 'ai', 'ai', 'ai', 'ai', 'ai', 'ai'], diff: 'medium' };
-function teamTagged() { return TEAM_FORMATS[teamCfg.fmt].sizes.some(sz => sz > 1); }
-let onlineSetup = false;   // team menu slouží k vytvoření online místnosti
-let myIdx = 0;             // který bojovník (index v players) je můj
-let peers = [];            // host: připojení kamarádi { c, slot, ready, loadout }
-let lobbyDone = false;     // host: všichni se připojili, jde se na výbavu
 
-// barva (1-4), kterou má lidský hráč h v právě chystané hře
-function hcolor(h) {
-  if (gameMode === 'team') {
-    const f = TEAM_FORMATS[teamCfg.fmt];
-    if (isWebMatch && !isHost) return f.cols[myIdx] || h;
-    const i = teamCfg.slots.indexOf('p' + h);
-    if (i >= 0 && i < f.cols.length) return f.cols[i];
-  }
-  return h;
+let refBlob=null,paused=false,busy=false;
+function snap(){return new Promise(r=>{const w=v.videoWidth,h=v.videoHeight,k=Math.min(1,640/w),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(r,'image/jpeg',.7)})}
+function win(){clearAll();score++;$('#score').textContent='Přežito: '+score;beep(880,.25);buzz(60);say('Zachráněn! Příšera zmizela.');$('#mon').classList.remove('on');$('#vig').classList.remove('warn');$('#bar').style.display='none';$('#match').style.display='none';$('#shutter').hidden=true;timers.push(setTimeout(schedule,1800))}
+function fail(h){const m=$('#msg');m.textContent='Nesedí. '+(h||'Zkus to znovu!');m.classList.remove('bad');void m.offsetWidth;m.classList.add('bad');beep(200,.2,'square')}
+async function judgeShot(g){
+  if(busy)return;
+  if(sim(g,ref)>=thr){win();return}
+  busy=true;paused=true;say('Příšera zkoumá fotku…');
+  let ok=false,hint='';
+  try{
+    const sample=await claude.use('sample');
+    if(!sample||!refBlob)throw 0;
+    const lim=await sample.limits();if(!lim.images)throw 0;
+    const cur=await snap();
+    const r=await sample.json('První obrázek je referenční fotka domečku, druhý je nová fotka. Rozhodni, jestli obě fotky zachycují stejné místo nebo stejný předmět. Buď velmi shovívavý: stačí, když je to zhruba stejné místo a podobný pohled. Úhel, vzdálenost, světlo, ostrost i posun se mohou lišit. Odmítni jen tehdy, když je jasné, že jde o jiné místo. Odpověz pouze JSON: {"score":číslo 0 až 100 (poctivé procento podobnosti obou míst: 100 = naprosto stejné místo, 0 = úplně jiné; úhel a světlo ho nesnižují),"same":true nebo false,"hint":"krátká rada česky, max 8 slov"}',{images:[refBlob,cur],modelTier:'quick'});
+    ok=Number(r.score)>=thr*100;hint=r.hint||'';
+  }catch(e){ok=sim(g,ref)>=thr*.7}
+  busy=false;paused=false;
+  if(state!=='attack')return;
+  ok?win():fail(hint);
 }
-function myColorName() { return TEAM[hcolor(isHost ? 1 : 2)].name.toLowerCase(); }
+$('#sens').oninput=e=>{thr=e.target.value/100;$('#thr').textContent=e.target.value+' %'};
+$('#again').onclick=()=>{$('#over').hidden=true;setup()};
+$('#rules2').onclick=()=>{$('#over').hidden=true;$('#intro').hidden=false;$('#go').textContent='Rozumím, pokračovat';$('#go').onclick=()=>{$('#intro').hidden=true;showModes()}};
 
-// ======================================================================
-//  TŘÍDY
-// ======================================================================
-class Knight {
-  constructor(x, y, team, style) {
-    this.x = x;
-    this.y = y;
-    this.team = team;                 // barva: 1 modrý, 2 červený, 3 žlutý, 4 zelený
-    this.group = team;                // tým (spoluhráči mají stejnou skupinu)
-    this.ctrl = null;                 // 'p1' | 'p2' | 'ai' | 'net'
-    this.tag = '';                    // písmeno týmu (A, B, ...)
-    this.off = false;                 // bojovník, který nehraje (v aréně není)
-    this.style = style;
-    this.radius = 22;
-    this.hp = 50;
-    this.maxHp = 50;
-    this.speed = 4;
-    this.dmg = 5;           // poškození mého meče
-    this.dmgTaken = 1;      // násobek přijatého poškození (pevný štít = 0.6)
-    this.facingRight = team === 1;
-    this.isShielding = false;
-    this.isAttacking = false;
-    this.attackCooldown = 0;
-    this.attackSwing = 0;
-    this.vx = 0;
-    this.vy = 0;
-    this.walkCycle = 0;
-    this.lastX = x;
-    this.lastY = y;
-    this.netAttacking = false;
-    this.prevNetAttacking = false;
-  }
+// ================== VÝBĚR REŽIMU ==================
+const cl=(x,a,b)=>Math.max(a,Math.min(b,x));
+const SC={token:0,W:0,H:0,photo:null,hx:0,hy:0,baseRx:0,ratio:.6,k:1,touched:false,raf:0,url:null,blob:null};
 
-  update() {
-    if (this.vx !== 0 || this.vy !== 0) {
-      this.walkCycle += 0.25;
-    } else {
-      this.walkCycle = 0;
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),3500)}
+
+function scareCleanup(){
+  cancelAnimationFrame(SC.raf);SC.token++;
+  $('#sc').hidden=true;$('#scui').hidden=true;$('#rv').hidden=true;$('#scx').hidden=true;
+  try{$('#rvv').pause()}catch(e){}
+  if(SC.url){URL.revokeObjectURL(SC.url);SC.url=null}
+  SC.blob=null;$('#rvv').removeAttribute('src');
+}
+function stopAll(){
+  clearAll();clearInterval(window.mt);scareCleanup();
+  $('#hud').hidden=true;$('#shutter').hidden=true;$('#modebtn').hidden=true;
+  $('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;
+  $('#mon').classList.remove('on');$('#mon').style.transform='';$('#vig').classList.remove('warn');
+  $('#over').hidden=true;say('');
+}
+function showModes(){stopAll();state='modes';$('#modes').hidden=false}
+$('#m1').onclick=()=>{$('#modes').hidden=true;stopAll();setup()};
+$('#m2').onclick=()=>{$('#modes').hidden=true;scareStart()};
+$('#modebtn').onclick=showModes;
+$('#chmode').onclick=()=>{$('#over').hidden=true;showModes()};
+
+// ================== REŽIM STRAŠENÍ PŘÍŠER ==================
+function scareStart(){
+  stopAll();state='scare-shoot';
+  $('#shutter').hidden=false;$('#modebtn').hidden=false;
+  say('Zaměř předmět s dírou (hrnek, trubku, krabici, noru…) a vyfoť ho');
+}
+
+function holeNow(){const rx=Math.max(SC.W*.05,SC.baseRx*SC.k);return{x:SC.hx,y:SC.hy,rx:rx,ry:rx*SC.ratio}}
+
+function drawAdjust(){
+  const c=$('#sc').getContext('2d'),h=holeNow();
+  c.setTransform(1,0,0,1,0,0);c.drawImage(SC.photo,0,0);
+  c.save();c.beginPath();c.ellipse(h.x,h.y,h.rx,h.ry,0,0,Math.PI*2);
+  c.fillStyle='rgba(242,193,78,.2)';c.fill();
+  c.setLineDash([16,10]);c.strokeStyle='#f2c14e';c.lineWidth=6;c.stroke();
+  c.setLineDash([]);c.lineWidth=4;c.beginPath();c.moveTo(h.x-14,h.y);c.lineTo(h.x+14,h.y);c.moveTo(h.x,h.y-14);c.lineTo(h.x,h.y+14);c.stroke();
+  c.restore();
+}
+
+function scareShot(){
+  const vw=v.videoWidth,vh=v.videoHeight;if(!vw)return;
+  const iw=innerWidth,ih=innerHeight,L=1024;
+  let W,H;if(iw<ih){H=L;W=Math.round(L*iw/ih)}else{W=L;H=Math.round(L*ih/iw)}
+  W-=W%2;H-=H%2;
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const k=Math.max(W/vw,H/vh),dw=vw*k,dh=vh*k;
+  c.getContext('2d').drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh);
+  SC.W=W;SC.H=H;SC.photo=c;SC.hx=W/2;SC.hy=H/2;SC.baseRx=W*.16;SC.ratio=.6;SC.k=1;SC.touched=false;
+  const cvs=$('#sc');cvs.width=W;cvs.height=H;cvs.hidden=false;
+  $('#hsz').value=1;
+  state='scare-adjust';
+  $('#shutter').hidden=true;$('#modebtn').hidden=true;say('');
+  $('#scui').hidden=false;$('#scx').hidden=false;
+  $('#scmsg').textContent='Hledám díru…';
+  beep(660,.12);
+  drawAdjust();
+  detectHole(++SC.token);
+}
+
+async function detectHole(token){
+  let found=false;
+  try{
+    const sample=await claude.use('sample');
+    if(!sample)throw 0;
+    const lim=await sample.limits();if(!lim.images)throw 0;
+    const k=640/Math.max(SC.W,SC.H),t=document.createElement('canvas');t.width=Math.round(SC.W*k);t.height=Math.round(SC.H*k);
+    t.getContext('2d').drawImage(SC.photo,0,0,t.width,t.height);
+    const blob=await new Promise(r=>t.toBlob(r,'image/jpeg',.7));
+    const r=await sample.json('Na fotce najdi otvor nebo díru, ze které by mohla vylézt příšera (otvor v hrnku, trubce, krabici, zdi, nora, tmavá skulina, otvor v zásuvce). Odpověz pouze JSON: {"found":true nebo false,"x":střed otvoru jako číslo 0 až 1 (podíl šířky obrázku zleva),"y":střed otvoru jako číslo 0 až 1 (podíl výšky obrázku shora),"w":šířka otvoru jako podíl šířky obrázku (0 až 1),"h":výška otvoru jako podíl výšky obrázku (0 až 1)}. Když žádný otvor nevidíš, dej found=false a vyber nejtmavší místo nebo střed předmětu.',{images:[blob],modelTier:'quick'});
+    const x=Number(r.x),y=Number(r.y),w=Number(r.w),h=Number(r.h);
+    if(![x,y,w,h].every(Number.isFinite)||x<0||x>1||y<0||y>1||w<=0||h<=0)throw 0;
+    if(token!==SC.token||state!=='scare-adjust')return;
+    found=r.found!==false;
+    if(!SC.touched){
+      SC.hx=x*SC.W;SC.hy=y*SC.H;
+      SC.baseRx=cl(w*SC.W/2,SC.W*.06,SC.W*.4);
+      SC.ratio=cl((h*SC.H)/(w*SC.W),.35,1.1);
+      SC.k=1;$('#hsz').value=1;drawAdjust();
     }
+  }catch(e){found=false}
+  if(token!==SC.token||state!=='scare-adjust')return;
+  $('#scmsg').textContent=found?'Zkontroluj, jestli žlutý ovál sedí na díře. Klepnutím ho přesuň, posuvníkem změň velikost.':'Klepni na díru a posuvníkem nastav její velikost.';
+}
 
-    this.x += this.vx;
-    this.y += this.vy;
+function scPt(e){
+  const r=$('#sc').getBoundingClientRect(),s=Math.max(r.width/SC.W,r.height/SC.H),dw=SC.W*s,dh=SC.H*s;
+  return{x:(e.clientX-r.left-(r.width-dw)/2)/s,y:(e.clientY-r.top-(r.height-dh)/2)/s};
+}
+function movePt(e){const p=scPt(e);SC.hx=cl(p.x,0,SC.W);SC.hy=cl(p.y,0,SC.H);SC.touched=true;drawAdjust()}
+$('#sc').addEventListener('pointerdown',e=>{if(state!=='scare-adjust')return;try{e.target.setPointerCapture(e.pointerId)}catch(_){}movePt(e)});
+$('#sc').addEventListener('pointermove',e=>{if(state!=='scare-adjust'||!(e.buttons&1))return;movePt(e)});
+$('#hsz').oninput=e=>{SC.k=Number(e.target.value);if(state==='scare-adjust')drawAdjust()};
+$('#gen').onclick=()=>{if(state==='scare-adjust')runScare()};
+$('#scx').onclick=()=>{scareStart()};
 
-    this.x = Math.max(35, Math.min(canvas.width - 35, this.x));
-    this.y = Math.max(64, Math.min(canvas.height - 35, this.y));
+function pickMime(){
+  if(!window.MediaRecorder)return '';
+  const c=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return c.find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(e){return false}})||'';
+}
 
-    if (this.attackCooldown > 0) this.attackCooldown--;
-    if (this.isAttacking) {
-      this.attackSwing += 0.25;
-      if (this.attackSwing >= Math.PI) {
-        this.isAttacking = false;
-        this.attackSwing = 0;
-      }
+function runScare(){
+  state='scare-render';
+  $('#scui').hidden=true;$('#scx').hidden=true;
+  const fx=ScareFX.make(SC.photo,SC.W,SC.H,holeNow());
+  const cvs=$('#sc'),ctx=cvs.getContext('2d');
+  let master=null,dest=null;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.resume)ac.resume();
+    master=ac.createGain();master.gain.value=.9;master.connect(ac.destination);
+    dest=ac.createMediaStreamDestination();master.connect(dest);
+  }catch(e){master=null;dest=null}
+  let rec=null;const chunks=[],mime=pickMime();
+  try{
+    const st=cvs.captureStream(30);
+    if(dest)dest.stream.getAudioTracks().forEach(tr=>st.addTrack(tr));
+    if(window.MediaRecorder){
+      rec=mime?new MediaRecorder(st,{mimeType:mime,videoBitsPerSecond:4000000}):new MediaRecorder(st);
+      rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+      rec.start();
     }
+  }catch(e){rec=null}
+  if(master)ScareFX.audio(ac,master);
+  [.6,1.4,2.1,2.7].forEach(a=>setTimeout(()=>buzz(50),a*1000));
+  setTimeout(()=>buzz([300,80,300]),4400);setTimeout(()=>buzz(600),5000);
+  const start=performance.now();
+  function loop(now){
+    const t=Math.max(0,(now-start)/1000);
+    fx.draw(ctx,Math.min(t,fx.D));
+    if(t<fx.D){SC.raf=requestAnimationFrame(loop)}else finish();
   }
-
-  clientVisualUpdate() {
-    const moved = Math.hypot(this.x - this.lastX, this.y - this.lastY) > 0.3;
-    this.walkCycle = moved ? this.walkCycle + 0.25 : 0;
-    this.lastX = this.x;
-    this.lastY = this.y;
-
-    if (this.netAttacking && !this.prevNetAttacking) {
-      this.isAttacking = true;
-      this.attackSwing = 0;
-    }
-    this.prevNetAttacking = this.netAttacking;
-
-    if (this.isAttacking) {
-      this.attackSwing += 0.25;
-      if (this.attackSwing >= Math.PI) {
-        this.isAttacking = false;
-        this.attackSwing = 0;
-      }
-    }
-  }
-
-  draw() {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    drawKnightFigure(ctx, this.team, this.style, this.facingRight ? 1 : -1,
-      this.walkCycle, this.isShielding, this.isAttacking ? this.attackSwing : null);
-    ctx.restore();
-
-    const T = TEAM[this.team];
-    const w = 46, h = 6, x = this.x - w / 2, y = this.y - 46;
-    ctx.fillStyle = 'rgba(6,9,16,.65)';
-    rr(ctx, x, y, w, h, 3); ctx.fill();
-    const f = Math.max(0, this.hp / this.maxHp);
-    if (f > 0) {
-      const gr = ctx.createLinearGradient(x, 0, x + w, 0);
-      gr.addColorStop(0, T.main); gr.addColorStop(1, T.light);
-      ctx.fillStyle = gr;
-      rr(ctx, x, y, Math.max(h, w * f), h, 3); ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1;
-    rr(ctx, x, y, w, h, 3); ctx.stroke();
-    if (this.tag) {
-      ctx.font = '800 11px ' + FONT; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineJoin = 'round';
-      ctx.strokeText(this.tag, x + w + 4, y + 7);
-      ctx.fillStyle = T.light; ctx.fillText(this.tag, x + w + 4, y + 7);
-    }
-  }
-
-  // Seká na všechny protivníky (jiný tým), kteří jsou v dosahu meče
-  attack() {
-    if (this.attackCooldown > 0 || this.isShielding || this.hp <= 0) return;
-
-    this.isAttacking = true;
-    this.attackSwing = 0;
-    this.attackCooldown = 25;
-
-    const dir = this.facingRight ? 1 : -1;
-    const swordReachX = this.x + dir * 38;
-
-    for (const target of players) {
-      if (target === this || target.group === this.group || target.hp <= 0) continue;
-      const dist = Math.hypot(swordReachX - target.x, this.y - target.y);
-      if (dist < target.radius + 18) {
-        if (target.isShielding) {
-          createSparks(swordReachX, this.y, '#60a5fa');
-          createFloatingText('ODRAŽENO!', target.x, target.y - 52, '#7dd3fc');
-          this.x -= dir * 12;
-        } else {
-          const d = Math.max(1, Math.round(this.dmg * target.dmgTaken));
-          target.hp = Math.max(0, target.hp - d);
-          createSparks(target.x, target.y, '#f87171');
-          createFloatingText('-' + d + ' HP', target.x, target.y - 52, '#fca5a5');
-        }
-      }
-    }
-  }
-}
-
-class Medkit {
-  constructor(x, y) {
-    this.x = x !== undefined ? x : (80 + Math.random() * (canvas.width - 160));
-    this.y = -20;
-    this.targetY = y !== undefined ? y : (110 + Math.random() * (canvas.height - 210));
-    this.speed = 2;
-    this.size = 14;
-  }
-
-  update() {
-    if (this.y < this.targetY) {
-      this.y += this.speed;
-    }
-  }
-
-  draw() {
-    const bob = this.y >= this.targetY ? Math.sin(performance.now() / 260 + this.x) * 1.6 : 0;
-    ctx.save();
-    ctx.translate(this.x, this.y + bob);
-    ctx.fillStyle = 'rgba(0,0,0,.28)';
-    ctx.beginPath(); ctx.ellipse(0, this.size + 5 - bob, this.size * 0.9, 4, 0, 0, Math.PI * 2); ctx.fill();
-    const gl = ctx.createRadialGradient(0, 0, 2, 0, 0, this.size * 2.4);
-    gl.addColorStop(0, 'rgba(74,222,128,.42)'); gl.addColorStop(1, 'rgba(74,222,128,0)');
-    ctx.fillStyle = gl; ctx.fillRect(-36, -36, 72, 72);
-    const s = this.size;
-    const gr = ctx.createLinearGradient(0, -s, 0, s);
-    gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#dbe4ee');
-    ctx.fillStyle = gr; ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2.5;
-    rr(ctx, -s, -s, s * 2, s * 2, 6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ef4444';
-    rr(ctx, -3.5, -9, 7, 18, 2); ctx.fill();
-    rr(ctx, -9, -3.5, 18, 7, 2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-function createSparks(x, y, color) {
-  for (let i = 0; i < 9; i++) {
-    particles.push({
-      x: x, y: y,
-      vx: (Math.random() - 0.5) * 6.5,
-      vy: (Math.random() - 0.5) * 6.5,
-      life: 16,
-      color: color
-    });
-  }
-  if (isWebMatch && isHost && netEvents.length < 50) {
-    netEvents.push({ k: 's', x: x, y: y, c: color });
-  }
-}
-
-function createFloatingText(text, x, y, color) {
-  floatingTexts.push({ text, x, y, life: 34, color });
-  if (isWebMatch && isHost && netEvents.length < 50) {
-    netEvents.push({ k: 't', t: text, x: x, y: y, c: color });
-  }
-}
-
-function faceByVelocity(p) {
-  if (p.vx > 0.5) p.facingRight = true;
-  else if (p.vx < -0.5) p.facingRight = false;
-}
-
-// ======================================================================
-//  MENU A TOK HRY
-// ======================================================================
-function selectDevice(device) {
-  selectedDevice = device;
-  openTeamMenu();
-}
-
-function showScreen(screenId) {
-  document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
-  if (screenId) {
-    document.getElementById(screenId).classList.remove('hidden');
-  }
-  if (screenId === 'menu-main') updateShopLabel();
-  if (screenId !== 'customize-screen') stopPreviewLoop();
-}
-
-function setWaitText(show) {
-  ['wait-text-cust', 'wait-text-over', 'wait-text-rules'].forEach(id => {
-    document.getElementById(id).classList.toggle('hidden', !show);
-  });
-}
-
-function openDifficultyMenu() {
-  gameMode = 'ai';
-  isWebMatch = false;
-  isHost = false;
-  showScreen('menu-difficulty');
-}
-
-function openPvPMenu() {
-  gameMode = 'pvp';
-  isWebMatch = false;
-  showScreen('menu-pvp');
-}
-
-function setupLocalPvP() {
-  if (selectedDevice === 'mobile') return;
-  gameMode = 'pvp';
-  isWebMatch = false;
-  isHost = false;
-  prepareInstructions();
-}
-
-function startSinglePlayer(diff) {
-  gameMode = 'ai';
-  isWebMatch = false;
-  isHost = false;
-  aiDifficulty = diff;
-  goToCustomize('menu-difficulty');
-}
-
-// ---------- týmy a souboje ----------
-function openTeamMenu() {
-  gameMode = 'team';
-  isWebMatch = false;
-  isHost = false;
-  myIdx = 0;
-  teamCfg.slots = teamCfg.slots.map((s, i) => i === 0 ? 'p1' : ((s === 'p2' && selectedDevice === 'mobile') ? 'ai' : s));
-  renderTeamMenu();
-  showScreen('menu-team');
-}
-
-function openJoinFromTeam() {
-  gameMode = 'team';
-  isWebMatch = false;
-  isHost = false;
-  document.getElementById('room-display').classList.add('hidden');
-  document.getElementById('room-input-zone').classList.remove('hidden');
-  document.getElementById('join-status-text').innerText = '';
-  showScreen('menu-web');
-}
-
-// Tlačítko "Vytvořit kód pro kamaráda": když ještě není nikdo přes internet, první volné místo se přepne na kamaráda
-function createCodeForFriend() {
-  if (netNeeded() < 1) {
-    const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
-    for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'p2') teamCfg.slots[i] = 'ai';
-    teamCfg.slots[1] = 'net';
-    renderTeamMenu();
-  }
-  createRoom();
-}
-
-function teamBack() { showScreen('menu-main'); }
-function teamNext() { if (netNeeded() > 0) createRoom(); else startTeamGame(); }
-
-function renderTeamMenu() {
-  const f = TEAM_FORMATS[teamCfg.fmt];
-  const online = netNeeded() > 0;
-  const fw = document.getElementById('team-formats');
-  fw.innerHTML = '';
-  Object.keys(TEAM_FORMATS).forEach(k => {
-    const b = document.createElement('button');
-    b.className = 'btn' + (k === teamCfg.fmt ? '' : ' btn-secondary');
-    b.textContent = TEAM_FORMATS[k].name;
-    b.onclick = () => { teamCfg.fmt = k; renderTeamMenu(); };
-    fw.appendChild(b);
-  });
-
-  const sw = document.getElementById('team-slots');
-  sw.innerHTML = '';
-  f.cols.forEach((c, i) => {
-    const b = document.createElement('button');
-    b.className = 'btn btn-secondary slotbtn';
-    b.style.setProperty('--tc', TEAM[c].main);
-    const s = teamCfg.slots[i];
-    const who = s === 'p1' ? (online ? 'Ty (hostitel)' : 'Ty')
-      : (s === 'p2' ? 'Kamarád na této klávesnici'
-      : (s === 'net' ? 'Kamarád (připojí se přes internet)' : (s === 'off' ? 'Nehraje' : 'Počítač')));
-    const tm = teamTagged() ? ' · tým ' + String.fromCharCode(64 + f.grp[i]) : '';
-    const mem = teamTagged() ? ' ' + f.grp.slice(0, i + 1).filter(g => g === f.grp[i]).length : '';
-    b.textContent = TEAM[c].name + mem + tm + ' – ' + who;
-    if (s === 'off') b.style.opacity = '.55';
-    b.onclick = () => toggleSlot(i);
-    sw.appendChild(b);
-  });
-
-  let hint;
-  if (teamTagged()) {
-    const parts = [];
-    f.sizes.forEach((sz, t) => {
-      parts.push('Tým ' + String.fromCharCode(65 + t) + ': ' + TEAM[t + 1].name.toLowerCase() + ' (' + sz + ' bojovníci)');
-    });
-    hint = parts.join('. ') + '. Týmy mají vždy stejný počet bojovníků.';
-  } else {
-    hint = f.cols.length === 2 ? 'Souboj jeden na jednoho.' : 'Všichni proti všem – každý sám za sebe.';
-  }
-  hint += ' Klepáním na bojovníka střídáš: počítač → kamarád přes internet'
-    + (selectedDevice === 'mobile' ? '' : ' → kamarád na této klávesnici')
-    + ' → nehraje. Počítače můžeš mít libovolně, i žádný. Týmy nemusí být vyrovnané, můžeš hrát třeba sám proti dvěma.';
-  if (selectedDevice !== 'mobile') hint += ' Kamarád na stejné klávesnici může být jen jeden a nejde kombinovat s kamarády přes internet.';
-  document.getElementById('team-hint').textContent = hint;
-  document.getElementById('team-diff').textContent =
-    'Počítač: ' + { easy: 'nejlehčí', medium: 'střední', hard: 'nejtěžší' }[teamCfg.diff];
-  document.getElementById('team-next').innerHTML =
-    (online ? 'Vytvořit místnost' : 'Dál') + '<svg class="ic"><use href="#i-next"/></svg>';
-}
-
-// Klepnutí mění jen tohoto jednoho bojovníka: počítač → internet → klávesnice → nehraje → počítač
-function toggleSlot(i) {
-  if (i === 0) return;
-  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
-  const others = teamCfg.slots.slice(0, n).filter((t, j) => j !== i);
-  const order = selectedDevice === 'mobile' ? ['ai', 'net', 'off'] : ['ai', 'net', 'p2', 'off'];
-  const ok = t => t === 'ai' || t === 'off'
-    || (t === 'net' && !others.includes('p2'))
-    || (t === 'p2' && !others.includes('p2') && !others.includes('net'));
-  const k = order.indexOf(teamCfg.slots[i]);
-  for (let step = 1; step <= order.length; step++) {
-    const t = order[(k + step) % order.length];
-    if (ok(t)) { teamCfg.slots[i] = t; break; }
-  }
-  renderTeamMenu();
-}
-
-// Aspoň dva různé týmy musí mít někoho, kdo hraje
-function enoughTeams() {
-  const f = TEAM_FORMATS[teamCfg.fmt];
-  const gs = new Set();
-  f.cols.forEach((c, i) => { if (teamCfg.slots[i] !== 'off') gs.add(f.grp[i]); });
-  if (gs.size < 2) { alert('Aspoň dva týmy musí hrát. Přepni někoho z jiného týmu z „Nehraje".'); return false; }
-  return true;
-}
-
-function cycleTeamDiff() {
-  const order = ['easy', 'medium', 'hard'];
-  teamCfg.diff = order[(order.indexOf(teamCfg.diff) + 1) % 3];
-  renderTeamMenu();
-}
-
-function startTeamGame() {
-  if (!enoughTeams()) return;
-  gameMode = 'team';
-  isWebMatch = false;
-  isHost = false;
-  aiDifficulty = teamCfg.diff;
-  goToCustomize('menu-team');
-}
-
-function buildRoster() {
-  const f = TEAM_FORMATS[teamCfg.fmt];
-  return f.cols.map((c, i) => {
-    const t = teamCfg.slots[i];
-    const off = t === 'off';
-    const ctrl = off ? 'ai' : t;
-    return {
-      x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, off: off, tag: teamTagged() ? String.fromCharCode(64 + f.grp[i]) : '',
-      style: ctrl === 'ai' ? randomLoadout() : cleanLoadout(settings.l[+ctrl[1]])
-    };
-  });
-}
-
-function showRulesOnly() {
-  isOnlyRulesView = true;
-  document.getElementById('start-battle-btn').classList.add('hidden');
-  setWaitText(false);
-  document.getElementById('controls-desc').innerHTML = getControlsHTML();
-  showScreen('instructions-screen');
-}
-
-function showRulesBeforeBattle() {
-  isOnlyRulesView = false;
-  setWaitText(false);
-  document.getElementById('controls-desc').innerHTML = getControlsHTML();
-  showScreen('instructions-screen');
-}
-
-function prepareInstructions() {
-  isOnlyRulesView = false;
-  document.getElementById('start-battle-btn').classList.remove('hidden');
-  setWaitText(false);
-  document.getElementById('controls-desc').innerHTML = getControlsHTML();
-  showScreen('instructions-screen');
-}
-
-function getControlsHTML() {
-  if (selectedDevice === 'mobile') {
-    let html = '<p><strong>Ovládání na mobilu:</strong> joystick vlevo = pohyb, tlačítka MEČ a ŠTÍT vpravo.</p>';
-    if (isWebMatch) {
-      html += `<p><strong>Hra přes internet:</strong> ovládáš svého rytíře na svém telefonu. Ty jsi ${myColorName()} rytíř.</p>`;
-    }
-    return html;
-  } else if (isWebMatch) {
-    return `
-      <p><strong>Hra přes internet – klávesnice:</strong></p>
-      <p>Pohyb = [W, A, S, D] nebo [ŠIPKY] | Meč = [F] nebo [MEZERNÍK] | Štít = [G] nebo [SHIFT]</p>
-      <p>Ty jsi ${myColorName()} rytíř.</p>
-    `;
-  } else {
-    return `
-      <p><strong>Ovládání na klávesnici:</strong></p>
-      <p><strong>Hráč 1:</strong> Pohyb = [W, A, S, D] | Meč = [F] | Štít = [G]</p>
-      <p><strong>Hráč 2 (jen když ho zapneš):</strong> Pohyb = [ŠIPKY] | Meč = [MEZERNÍK] | Štít = [SHIFT]</p>
-    `;
-  }
-}
-
-// ---------- výběr výbavy ----------
-let custReturn = 'instructions-screen';
-let previewRAF = 0;
-
-// vrací čísla lidských hráčů (1, 2), kteří si vybírají výbavu
-function customizeSlots() {
-  if (isWebMatch) return [isHost ? 1 : 2];
-  if (gameMode === 'team') return teamCfg.slots.slice(0, TEAM_FORMATS[teamCfg.fmt].cols.length).filter(s => s !== 'ai' && s !== 'off' && s !== 'net').map(s => +s[1]);
-  if (gameMode === 'pvp') return [1, 2];
-  return [1];
-}
-
-function slotTitle(team) {
-  const barva = TEAM[hcolor(team)].name.toLowerCase();
-  if (isWebMatch) return 'Ty · ' + barva;
-  if (gameMode === 'pvp' || gameMode === 'team') return 'Hráč ' + team + ' · ' + barva;
-  return 'Tvůj bojovník · ' + barva;
-}
-
-function makeChipCanvas(kind, i, team, gi) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 72;
-  const g = cv.getContext('2d');
-  const T = TEAM[team];
-  const st = { c: i, s: 0, h: 0, g: gi };
-  if (kind === 'c') {
-    g.translate(36, 47); g.scale(1.05, 1.05);
-    drawKnightFigure(g, team, st, 1, 0, false, null, { noSword: true, noShield: true, noShadow: true });
-  } else if (kind === 's') {
-    g.translate(14, 58); g.rotate(-Math.PI / 4); g.scale(1.35, 1.35);
-    drawSword(g, swordList(st)[i].id, T);
-  } else {
-    g.translate(36, 36); g.scale(1.5, 1.5);
-    drawShield(g, shieldList(st)[i].id, T, 1.6);
-  }
-  return cv;
-}
-
-function buildCustomize() {
-  const wrap = document.getElementById('cust-slots');
-  wrap.innerHTML = '';
-  customizeSlots().forEach(team => {
-    const C = hcolor(team);
-    const T = TEAM[C];
-    const el = document.createElement('div');
-    el.className = 'slot';
-    el.style.setProperty('--tc', T.main);
-    el.style.setProperty('--tc-l', T.light);
-    el.innerHTML =
-      '<div class="slot-head"><span class="dot"></span><span class="slot-title"></span></div>' +
-      '<div class="slot-body"><canvas class="slot-preview" width="224" height="280" data-team="' + team + '"></canvas>' +
-      '<div class="slot-rows"></div></div>';
-    el.querySelector('.slot-title').textContent = slotTitle(team);
-    const rows = el.querySelector('.slot-rows');
-    const me = settings.l[team];
-
-    // přepínač Kluk / Holka
-    const grow = document.createElement('div');
-    grow.className = 'row';
-    grow.innerHTML = '<div class="row-label">Typ</div><div class="chips"></div>';
-    ['Kluk', 'Holka'].forEach((nm, gi) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chip gen' + (me.g === gi ? ' sel' : '');
-      b.textContent = nm;
-      b.addEventListener('click', () => {
-        me.g = gi;
-        saveSettings();
-        buildCustomize();
-      });
-      grow.querySelector('.chips').appendChild(b);
-    });
-    rows.appendChild(grow);
-
-    [['c', 'Postava', charList(me)], ['s', 'Meč', swordList(me)], ['h', 'Štít', shieldList(me)]].forEach(([k, label, list]) => {
-      const row = document.createElement('div');
-      row.className = 'row';
-      row.innerHTML = '<div class="row-label"></div><div class="chips"></div>';
-      row.querySelector('.row-label').textContent = label;
-      const chips = row.querySelector('.chips');
-      list.forEach((item, i) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'chip' + (me[k] === i ? ' sel' : '');
-        b.appendChild(makeChipCanvas(k, i, C, me.g));
-        const sp = document.createElement('span');
-        sp.textContent = item.name;
-        b.appendChild(sp);
-        b.addEventListener('click', () => {
-          me[k] = i;
-          saveSettings();
-          chips.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('sel', j === i));
-        });
-        chips.appendChild(b);
-      });
-      rows.appendChild(row);
-    });
-    wrap.appendChild(el);
-  });
-
-  // pozadí arény
-  const box = document.getElementById('cust-arena');
-  box.innerHTML = '';
-  if (isWebMatch && !isHost) {
-    box.innerHTML = '<p class="hint" style="margin:0;text-align:center;">Pozadí arény vybírá hostitel hry.</p>';
-    return;
-  }
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = '<div class="row-label">Aréna</div><div class="chips"></div>';
-  const chips = row.querySelector('.chips');
-  BACKGROUNDS.forEach((item, i) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'chip bg' + (settings.bg === i ? ' sel' : '');
-    const cv = document.createElement('canvas');
-    cv.width = 140; cv.height = 72;
-    cv.getContext('2d').drawImage(getBackground(i), 0, 20, 900, 463, 0, 0, 140, 72);
-    b.appendChild(cv);
-    const sp = document.createElement('span');
-    sp.textContent = item.name;
-    b.appendChild(sp);
-    b.addEventListener('click', () => {
-      settings.bg = i;
-      saveSettings();
-      chips.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('sel', j === i));
-    });
-    chips.appendChild(b);
-  });
-  box.appendChild(row);
-  if (!isWebMatch && (gameMode === 'ai' || gameMode === 'team')) {
-    const hint = document.createElement('p');
-    hint.className = 'hint';
-    hint.textContent = 'Počítačoví bojovníci dostanou náhodnou výbavu.';
-    box.appendChild(hint);
-  }
-}
-
-function drawPreviews(ts) {
-  document.querySelectorAll('.slot-preview').forEach(cv => {
-    const hid = +cv.dataset.team;
-    const st = settings.l[hid];
-    const team = hcolor(hid);
-    const T = TEAM[team];
-    const g = cv.getContext('2d');
-    g.clearRect(0, 0, cv.width, cv.height);
-    const gl = g.createRadialGradient(cv.width * 0.45, cv.height * 0.76, 2, cv.width * 0.45, cv.height * 0.76, cv.width * 0.55);
-    gl.addColorStop(0, 'rgba(' + T.rgb + ',.38)'); gl.addColorStop(1, 'rgba(' + T.rgb + ',0)');
-    g.fillStyle = gl; g.fillRect(0, cv.height * 0.55, cv.width, cv.height * 0.45);
-    const s = cv.height / 122;
-    const phase = (ts % 2400) / 2400;
-    const swing = phase < 0.3 ? (phase / 0.3) * Math.PI : null;
-    g.save();
-    g.translate(cv.width * 0.40, cv.height * 0.56 + Math.sin(ts / 430) * 1.5 * s);
-    g.scale(s, s);
-    drawKnightFigure(g, team, st, 1, 0, true, swing);
-    g.restore();
-  });
-}
-
-function startPreviewLoop() {
-  if (previewRAF) return;
-  const loop = (ts) => {
-    if (document.getElementById('customize-screen').classList.contains('hidden')) { previewRAF = 0; return; }
-    drawPreviews(ts);
-    previewRAF = requestAnimationFrame(loop);
-  };
-  previewRAF = requestAnimationFrame(loop);
-}
-function stopPreviewLoop() {
-  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = 0; }
-}
-
-function goToCustomize(from) {
-  custReturn = from || 'instructions-screen';
-  sceneActive = false;
-  buildCustomize();
-  showScreen('customize-screen');
-  startPreviewLoop();
-}
-
-function custBack() {
-  showScreen(custReturn);
-  if (custReturn === 'game-over-screen') sceneActive = true;
-}
-
-// ---------- start kola ----------
-function resolveMatchSetup() {
-  const l1 = cleanLoadout(settings.l[1]);
-  let l2;
-  if (isWebMatch) l2 = cleanLoadout(clientLoadout || settings.l[2]);
-  else if (gameMode === 'ai') l2 = randomLoadout();
-  else l2 = cleanLoadout(settings.l[2]);
-  return { l1: l1, l2: l2, bg: settings.bg };
-}
-
-function startRound(l1, l2, bg, roster) {
-  showScreen(null);
-  setWaitText(false);
-  initGame(l1, l2, bg, roster);
-}
-
-function confirmAndStartGame() {
-  if (isWebMatch) {
-    markReadyWeb();
-  } else if (gameMode === 'team') {
-    startRound(null, null, settings.bg, buildRoster());
-  } else {
-    const m = resolveMatchSetup();
-    startRound(m.l1, m.l2, m.bg);
-  }
-}
-
-function restartCurrentGame() {
-  confirmAndStartGame();
-}
-
-function markReadyWeb() {
-  if (isHost) {
-    hostReady = true;
-  } else {
-    clientReady = true;
-    if (conn && conn.open) conn.send({ type: 'ready', loadout: cleanLoadout(settings.l[2]), perks: activePerks() });
-  }
-  setWaitText(true);
-  tryStartWebRound();
-}
-
-function tryStartWebRound() {
-  if (isHost && hostReady && peers.length > 0 && peers.every(p => p.ready)) startWebRound();
-}
-
-function buildOnlineRoster() {
-  const f = TEAM_FORMATS[teamCfg.fmt];
-  return f.cols.map((c, i) => {
-    const t = teamCfg.slots[i];
-    const pr = peers.find(q => q.slot === i);
-    let ctrl = 'ai', style, off = false;
-    if (t === 'p1') { ctrl = 'p1'; style = cleanLoadout(settings.l[1]); }
-    else if (t === 'net' && pr) { ctrl = 'net'; style = cleanLoadout(pr.loadout); }
-    else { style = randomLoadout(); off = t === 'off'; }
-    return { x: f.pos[i][0], y: f.pos[i][1], team: c, group: f.grp[i], ctrl: ctrl, off: off, style: style, tag: teamTagged() ? String.fromCharCode(64 + f.grp[i]) : '' };
-  });
-}
-
-function startWebRound() {
-  hostReady = false;
-  peers.forEach(p => { p.ready = false; });
-  const roster = buildOnlineRoster();
-  const wire = roster.map(r => ({ x: r.x, y: r.y, team: r.team, group: r.group, ctrl: r.ctrl === 'ai' ? 'ai' : 'net', style: r.style, tag: r.tag, off: !!r.off }));
-  peers.forEach(p => { if (p.c.open) p.c.send({ type: 'start', bg: settings.bg, roster: wire }); });
-  startRound(null, null, settings.bg, roster);
-  peers.forEach(q => applyPerks(players[q.slot], q.perks));
-}
-
-function closeNetwork() {
-  const oldConn = conn, oldPeer = peer, oldPeers = peers;
-  conn = null;     // handlery 'close' poznají, že jde o záměrné zavření
-  peer = null;
-  peers = [];
-  oldPeers.forEach(p => { try { p.c.close(); } catch (e) {} });
-  if (oldConn) { try { oldConn.close(); } catch (e) {} }
-  if (oldPeer) { try { oldPeer.destroy(); } catch (e) {} }
-  releaseWakeLock();
-}
-
-function resetNetState() {
-  isWebMatch = false;
-  isHost = false;
-  onlineSetup = false;
-  lobbyDone = false;
-  myIdx = 0;
-  hostReady = false;
-  clientReady = false;
-  clientLoadout = null;
-  netEvents = [];
-  pendingClientAttack = false;
-  clientTouchShield = false;
-}
-
-function returnToMainMenu() {
-  gameRunning = false;
-  sceneActive = false;
-  closeNetwork();
-  resetNetState();
-  touchInputP1.vx = 0; touchInputP1.vy = 0;
-  document.getElementById('touch-controls').classList.add('hidden');
-  document.getElementById('pc-hud-guide').classList.add('hidden');
-  setWaitText(false);
-  showScreen('menu-main');
-}
-
-function backFromWeb() {
-  closeNetwork();
-  resetNetState();
-  document.getElementById('room-display').classList.add('hidden');
-  document.getElementById('room-input-zone').classList.add('hidden');
-  renderTeamMenu();
-  showScreen('menu-team');
-}
-
-// ======================================================================
-//  PEERJS WEB MULTIPLAYER (hostitel + až 3 kamarádi)
-// ======================================================================
-function netNeeded() {
-  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
-  let k = 0;
-  for (let i = 1; i < n; i++) if (teamCfg.slots[i] === 'net') k++;
-  return k;
-}
-
-function freeNetSlot() {
-  const n = TEAM_FORMATS[teamCfg.fmt].cols.length;
-  for (let i = 1; i < n; i++) {
-    if (teamCfg.slots[i] === 'net' && !peers.some(q => q.slot === i)) return i;
-  }
-  return -1;
-}
-
-function updateLobbyStatus() {
-  const need = netNeeded();
-  document.getElementById('room-status-text').innerText = peers.length >= need
-    ? 'Všichni připojeni! Jdeme na výbavu...'
-    : 'Připojeno ' + peers.length + ' z ' + need + ' kamarádů. Čekám na další...';
-}
-
-// ---------- kód místnosti: bez zaměnitelných znaků (0/O, 1/I) ----------
-const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-function genRoomCode() {
-  let c = '';
-  for (let i = 0; i < 6; i++) c += CODE_ABC[Math.floor(Math.random() * CODE_ABC.length)];
-  return c;
-}
-
-// ---------- udržení spojení, když hra na chvíli odejde do pozadí (např. při sdílení do WhatsAppu) ----------
-let currentJoinUrl = '';
-let currentRoomCode = '';
-let wakeLock = null;
-function revivePeer(p) {
-  if (p && p.disconnected && !p.destroyed) { try { p.reconnect(); } catch (e) {} }
-}
-async function acquireWakeLock() {
-  try {
-    if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') {
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => { wakeLock = null; });
-    }
-  } catch (e) { wakeLock = null; }
-}
-function releaseWakeLock() {
-  try { if (wakeLock) wakeLock.release(); } catch (e) {}
-  wakeLock = null;
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
-  revivePeer(peer);
-  revivePeer(xferPeer);
-  if (peer) acquireWakeLock();
-});
-window.addEventListener('online', () => { revivePeer(peer); revivePeer(xferPeer); });
-
-function roomShareText() {
-  return 'Pojď si zahrát Rytířský souboj! Kód místnosti: ' + currentRoomCode + '\n' + currentJoinUrl;
-}
-async function shareRoomLink() {
-  if (!currentJoinUrl) return;
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Rytířský souboj', text: 'Pojď si zahrát Rytířský souboj! Kód místnosti: ' + currentRoomCode, url: currentJoinUrl });
-      return;
-    } catch (e) {
-      if (e && e.name === 'AbortError') return;   // uživatel sdílení zrušil
+  function finish(){
+    if(rec&&rec.state!=='inactive'){
+      rec.onstop=()=>{
+        SC.blob=new Blob(chunks,{type:rec.mimeType||mime||'video/webm'});
+        showReview();
+      };
+      setTimeout(()=>{try{rec.stop()}catch(e){rec.onstop&&rec.onstop()}},250);
+    }else{
+      state='scare-adjust';$('#scui').hidden=false;$('#scx').hidden=false;drawAdjust();
+      $('#scmsg').textContent='Tohle zařízení neumí nahrát video, takže se animace nedá uložit.';
     }
   }
-  window.open('https://wa.me/?text=' + encodeURIComponent(roomShareText()), '_blank');
-}
-async function copyRoomLink() {
-  const btn = document.getElementById('copy-link-btn');
-  let ok = false;
-  try { await navigator.clipboard.writeText(currentJoinUrl); ok = true; } catch (e) {
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = currentJoinUrl; document.body.appendChild(ta); ta.select();
-      ok = document.execCommand('copy'); document.body.removeChild(ta);
-    } catch (e2) {}
-  }
-  if (btn) {
-    btn.textContent = ok ? 'Zkopírováno ✔' : 'Nepodařilo se';
-    setTimeout(() => { btn.textContent = 'Kopírovat odkaz'; }, 1800);
-  }
+  SC.raf=requestAnimationFrame(loop);
 }
 
-function createRoom(attempt) {
-  if (!enoughTeams()) return;
-  if (netNeeded() < 1) {
-    alert('Klepni na bojovníka a vyber aspoň jednoho kamaráda.');
-    return;
-  }
-  aiDifficulty = teamCfg.diff;
-  showScreen('menu-web');
-  document.getElementById('room-display').classList.remove('hidden');
-  document.getElementById('room-input-zone').classList.add('hidden');
-  document.getElementById('room-status-text').innerText = "Vytvářím místnost...";
-
-  const roomCode = genRoomCode();
-  currentRoomCode = roomCode;
-  currentJoinUrl = window.location.href.split('?')[0].split('#')[0] + '?room=' + roomCode;
-  document.getElementById('room-code-num').innerText = roomCode;
-
-  closeNetwork();
-  isHost = true;
-  isWebMatch = true;
-  gameMode = 'team';
-  myIdx = 0;
-  hostReady = false;
-  clientReady = false;
-  lobbyDone = false;
-
-  const myPeer = new Peer(PEER_PREFIX + roomCode);
-  peer = myPeer;
-
-  myPeer.on('open', () => {
-    updateLobbyStatus();
-    acquireWakeLock();
-    const box = document.getElementById('qrcode-box');
-    if (!box.firstChild) {
-      new QRCode(box, { text: currentJoinUrl, width: 140, height: 140 });
-    }
-  });
-
-  // spojení se serverem spadlo (hra byla v pozadí) -> hned ho obnov, aby kód zase platil
-  myPeer.on('disconnected', () => {
-    if (peer !== myPeer || myPeer.destroyed) return;
-    if (!lobbyDone) document.getElementById('room-status-text').innerText = 'Obnovuji spojení...';
-    setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, document.visibilityState === 'visible' ? 300 : 3000);
-  });
-
-  myPeer.on('connection', (c) => {
-    const slot = freeNetSlot();
-    if (slot < 0) {                       // místnost je plná
-      c.on('open', () => { try { c.send({ type: 'full' }); } catch (e) {} setTimeout(() => { try { c.close(); } catch (e) {} }, 400); });
-      return;
-    }
-    const pr = { c: c, slot: slot, ready: false, loadout: null };
-    peers.push(pr);
-
-    c.on('open', () => {
-      c.send({ type: 'welcome', slot: slot, fmt: teamCfg.fmt, slots: teamCfg.slots.map(t => (t === 'ai' || t === 'off') ? t : 'net') });
-      updateLobbyStatus();
-      if (!lobbyDone && peers.length >= netNeeded()) {
-        lobbyDone = true;
-        setTimeout(() => { if (isHost && peer === myPeer) goToCustomize('menu-web'); }, 800);
-      }
-    });
-
-    c.on('data', (d) => {
-      if (!d) return;
-      if (d.type === 'ready') {
-        pr.loadout = cleanLoadout(d.loadout);
-        const pk = d.perks || {};
-        pr.perks = { sword: !!pk.sword, boots: !!pk.boots, armor: !!pk.armor };
-        pr.ready = true;
-        tryStartWebRound();
-      } else if (d.type === 'input') {
-        const p = players[pr.slot];
-        if (!gameRunning || !p || p.ctrl !== 'net' || p.hp <= 0) return;
-        const lim = v => Math.max(-p.speed, Math.min(p.speed, +v || 0));
-        p.vx = lim(d.vx);
-        p.vy = lim(d.vy);
-        p.facingRight = !!d.f;
-        p.isShielding = !!d.s;
-        if (d.a) p.attack();
-      }
-    });
-
-    c.on('close', () => {
-      const idx = peers.indexOf(pr);
-      if (idx < 0) return;                // záměrné zavření z naší strany
-      peers.splice(idx, 1);
-      if (lobbyDone) {
-        teamCfg.slots[pr.slot] = 'ai';
-        const p = players[pr.slot];
-        if (p && gameRunning) p.ctrl = 'ai';   // odpojený kamarád předá bojovníka počítači
-        if (peers.length === 0) {
-          alert('Všichni kamarádi se odpojili.');
-          returnToMainMenu();
-          return;
-        }
-        tryStartWebRound();
-      } else {
-        updateLobbyStatus();
-      }
-    });
-  });
-
-  myPeer.on('error', (err) => {
-    console.error(err);
-    if (err && err.type === 'unavailable-id' && (attempt || 0) < 5) { createRoom((attempt || 0) + 1); return; }  // kód už někdo používá
-    if (err && (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed')) {
-      document.getElementById('room-status-text').innerText = 'Problém se spojením, zkouším to znovu...';
-      setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, 2000);
-      return;
-    }
-    document.getElementById('room-status-text').innerText = "Chyba při vytváření místnosti!";
-  });
+function showReview(){
+  if(state!=='scare-render')return;
+  state='scare-review';
+  $('#sc').hidden=true;
+  SC.url=URL.createObjectURL(SC.blob);
+  const rv=$('#rvv');rv.src=SC.url;
+  $('#rv').hidden=false;$('#scx').hidden=false;
+  rv.currentTime=0;rv.play().catch(()=>{});
 }
 
-function showJoinRoom() {
-  document.getElementById('room-input-zone').classList.remove('hidden');
-  document.getElementById('room-display').classList.add('hidden');
+async function saveClip(){
+  if(!SC.blob)return;
+  const ext=(SC.blob.type||'').includes('mp4')?'mp4':'webm';
+  const file=new File([SC.blob],'prisera-'+Date.now()+'.'+ext,{type:SC.blob.type||('video/'+ext)});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Příšera z díry'});
+      toast('V nabídce sdílení vyber „Uložit video“.');return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=SC.url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+  toast('Video se stáhlo do zařízení.');
 }
+$('#savebtn').onclick=saveClip;
 
-function joinRoom(autoCode) {
-  const code = (typeof autoCode === 'string' ? autoCode : document.getElementById('join-code-input').value).trim().toUpperCase();
-  if (!code) {
-    alert('Zadej kód místnosti!');
-    return;
-  }
-
-  document.getElementById('join-status-text').innerText = "Připojuji se k " + code + "...";
-
-  closeNetwork();
-  isHost = false;
-  isWebMatch = true;
-  gameMode = 'team';
-  hostReady = false;
-  clientReady = false;
-
-  const myPeer = new Peer();
-  peer = myPeer;
-  let tries = 0;
-  let joined = false;
-  const MAX_TRIES = 12;      // ~30 s čekání, než se hostitel vrátí do hry
-
-  myPeer.on('open', () => connectToHost());
-
-  function connectToHost() {
-    if (peer !== myPeer || myPeer.destroyed) return;
-    tries++;
-    const c = myPeer.connect(PEER_PREFIX + code, { reliable: true });
-    conn = c;
-
-    c.on('open', () => {
-      joined = true;
-      document.getElementById('join-status-text').innerText = "Připojeno, čekám na ostatní...";
-    });
-
-    c.on('data', (d) => {
-      if (!d) return;
-
-      if (d.type === 'welcome') {
-        teamCfg.fmt = TEAM_FORMATS[d.fmt] ? d.fmt : '1v1';
-        teamCfg.slots = Array.isArray(d.slots) ? d.slots.slice(0, MAX_FIGHTERS) : TEAM_FORMATS[teamCfg.fmt].cols.map(() => 'net');
-        myIdx = clampIdx(d.slot, MAX_FIGHTERS);
-        document.getElementById('join-status-text').innerText = "";
-        goToCustomize('menu-web');
-      } else if (d.type === 'full') {
-        document.getElementById('join-status-text').innerText = "Místnost je už plná.";
-      } else if (d.type === 'start') {
-        clientReady = false;
-        const roster = (Array.isArray(d.roster) ? d.roster : []).slice(0, MAX_FIGHTERS).map(r => ({
-          x: +r.x || 0, y: +r.y || 0,
-          team: Math.min(MAX_FIGHTERS, Math.max(1, (r.team | 0) || 1)),
-          group: (r.group | 0) || 1,
-          ctrl: r.ctrl === 'ai' ? 'ai' : 'net',
-          tag: String(r.tag || '').slice(0, 1),
-          off: !!r.off,
-          style: cleanLoadout(r.style)
-        }));
-        if (roster.length < 2) return;
-        startRound(null, null, clampIdx(d.bg, BACKGROUNDS.length), roster);
-      } else if (d.type === 'state') {
-        if (!gameRunning || !players.length || !Array.isArray(d.pl)) return;
-        d.pl.forEach((st, i) => {
-          const p = players[i];
-          if (!p || !st) return;
-          p.x = st.x; p.y = st.y; p.hp = st.hp;
-          p.netAttacking = !!st.a;
-          if (i !== myIdx) { p.facingRight = !!st.f; p.isShielding = !!st.s; }
-        });
-        if (d.medkits) {
-          medkits = d.medkits.map(m => {
-            const med = new Medkit(m.x, m.targetY);
-            med.y = m.y;
-            return med;
-          });
-        }
-        if (d.events) {
-          d.events.forEach(ev => {
-            if (ev.k === 's') createSparks(ev.x, ev.y, ev.c);
-            else if (ev.k === 't') createFloatingText(ev.t, ev.x, ev.y, ev.c);
-          });
-        }
-      }
-    });
-
-    c.on('close', () => {
-      if (c !== conn || !joined) return;
-      alert('Hostitel se odpojil.');
-      returnToMainMenu();
-    });
-
-    c.on('error', () => {
-      document.getElementById('join-status-text').innerText = "Chyba připojení k danému kódu!";
-    });
-  }
-
-  myPeer.on('disconnected', () => {
-    if (peer === myPeer && !myPeer.destroyed) setTimeout(() => { if (peer === myPeer) revivePeer(myPeer); }, 1000);
-  });
-
-  myPeer.on('error', (err) => {
-    console.error(err);
-    if (err && err.type === 'peer-unavailable') {
-      if (!joined && tries < MAX_TRIES) {        // hostitel může být jen chvíli v pozadí, zkus to znovu
-        document.getElementById('join-status-text').innerText = "Čekám, až se hostitel vrátí do hry... (" + tries + "/" + MAX_TRIES + ")";
-        setTimeout(connectToHost, 2500);
-        return;
-      }
-      document.getElementById('join-status-text').innerText = "Místnost s tímto kódem neexistuje. Zkontroluj kód a požádej hostitele, ať má hru otevřenou.";
-    } else {
-      document.getElementById('join-status-text').innerText = "Nedaří se připojit k serveru!";
-    }
-  });
+(function(){
+if(!window.THREE)return;
+const cvs=document.getElementById('mon');
+const R=new THREE.WebGLRenderer({canvas:cvs,alpha:true,antialias:true});
+R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));R.setSize(520,520,false);
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(40,1,.1,50);C.position.set(0,.2,5.4);
+S.add(new THREE.AmbientLight(0x553344,.9));
+const L1=new THREE.DirectionalLight(0xffd8b8,1.15);L1.position.set(2,3,4);S.add(L1);
+const L2=new THREE.PointLight(0xff1133,1.8,14);L2.position.set(-2.5,-1,3);S.add(L2);
+const skin=new THREE.MeshStandardMaterial({color:0x4a5d3f,roughness:.55,metalness:.05});
+const dark=new THREE.MeshStandardMaterial({color:0x2d3a2b,roughness:.7});
+const bone=new THREE.MeshStandardMaterial({color:0xe8dfc0,roughness:.4});
+const gum=new THREE.MeshStandardMaterial({color:0x4a0010,roughness:.8,emissive:0x2a0008});
+const tm=new THREE.MeshStandardMaterial({color:0xc2234a,roughness:.35,emissive:0x400010});
+const eyeMat=new THREE.MeshStandardMaterial({color:0xffd23f,emissive:0xffb000,emissiveIntensity:1});
+const black=new THREE.MeshBasicMaterial({color:0x000000});
+const root=new THREE.Group();S.add(root);
+// hlava s hrbolatou kůží
+const hg=new THREE.SphereGeometry(1,48,36),p=hg.attributes.position;
+for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+ const n=1+.07*Math.sin(x*7+y*5)*Math.cos(z*6+x*3)+.04*Math.sin(y*13+z*9);p.setXYZ(i,x*n*1.1,y*n,z*n)}
+hg.computeVertexNormals();
+const head=new THREE.Mesh(hg,skin);head.position.y=.25;head.rotation.x=.18;root.add(head);
+const add=(m,x,y,z,par)=>{m.position.set(x,y,z);(par||root).add(m);return m};
+const ball=(r,mat)=>new THREE.Mesh(new THREE.SphereGeometry(r,20,16),mat);
+for(const s of[-1,1]){
+ const e=add(ball(.2,eyeMat),s*.4,.72,.78);e.scale.y=.6;
+ const pu=ball(1,black);pu.scale.set(.04,.1,.04);add(pu,s*.4,.72,.97);
+ const br=ball(1,dark);br.scale.set(.42,.15,.26);br.rotation.z=s*.6;add(br,s*.4,.9,.93);
+ const h=new THREE.Mesh(new THREE.ConeGeometry(.17,.95,14),bone);h.rotation.z=-s*.45;add(h,s*.68,1.35,-.05);
+ const nz=ball(.06,black);add(nz,s*.12,.38,1.04);
 }
-
-function sendNetworkSync(attackTriggered = false) {
-  if (isHost) {
-    if (!peers.length) return;
-    const msg = {
-      type: 'state',
-      pl: players.map(p => ({ x: p.x, y: p.y, hp: p.hp, f: p.facingRight, s: p.isShielding, a: p.isAttacking })),
-      medkits: medkits.map(m => ({ x: m.x, y: m.y, targetY: m.targetY })),
-      events: netEvents.splice(0)
-    };
-    peers.forEach(q => { if (q.c.open) q.c.send(msg); });
-  } else {
-    if (!conn || !conn.open) return;
-    const me = players[myIdx];
-    if (!me) return;
-    conn.send({ type: 'input', vx: me.vx, vy: me.vy, f: me.facingRight, s: me.isShielding, a: attackTriggered });
-  }
+// dutina a horní zuby
+const cav=ball(1,gum);cav.scale.set(.72,.3,.62);add(cav,0,-.12,.5);
+for(let k=-6;k<=6;k++){const a=k*.2,t=new THREE.Mesh(new THREE.ConeGeometry(.07,.26,8),bone);
+ t.rotation.x=Math.PI;add(t,Math.sin(a)*.72,-.12,.28+Math.cos(a)*.62);}
+// čelist
+const jaw=new THREE.Group();jaw.position.set(0,-.12,-.1);root.add(jaw);
+const jm=ball(1,skin);jm.scale.set(.85,.3,.88);add(jm,0,-.1,.65,jaw);
+for(let k=-5;k<=5;k++){const a=k*.22,t=new THREE.Mesh(new THREE.ConeGeometry(.075,.3,8),bone);
+ add(t,Math.sin(a)*.7,.22,.65+Math.cos(a)*.7,jaw);}
+// jazyk
+const tongue=new THREE.Mesh(new THREE.BufferGeometry(),tm);root.add(tongue);
+const tip=ball(.2,tm);tip.scale.set(1.15,.5,1.3);root.add(tip);
+function setTongue(len,t){
+ const pts=[],n=10;
+ for(let i=0;i<=n;i++){const u=i/n,l=u*len;
+  pts.push(new THREE.Vector3(Math.sin(t*9+u*6)*.14*u,-.5-l*.3+Math.sin(t*7+u*5)*.06*u,.7+l*.75))}
+ const g=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,.15,10,false);
+ tongue.geometry.dispose();tongue.geometry=g;
+ const e=pts[n];tip.position.copy(e);
 }
-
-window.addEventListener('DOMContentLoaded', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const roomParam = urlParams.get('room');
-  const takeParam = urlParams.get('take');
-  if (takeParam) {
-    selectedDevice = 'mobile';
-    openCode();
-    xferShowReceive();
-    document.getElementById('xfer-code-in').value = takeParam.toUpperCase();
-    setSt('xfer-recv-status', 'Zkontroluj nahoře, že tu vidíš svoje klíče, a klepni na Přijmout. Pokud tu máš 0 a čekáš víc, otevři hru v prohlížeči, kde obvykle hraješ, a zadej kód ručně.');
-  } else if (roomParam) {
-    selectedDevice = 'mobile';
-    openPvPMenu();
-    showScreen('menu-web');
-    showJoinRoom();
-    document.getElementById('join-code-input').value = roomParam;
-    joinRoom(roomParam);
-  }
-  setupTouchListeners();
-});
-
-// INICIALIZACE HRY
-function initGame(l1, l2, bg, roster) {
-  match.bg = clampIdx(bg, BACKGROUNDS.length);
-  if (roster) {
-    players = roster.map(r => {
-      const k = new Knight(r.x, r.y, r.team, cleanLoadout(r.style));
-      k.group = r.group;
-      k.ctrl = r.ctrl;
-      k.tag = r.tag || '';
-      if (r.off) { k.off = true; k.hp = 0; k.ctrl = 'ai'; }
-      k.facingRight = r.x < canvas.width / 2;
-      return k;
-    });
-    player1 = players[0];
-    player2 = players[1];
-  } else {
-    player1 = new Knight(150, canvas.height / 2, 1, cleanLoadout(l1));
-    player2 = new Knight(canvas.width - 150, canvas.height / 2, 2, cleanLoadout(l2));
-    player1.ctrl = 'p1';
-    player2.ctrl = isWebMatch ? 'net' : (gameMode === 'ai' ? 'ai' : 'p2');
-    players = [player1, player2];
-  }
-  let hk = 0;
-  players.forEach(q => { if (q.ctrl === 'ai' && !q.off) q.hunter = (hk++ % 2 === 0); });   // každý druhý počítač loví hráče
-  applyPerks(players[myIdx] || players[0], activePerks());
-  medkits = [];
-  particles = [];
-  floatingTexts = [];
-  netEvents = [];
-  pendingClientAttack = false;
-  clientTouchShield = false;
-  touchInputP1.vx = 0; touchInputP1.vy = 0;
-  gameRunning = true;
-  sceneActive = true;
-
-  const touchUI = document.getElementById('touch-controls');
-  const pcHud = document.getElementById('pc-hud-guide');
-  const myTeam = (players[myIdx] || players[0]).team;
-
-  if (selectedDevice === 'mobile') {
-    touchUI.style.setProperty('--team', TEAM[myTeam].main);
-    touchUI.classList.remove('hidden');
-    pcHud.classList.add('hidden');
-  } else {
-    touchUI.classList.add('hidden');
-    const sep = '<span class="sep">|</span>';
-    if (isWebMatch) {
-      pcHud.innerHTML = 'Pohyb <b>W A S D</b> / <b>ŠIPKY</b>' + sep + 'Meč <b>F</b> / <b>MEZERNÍK</b>' + sep + 'Štít <b>G</b> / <b>SHIFT</b>';
-    } else if (players.some(p => p.ctrl === 'p2')) {
-      pcHud.innerHTML = 'Hráč 1: <b>W A S D</b> <b>F</b> <b>G</b>' + sep + 'Hráč 2: <b>ŠIPKY</b> <b>MEZERNÍK</b> <b>SHIFT</b>';
-    } else {
-      pcHud.innerHTML = 'Pohyb <b>W A S D</b>' + sep + 'Meč <b>F</b>' + sep + 'Štít <b>G</b>';
-    }
-    pcHud.classList.remove('hidden');
-  }
-}
-
-// SPAD LÉKÁRNIČEK
-setInterval(() => {
-  if (gameRunning && medkits.length < Math.max(2, Math.ceil(players.filter(q => !q.off).length / 3))) {
-    if (!isWebMatch || isHost) {
-      medkits.push(new Medkit());
-    }
-  }
-}, 8000);
-
-// ======================================================================
-//  VSTUPY
-// ======================================================================
-window.addEventListener('keydown', e => {
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-    e.preventDefault();
-  }
-  keys[e.code] = true;
-});
-
-window.addEventListener('keyup', e => {
-  keys[e.code] = false;
-
-  if (e.code === 'KeyG') {
-    if (player1 && (!isWebMatch || isHost)) player1.isShielding = false;
-  }
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-    if (isWebMatch) {
-      if (isHost && player1) player1.isShielding = false;
-    } else {
-      players.forEach(p => { if (p.ctrl === 'p2') p.isShielding = false; });
-    }
-  }
-});
-
-window.addEventListener('blur', () => {
-  for (const k in keys) keys[k] = false;
-});
-
-// TOUCH LOGIKA (JOYSTICK & TLAČÍTKA)
-function setupTouchListeners() {
-  function handleJoystick(zoneId, knobId, inputObj) {
-    const zone = document.getElementById(zoneId);
-    const knob = document.getElementById(knobId);
-    let touchId = null;
-
-    let maxRadius = 40;
-
-    zone.addEventListener('touchstart', e => {
-      e.preventDefault();
-      if (touchId === null) {
-        const touch = e.changedTouches[0];
-        touchId = touch.identifier;
-        moveKnob(touch);
-      }
-    }, { passive: false });
-
-    zone.addEventListener('touchmove', e => {
-      e.preventDefault();
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === touchId) {
-          moveKnob(e.changedTouches[i]);
-          break;
-        }
-      }
-    }, { passive: false });
-
-    const endHandler = e => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === touchId) {
-          touchId = null;
-          knob.style.transform = `translate(0px, 0px)`;
-          inputObj.vx = 0;
-          inputObj.vy = 0;
-          break;
-        }
-      }
-    };
-
-    zone.addEventListener('touchend', endHandler);
-    zone.addEventListener('touchcancel', endHandler);
-
-    function moveKnob(touch) {
-      const rect = zone.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      maxRadius = rect.width * 0.31;
-
-      let dx = touch.clientX - centerX;
-      let dy = touch.clientY - centerY;
-      const dist = Math.hypot(dx, dy);
-
-      if (dist > maxRadius) {
-        dx = (dx / dist) * maxRadius;
-        dy = (dy / dist) * maxRadius;
-      }
-
-      knob.style.transform = `translate(${dx}px, ${dy}px)`;
-
-      const normX = dx / maxRadius;
-      const normY = dy / maxRadius;
-      const speed = (players[myIdx] && players[myIdx].speed) || 4;
-
-      inputObj.vx = Math.abs(normX) > 0.2 ? normX * speed : 0;
-      inputObj.vy = Math.abs(normY) > 0.2 ? normY * speed : 0;
-    }
-  }
-
-  handleJoystick('p1-joystick-zone', 'p1-joystick-knob', touchInputP1);
-
-  const bindAction = (btnId, onPress, onRelease) => {
-    const btn = document.getElementById(btnId);
-    btn.addEventListener('touchstart', e => {
-      e.preventDefault();
-      if (!gameRunning) return;
-      onPress();
-    }, { passive: false });
-    if (onRelease) {
-      btn.addEventListener('touchend', e => {
-        e.preventDefault();
-        onRelease();
-      });
-      btn.addEventListener('touchcancel', e => {
-        e.preventDefault();
-        onRelease();
-      });
-    }
-  };
-
-  bindAction('p1-btn-attack', () => {
-    if (!isWebMatch || isHost) player1.attack();
-    else pendingClientAttack = true;
-  });
-
-  bindAction('p1-btn-shield',
-    () => {
-      if (!isWebMatch || isHost) player1.isShielding = true;
-      else clientTouchShield = true;
-    },
-    () => {
-      if (!isWebMatch || isHost) { if (player1) player1.isShielding = false; }
-      else clientTouchShield = false;
-    }
-  );
-}
-
-function finishGame() {
-  gameRunning = false;
-  const alive = players.filter(p => p.hp > 0);
-  let msg = '';
-  if (gameMode === 'team') {
-    if (alive.length === 0) msg = 'Všichni rytíři padli!';
-    else if (teamTagged()) msg = 'Vítězí tým ' + String.fromCharCode(64 + alive[0].group) + ' – ' + TEAM[alive[0].team].name + '!';
-    else msg = 'Vítězí ' + TEAM[alive[0].team].name + ' rytíř!';
-  } else if (player1.hp > 0 && player2.hp <= 0) {
-    msg = 'Modrý rytíř ovládl arénu!';
-  } else if (player2.hp > 0 && player1.hp <= 0) {
-    msg = gameMode === 'ai' ? 'Počítač ovládl arénu!' : 'Červený rytíř ovládl arénu!';
-  } else {
-    msg = 'Oba rytíři padli!';
-  }
-  document.getElementById('winner-announcement').innerText = msg;
-  const rw = document.getElementById('key-reward');
-  const me = players[myIdx];
-  if (me && alive.length && alive[0].group === me.group) {
-    refreshShop();
-    shop.keys++;
-    saveShop();
-    updateShopLabel();
-    rw.textContent = '🔑 +1 klíč za výhru! Máš jich ' + shop.keys + '.';
-    rw.classList.remove('hidden');
-  } else {
-    rw.classList.add('hidden');
-  }
-  setWaitText(false);
-  showScreen('game-over-screen');
-}
-
-// ======================================================================
-//  LOGIKA A SOUBOJ
-// ======================================================================
-function update() {
-  if (!gameRunning) return;
-
-  if (!isWebMatch || isHost) {
-    for (const p of players) {
-      if (p.hp <= 0) { p.vx = 0; p.vy = 0; p.isShielding = false; continue; }
-
-      if (p.ctrl === 'p1') {
-        const W = isWebMatch;
-        p.vx = touchInputP1.vx;
-        p.vy = touchInputP1.vy;
-
-        if (keys['KeyA'] || (W && keys['ArrowLeft'])) { p.vx = -p.speed; }
-        else if (keys['KeyD'] || (W && keys['ArrowRight'])) { p.vx = p.speed; }
-
-        if (keys['KeyW'] || (W && keys['ArrowUp'])) { p.vy = -p.speed; }
-        else if (keys['KeyS'] || (W && keys['ArrowDown'])) { p.vy = p.speed; }
-
-        faceByVelocity(p);
-
-        if (keys['KeyG'] || (W && (keys['ShiftLeft'] || keys['ShiftRight']))) p.isShielding = true;
-        if (keys['KeyF'] || (W && keys['Space'])) p.attack();
-      } else if (p.ctrl === 'p2') {
-        p.vx = 0;
-        p.vy = 0;
-
-        if (keys['ArrowLeft']) { p.vx = -p.speed; }
-        else if (keys['ArrowRight']) { p.vx = p.speed; }
-
-        if (keys['ArrowUp']) { p.vy = -p.speed; }
-        else if (keys['ArrowDown']) { p.vy = p.speed; }
-
-        faceByVelocity(p);
-
-        if (keys['ShiftLeft'] || keys['ShiftRight']) p.isShielding = true;
-        if (keys['Space']) p.attack();
-      } else if (p.ctrl === 'ai') {
-        updateAI(p);
-      }
-      // ctrl 'net' (hráč 2 přes web) řídí data od klienta
-    }
-
-    for (const a of players) {
-      for (const d of players) {
-        if (a !== d && a.hp > 0 && d.hp > 0) checkShieldSolidBlock(a, d);
-      }
-    }
-
-    players.forEach(p => p.update());
-
-    for (let i = medkits.length - 1; i >= 0; i--) {
-      const m = medkits[i];
-      m.update();
-      for (const p of players) {
-        if (p.hp <= 0) continue;
-        if (Math.hypot(p.x - m.x, p.y - m.y) < p.radius + m.size) {
-          p.hp = Math.min(p.maxHp, p.hp + 10);
-          createFloatingText('+10 HP', p.x, p.y - 52, '#86efac');
-          medkits.splice(i, 1);
-          break;
-        }
-      }
-    }
-
-    if (isWebMatch && isHost) {
-      sendNetworkSync();
-    }
-  } else {
-    // --- KLIENT (kamarád přes web): posílá vstupy, kreslí stav od hostitele ---
-    const me = players[myIdx];
-    if (me) {
-      me.vx = touchInputP1.vx;
-      me.vy = touchInputP1.vy;
-
-      if (keys['KeyA'] || keys['ArrowLeft']) { me.vx = -me.speed; }
-      else if (keys['KeyD'] || keys['ArrowRight']) { me.vx = me.speed; }
-
-      if (keys['KeyW'] || keys['ArrowUp']) { me.vy = -me.speed; }
-      else if (keys['KeyS'] || keys['ArrowDown']) { me.vy = me.speed; }
-
-      faceByVelocity(me);
-
-      me.isShielding = clientTouchShield || !!(keys['KeyG'] || keys['ShiftLeft'] || keys['ShiftRight']);
-
-      const clientAttackTrigger = pendingClientAttack || !!(keys['KeyF'] || keys['Space']);
-      pendingClientAttack = false;
-
-      sendNetworkSync(clientAttackTrigger);
-    }
-    players.forEach(p => p.clientVisualUpdate());
-  }
-
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx; p.y += p.vy; p.life--;
-    if (p.life <= 0) particles.splice(i, 1);
-  }
-  for (let i = floatingTexts.length - 1; i >= 0; i--) {
-    const t = floatingTexts[i];
-    t.y -= 0.8; t.life--;
-    if (t.life <= 0) floatingTexts.splice(i, 1);
-  }
-
-  // KONTROLA VÍTĚZSTVÍ: končí, když zbude jen jeden tým (nebo nikdo)
-  const alive = players.filter(p => p.hp > 0);
-  if (alive.length === 0 || alive.every(p => p.group === alive[0].group)) {
-    finishGame();
-  }
-}
-
-function checkShieldSolidBlock(attacker, defender) {
-  if (!defender.isShielding) return;
-  const dir = defender.facingRight ? 1 : -1;
-  const shieldX = defender.x + dir * 20;
-
-  const dist = Math.hypot(attacker.x - shieldX, attacker.y - defender.y);
-  if (dist < attacker.radius + 15) {
-    const angle = Math.atan2(attacker.y - defender.y, attacker.x - shieldX);
-    attacker.x = shieldX + Math.cos(angle) * (attacker.radius + 16);
-    attacker.y = defender.y + Math.sin(angle) * (attacker.radius + 16);
-  }
-}
-
-// AI: jde po nejbližším protivníkovi (spoluhráče nechává na pokoji)
-function updateAI(p) {
-  let target = null, best = Infinity;
-  // "Lovci" jdou hned po živých lidech; ostatní počítače bojují s nejbližším soupeřem
-  const foes = players.filter(o => o.group !== p.group && o.hp > 0);
-  const humans = foes.filter(o => o.ctrl !== 'ai');
-  const pool = (p.hunter && humans.length) ? humans : foes;
-  for (const o of pool) {
-    const d = Math.hypot(o.x - p.x, o.y - p.y);
-    if (d < best) { best = d; target = o; }
-  }
-  if (!target) { p.vx = 0; p.vy = 0; return; }
-
-  const dx = target.x - p.x;
-  const dist = best;
-
-  // Postaví se vedle soupeře (na stranu, kam míří meč). Díky tomu se nezasekne, když stojí přímo nad ním.
-  const side = dx > 0 ? -1 : (dx < 0 ? 1 : (p.team % 2 ? -1 : 1));
-  p.facingRight = side < 0;
-  let speedMod = aiDifficulty === 'easy' ? 0.5 : (aiDifficulty === 'medium' ? 0.75 : 1);
-  const gx = target.x + side * 45, gy = target.y;
-  const gdx = gx - p.x, gdy = gy - p.y, gd = Math.hypot(gdx, gdy);
-
-  if (gd > 6) {
-    p.vx = (gdx / gd) * p.speed * speedMod;
-    p.vy = (gdy / gd) * p.speed * speedMod;
-  } else {
-    p.vx = 0;
-    p.vy = 0;
-  }
-
-  // Počítač nezablokuje každý útok (jinak by se dva počítače donekonečna střídavě kryly štítem)
-  if (target.isAttacking) {
-    if (!p.aiSeen) { p.aiSeen = true; p.aiBlock = Math.random() < (aiDifficulty === 'hard' ? 0.8 : 0.55); }
-  } else {
-    p.aiSeen = false;
-  }
-  if (dist < 70) {
-    if (target.isAttacking && aiDifficulty !== 'easy' && p.aiBlock) {
-      p.isShielding = true;
-    } else {
-      p.isShielding = false;
-      p.attack();
-    }
-  } else {
-    p.isShielding = false;
-  }
-}
-
-// ======================================================================
-//  VYKRESLENÍ
-// ======================================================================
-function hudLabel(p) {
-  let nm = TEAM[p.team].name;
-  const mates = players.filter(q => q.group === p.group && !q.off);
-  if (mates.length > 1) nm += ' ' + (mates.indexOf(p) + 1);
-  let t;
-  if (isWebMatch) t = players.indexOf(p) === myIdx ? 'TY' : (p.ctrl === 'ai' ? 'POČÍTAČ' : 'KAMARÁD');
-  else t = p.ctrl === 'p1' ? 'TY' : (p.ctrl === 'p2' ? 'HRÁČ 2' : 'POČÍTAČ');
-  if (gameMode === 'team' && teamTagged()) t += ' · TÝM ' + String.fromCharCode(64 + p.group);
-  return nm + ' · ' + t;
-}
-
-function drawHUD() {
-  const k = Math.min(1.45, Math.max(1, canvas.width / (canvas.clientWidth || canvas.width)));
-  const W = canvas.width / k;
-  const act = players.filter(q => !q.off);
-  const n = act.length;
-  const big = n > 4;                    // 5–8 bojovníků: ukazatele ve dvou řadách přes celou šířku
-  const used = [0, 0];
-  ctx.save();
-  ctx.scale(k, k);
-  act.forEach((p, i) => {
-    const T = TEAM[p.team];
-    let x, y, w, h, left;
-    if (big) {
-      const m = 12, gap = 8, cols = 4;
-      w = (W - 2 * m - (cols - 1) * gap) / cols; h = 9; left = true;
-      x = m + (i % cols) * (w + gap);
-      y = 22 + Math.floor(i / cols) * 26;
-    } else {
-      const side = n === 2 ? i : (n === 3 ? (i === 0 ? 0 : 1) : (i < 2 ? 0 : 1));
-      left = side === 0;
-      const row = used[side]++;
-      w = 220; h = 11;
-      x = left ? 16 : W - 16 - w;
-      y = 27 + row * 27;
-    }
-    const lab = hudLabel(p);
-
-    ctx.font = '800 ' + (big ? 9 : 11) + 'px ' + FONT;
-    ctx.textBaseline = 'alphabetic';
-    ctx.textAlign = left ? 'left' : 'right';
-    const tx = left ? x : x + w;
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineJoin = 'round';
-    ctx.strokeText(lab, tx, y - 5);
-    ctx.fillStyle = T.light;
-    ctx.fillText(lab, tx, y - 5);
-
-    ctx.fillStyle = 'rgba(6,9,16,.6)';
-    rr(ctx, x, y, w, h, h / 2); ctx.fill();
-    const f = Math.max(0, p.hp / p.maxHp);
-    if (f > 0) {
-      const fw = Math.max(h, w * f);
-      const fx = left ? x : x + w - fw;
-      const gr = ctx.createLinearGradient(fx, 0, fx + fw, 0);
-      if (left) { gr.addColorStop(0, T.dark); gr.addColorStop(1, T.main); }
-      else { gr.addColorStop(0, T.main); gr.addColorStop(1, T.dark); }
-      ctx.fillStyle = gr;
-      rr(ctx, fx, y, fw, h, h / 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.22)';
-      rr(ctx, fx + 2, y + 1.5, Math.max(0, fw - 4), 3, 1.5); ctx.fill();
-    }
-    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1.2;
-    rr(ctx, x, y, w, h, h / 2); ctx.stroke();
-
-    ctx.font = '800 ' + (big ? 8 : 10) + 'px ' + FONT;
-    ctx.textAlign = left ? 'right' : 'left';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(String(Math.ceil(p.hp)), left ? x + w - 6 : x + 7, y + h - 1.5);
-  });
-  ctx.restore();
-}
-
-function render() {
-  const bgIdx = sceneActive ? match.bg : settings.bg;
-  ctx.drawImage(getBackground(bgIdx), 0, 0);
-  if (!sceneActive || !player1 || !player2) return;
-
-  drawHUD();
-
-  medkits.forEach(m => m.draw());
-  players.filter(p => p.hp > 0).sort((a, b) => a.y - b.y).forEach(p => p.draw());
-
-  particles.forEach(p => {
-    const a = Math.max(0, p.life / 16);
-    ctx.globalAlpha = a;
-    ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 2 + 2 * a, 0, Math.PI * 2); ctx.fill();
-  });
-  ctx.globalAlpha = 1;
-
-  ctx.font = '800 16px ' + FONT;
-  ctx.textAlign = 'center';
-  ctx.lineJoin = 'round';
-  floatingTexts.forEach(t => {
-    ctx.globalAlpha = Math.min(1, t.life / 14);
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.6)';
-    ctx.strokeText(t.text, t.x, t.y);
-    ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y);
-  });
-  ctx.globalAlpha = 1;
-}
-
-// HERNÍ SMYČKA – pevných 60 kroků za sekundu bez ohledu na obnovovací frekvenci displeje
-const STEP_MS = 1000 / 60;
-let lastTime = 0;
-let accumulator = 0;
-
-function gameLoop(ts) {
-  if (!lastTime) lastTime = ts;
-  accumulator += Math.min(ts - lastTime, 250);
-  lastTime = ts;
-
-  let steps = 0;
-  while (accumulator >= STEP_MS && steps < 5) {
-    update();
-    accumulator -= STEP_MS;
-    steps++;
-  }
-  if (steps === 5) accumulator = 0;
-
-  render();
-  requestAnimationFrame(gameLoop);
-}
-
-requestAnimationFrame(gameLoop);
+let t0=0,was=false;
+function loop(ms){requestAnimationFrame(loop);
+ if(!cvs.classList.contains('on')){was=false;return}
+ if(!was){was=true;t0=ms}
+ const t=(ms-t0)/1000,e=1-Math.pow(1-Math.min(1,t),3);
+ root.position.z=-2.5+e*2.4;root.position.y=Math.sin(t*3)*.05;
+ root.rotation.y=Math.sin(t*1.7)*.25;root.rotation.z=Math.sin(t*2.3)*.07;
+ root.scale.setScalar(1+Math.sin(t*5)*.015+Math.max(0,t-2.5)*.07);
+ jaw.rotation.x=.3+.5*Math.min(1,t/1.1)+.12*Math.sin(t*10);
+ setTongue(.3+Math.max(0,Math.min(1,(t-.8)/.9))*1.6,t);
+ eyeMat.emissiveIntensity=1+.4*Math.sin(t*14);
+ R.render(S,C)}
+requestAnimationFrame(loop);
+})();
 </script>
-</body>
-</html>
+</body></html>
