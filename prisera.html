@@ -47,7 +47,12 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .big{display:block;width:min(100%,360px);border-radius:20px;text-align:left;padding:16px 18px;background:#ffffff14;color:var(--ink);border:2px solid #f3ecd833}
 .big small{display:block;font-weight:400;opacity:.8;margin-top:4px;line-height:1.4}
 .big.scary{border-color:var(--mon)}
+.big.duo{border-color:var(--ok)}
 #modebtn{position:fixed;right:16px;bottom:calc(30px + env(safe-area-inset-bottom,0px));z-index:3;width:48px;height:48px;padding:0;border-radius:50%;background:#000a;color:var(--ink);border:2px solid #f3ecd855;font-size:1.3rem;line-height:1}
+
+/* ===== Dva hráči ===== */
+#mpcode{font:inherit;font-size:1.3rem;text-align:center;width:min(100%,300px);padding:12px 16px;border-radius:14px;border:2px solid #f3ecd855;background:#ffffff14;color:var(--ink)}
+.ghost{background:transparent;color:var(--ink);border:2px solid #f3ecd855}
 
 /* ===== Režim Strašení příšer ===== */
 #sc{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:2;touch-action:none;background:#000}
@@ -104,8 +109,8 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
     <li><b>Konec hry.</b> Pokud čas vyprší, příšera tě dostane. Skóre je počet příšer, které jsi přežil.</li>
   </ol>
   <div class="tips"><b>Tipy:</b> Vyber domeček s výrazným vzorem, ne jen holou zeď. Při focení ho zaměř podobně jako poprvé. Nastavení „Shoda domečků“ nahoře můžeš upravit: nižší procento = hra je snazší. Zapni si zvuk.</div>
-  <div class="tips"><b>Dva režimy:</b> Po potvrzení si vybereš, jestli budeš utíkat před příšerou, nebo budeš příšery strašit: vyfotíš předmět s dírou a z ní vyleze příšera ve strašidelném videu, které si můžeš uložit.</div>
-  <div class="tips warnbox"><b>Bezpečí:</b> Neběhej, dávej pozor na schody, nábytek a ostatní lidi. Hraj jen doma a v klidu. Kamera se nikam neodesílá a nic se neukládá, fotky se používají jen přímo ve hře.</div>
+  <div class="tips"><b>Tři režimy:</b> Po potvrzení si vybereš: utíkat před příšerou sám, hrát ve dvou (každý na svém telefonu, příšera přijde oběma najednou a počítá se, kdo vyhrál víc kol), nebo příšery strašit: vyfotíš předmět s dírou a z ní vyleze příšera ve strašidelném videu, které si můžeš uložit.</div>
+  <div class="tips warnbox"><b>Bezpečí:</b> Neběhej, dávej pozor na schody, nábytek a ostatní lidi. Hraj jen doma a v klidu. Kamera se nikam neodesílá a nic se neukládá, fotky se používají jen přímo ve hře. Ve hře ve dvou se druhému hráči posílá jen zmenšený náhled domečku.</div>
   <button id="go">Rozumím, zapnout kameru</button>
   <p id="err" style="color:var(--mon)"></p>
 </div></div>
@@ -113,7 +118,17 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 <div class="screen" id="modes" hidden><div class="in">
   <h1>Vyber režim</h1>
   <button class="big" id="m1"><b>Útěk před příšerou</b><small>Vyfoť domeček a vrať se k němu dřív, než tě příšera dostane.</small></button>
+  <button class="big duo" id="m3"><b>Dva hráči</b><small>Každý na svém telefonu. Jeden vyfotí domeček, příšera se objeví oběma najednou. Kdo je rychlejší, bere kolo.</small></button>
   <button class="big scary" id="m2"><b>Strašení příšer</b><small>Vyfoť předmět s dírou. Z díry vyleze příšera a vygeneruje se strašidelné video, které můžeš uložit.</small></button>
+</div></div>
+
+<div class="screen" id="mpjoin" hidden><div class="in">
+  <h1>Dva hráči</h1>
+  <p>Oba otevřete tuhle hru a zadejte stejný kód. Potom jeden z vás vyfotí domeček a druhý ho najde.</p>
+  <input id="mpcode" maxlength="12" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="kód hry (např. kocka7)" aria-label="Kód hry">
+  <button id="mpgo">Připojit</button>
+  <button id="mpback" class="ghost">Zpět</button>
+  <p id="mperr" style="color:var(--mon)"></p>
 </div></div>
 
 <div class="screen" id="over" hidden><div class="in">
@@ -546,6 +561,7 @@ function lose(){
 }
 
 $('#shutter').onclick=()=>{
+  if(MP.on){mpShutter();return}
   if(state==='scare-shoot'){scareShot();return}
   const g=grab();if(!g)return;
   if(state==='setup'){
@@ -597,7 +613,7 @@ function scareCleanup(){
   SC.blob=null;$('#rvv').removeAttribute('src');
 }
 function stopAll(){
-  clearAll();clearInterval(window.mt);scareCleanup();
+  clearAll();clearInterval(window.mt);scareCleanup();mpCleanup();
   $('#hud').hidden=true;$('#shutter').hidden=true;$('#modebtn').hidden=true;
   $('#bar').style.display='none';$('#match').style.display='none';$('#tune').hidden=true;
   $('#mon').classList.remove('on');$('#mon').style.transform='';$('#vig').classList.remove('warn');
@@ -606,8 +622,173 @@ function stopAll(){
 function showModes(){stopAll();state='modes';$('#modes').hidden=false}
 $('#m1').onclick=()=>{$('#modes').hidden=true;stopAll();setup()};
 $('#m2').onclick=()=>{$('#modes').hidden=true;scareStart()};
+$('#m3').onclick=()=>{$('#modes').hidden=true;mpStart()};
 $('#modebtn').onclick=showModes;
 $('#chmode').onclick=()=>{$('#over').hidden=true;showModes()};
+
+// ================== DVA HRÁČI (každý na svém telefonu, přes room) ==================
+// Hostitel = ten, kdo vyfotí domeček. Hostitel řídí kola a rozhoduje o výsledku.
+const MP={on:false,room:null,code:'',host:false,ack:false,ref:null,thumb:'',round:0,r:0,resolved:0,phase:'',left:4,hitLeft:null,oppHitLeft:null,hw:0,gw:0,mw:0,unsub:[],timers:[],tick:null,refTimer:0,gto:0};
+
+function encRef(g){let s='';for(let i=0;i<768;i++)s+=String.fromCharCode(Math.round(cl((g[i]+4)/8,0,1)*255));return btoa(s)}
+function decRef(b){
+  const s=atob(b);if(s.length!==768)throw 0;
+  const g=new Float32Array(768);let m=0;
+  for(let i=0;i<768;i++){g[i]=s.charCodeAt(i)/255*8-4;m+=g[i]}
+  m/=768;let q=0;for(let i=0;i<768;i++){g[i]-=m;q+=g[i]*g[i]}
+  q=Math.sqrt(q/768)||1;for(let i=0;i<768;i++)g[i]/=q;return g;
+}
+function mkThumb(){
+  const t=document.createElement('canvas');t.width=72;t.height=54;
+  const w=v.videoWidth,h=v.videoHeight;let sw=w,sh=w*.75;if(sh>h){sh=h;sw=h/.75}
+  t.getContext('2d').drawImage(v,(w-sw)/2,(h-sh)/2,sw,sh,0,0,72,54);
+  let q=.5,u;do{u=t.toDataURL('image/jpeg',q);q-=.1}while(u.length>3400&&q>.15);return u;
+}
+function myPeer(){try{const p=MP.room.peers().find(x=>x.sameTab);return p?p.peer:''}catch(e){return ''}}
+function emitMP(t,d){try{if(MP.room)Promise.resolve(MP.room.emit(t,d)).catch(()=>{})}catch(e){}}
+
+function mpCleanup(){
+  MP.timers.forEach(clearTimeout);MP.timers=[];clearTimeout(MP.gto);clearInterval(MP.tick);clearInterval(MP.refTimer);
+  MP.unsub.forEach(f=>{try{f()}catch(e){}});MP.unsub=[];
+  if(MP.room){try{Promise.resolve(MP.room.leave()).catch(()=>{})}catch(e){}MP.room=null}
+  MP.on=false;MP.host=false;MP.ack=false;MP.phase='';MP.ref=null;
+  $('#mpjoin').hidden=true;
+}
+
+function mpStart(){
+  stopAll();state='mp-join';
+  $('#mperr').textContent='';$('#mpjoin').hidden=false;
+}
+$('#mpback').onclick=()=>{$('#mpjoin').hidden=true;showModes()};
+$('#mpgo').onclick=async()=>{
+  const code=($('#mpcode').value||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12);
+  if(code.length<3){$('#mperr').textContent='Zadej aspoň 3 znaky kódu (písmena a čísla bez diakritiky).';return}
+  $('#mperr').textContent='Připojuji…';
+  let room=null;
+  try{const r=await claude.use('room');if(r)room=await r.join('dm-'+code)}catch(e){room=null}
+  if(!room){$('#mperr').textContent='Nepodařilo se připojit. Hra ve dvou funguje jen pro přihlášené, kterým je stránka sdílená (s právem přispívat).';return}
+  mpCleanup();
+  Object.assign(MP,{on:true,room:room,code:code,host:false,ack:false,ref:null,thumb:'',round:0,r:0,resolved:0,hw:0,gw:0,mw:0,hitLeft:null,oppHitLeft:null});
+  $('#mpjoin').hidden=true;state='mp-wait';ref=null;
+  const on=(t,f)=>MP.unsub.push(room.on(t,m=>{if(m.isMe)return;f(m,m.data||{})}));
+  on('ref',(m,d)=>mpGotRef(m,d));
+  on('thumb',(m,d)=>{if(typeof d.u==='string'&&d.u.length<4500&&d.u.startsWith('data:image/jpeg;base64,'))$('#thumb').src=d.u});
+  on('ack',()=>{if(!MP.host||MP.ack)return;MP.ack=true;if(state==='mp-play')mpHostRound()});
+  on('warn',()=>{if(!MP.host)mpWarn()});
+  on('attack',(m,d)=>{if(!MP.host&&state==='mp-play'&&typeof d.r==='number')mpAttack(d.r)});
+  on('hit',(m,d)=>{if(!MP.host||d.r!==MP.r||typeof d.l!=='number'||MP.phase!=='attack')return;MP.oppHitLeft=cl(d.l,0,4);mpHostMaybe()});
+  on('result',(m,d)=>{if(MP.host||typeof d.r!=='number')return;mpShowResult({r:d.r,w:d.w,hw:+d.hw||0,gw:+d.gw||0,mw:+d.mw||0})});
+  MP.unsub.push(room.onPeers(()=>{if(state==='mp-wait')mpWaitMsg()}));
+  $('#shutter').hidden=false;$('#modebtn').hidden=false;
+  mpWaitMsg();
+};
+function mpWaitMsg(){
+  let n=0;try{n=MP.room.peers().filter(p=>!p.isMe&&p.kind==='viewer').length}catch(e){}
+  say(n?'Soupeř je tady. Jeden z vás vyfotí domeček, druhý počká.':'Čekám na soupeře. Kód hry: '+MP.code);
+}
+function mpScore(){
+  const mine=MP.host?MP.hw:MP.gw,opp=MP.host?MP.gw:MP.hw;
+  $('#score').textContent='Ty '+mine+' : '+opp+' Soupeř'+(MP.mw?' · příšera '+MP.mw:'');
+}
+function mpSendRef(){if(!MP.ref)return;emitMP('ref',{g:encRef(MP.ref)});emitMP('thumb',{u:MP.thumb})}
+function mpEnterPlay(){
+  state='mp-play';
+  clearInterval(window.mt);window.mt=setInterval(()=>{if(!MP.ref||!MP.on||MP.phase==='attack')return;const g=grab();if(g)$('#match').textContent='Shoda: '+Math.round(sim(g,MP.ref)*100)+' %'},300);
+  mpIdle();
+}
+function mpIdle(){
+  state='mp-play';MP.phase='wait';
+  $('#mon').classList.remove('on');$('#mon').style.transform='';$('#vig').classList.remove('warn');
+  $('#shutter').hidden=true;$('#bar').style.display='none';$('#match').style.display='block';$('#tune').hidden=false;$('#hud').hidden=false;$('#modebtn').hidden=false;
+  say(MP.host&&!MP.ack?'Čekám, až soupeř potvrdí domeček…':'Schovej se. Příšera přijde oběma najednou…');
+  mpScore();
+}
+function mpShutter(){
+  if(state==='mp-wait'){
+    const g=grab();if(!g)return;
+    MP.host=true;MP.ref=g;ref=g;MP.thumb=mkThumb();$('#thumb').src=MP.thumb;beep(660,.15);
+    mpSendRef();clearInterval(MP.refTimer);MP.refTimer=setInterval(mpSendRef,2500);
+    mpEnterPlay();return;
+  }
+  if(state==='mp-attack'&&MP.phase==='attack'&&MP.hitLeft==null){
+    const g=grab();if(!g)return;
+    if(sim(g,MP.ref)>=thr){
+      MP.hitLeft=cl(MP.left,0,4);clearInterval(MP.tick);
+      beep(880,.25);buzz(60);
+      $('#mon').classList.remove('on');$('#vig').classList.remove('warn');$('#shutter').hidden=true;$('#bar').style.display='none';
+      say('Stihl jsi to! Čekám na soupeře…');
+      if(MP.host)mpHostMaybe();else emitMP('hit',{r:MP.r,l:+MP.hitLeft.toFixed(2)});
+    }else fail('');
+  }
+}
+function mpGotRef(m,d){
+  if(typeof d.g!=='string'||d.g.length>1100)return;
+  if(MP.host){ // oba vyfotili současně: vyhrává nižší id
+    if(!(m.peer<myPeer()))return;
+    MP.host=false;clearInterval(MP.refTimer);MP.timers.forEach(clearTimeout);MP.timers=[];
+  }
+  let g;try{g=decRef(d.g)}catch(e){return}
+  const first=!MP.ref||state==='mp-wait';
+  MP.ref=g;ref=g;
+  if(state==='mp-wait'){beep(660,.15);mpEnterPlay()}
+  emitMP('ack',{});
+}
+function mpWarn(){$('#vig').classList.add('warn');buzz([80,60,80]);beep(70,.6,'sawtooth',.2)}
+function mpHostRound(){
+  if(!MP.on||!MP.host||!MP.ack)return;
+  MP.round++;const r=MP.round;
+  mpIdle();
+  const delay=(5+Math.random()*25)*1000;
+  MP.timers.push(setTimeout(()=>{if(!MP.on)return;mpWarn();emitMP('warn',{r})},Math.max(delay-2000,3000)));
+  MP.timers.push(setTimeout(()=>{if(!MP.on)return;mpAttack(r);emitMP('attack',{r})},Math.max(delay,5000)));
+}
+function mpAttack(r){
+  MP.r=r;MP.hitLeft=null;MP.oppHitLeft=null;MP.phase='attack';MP.left=4;state='mp-attack';
+  $('#modebtn').hidden=true;$('#tune').hidden=true;$('#shutter').hidden=false;$('#bar').style.display='block';$('#match').style.display='block';
+  $('#bar i').style.width='100%';
+  $('#mon').style.transform='';$('#mon').classList.add('on');buzz([300,100,300]);beep(110,.5,'square',.2);beep(180,.9,'sawtooth',.12);setTimeout(()=>beep(95,.7,'sawtooth',.2),250);
+  say('Najdi domeček a vyfoť ho dřív než soupeř!');
+  let last=performance.now();
+  clearInterval(MP.tick);
+  MP.tick=setInterval(()=>{
+    const now=performance.now();MP.left-=(now-last)/1000;last=now;
+    $('#bar i').style.width=Math.max(0,MP.left/4*100)+'%';
+    const g=grab();if(g&&MP.ref)$('#match').textContent='Shoda: '+Math.round(sim(g,MP.ref)*100)+' %';
+    if(MP.left<=0){clearInterval(MP.tick);mpTimeout()}
+  },100);
+  clearTimeout(MP.gto);
+  if(MP.host)MP.timers.push(setTimeout(mpHostResolve,4800));
+  else MP.gto=setTimeout(()=>{if(MP.phase==='attack'){say('Výsledek nedorazil, hraje se dál.');mpIdle()}},9000);
+}
+function mpTimeout(){
+  if(MP.hitLeft!=null)return;
+  $('#mon').style.transform='translate(-50%,-50%) scale(2.2)';buzz(600);beep(60,.9,'sawtooth',.3);
+  $('#shutter').hidden=true;say('Příšera tě dostala! Čekám na výsledek…');
+  setTimeout(()=>{if(MP.phase==='attack'){$('#mon').style.transform='';$('#mon').classList.remove('on')}},900);
+}
+function mpHostMaybe(){if(MP.hitLeft!=null&&MP.oppHitLeft!=null)mpHostResolve()}
+function mpHostResolve(){
+  if(!MP.on||!MP.host||MP.resolved===MP.r||MP.phase!=='attack')return;
+  MP.resolved=MP.r;
+  const a=MP.hitLeft,b=MP.oppHitLeft;let w='none';
+  if(a!=null&&b!=null)w=a>=b?'host':'guest';else if(a!=null)w='host';else if(b!=null)w='guest';
+  if(w==='host')MP.hw++;else if(w==='guest')MP.gw++;else MP.mw++;
+  const d={r:MP.r,w:w,hw:MP.hw,gw:MP.gw,mw:MP.mw};
+  emitMP('result',d);mpShowResult(d);
+  MP.timers.push(setTimeout(mpHostRound,3500));
+}
+function mpShowResult(d){
+  clearTimeout(MP.gto);clearInterval(MP.tick);
+  MP.phase='result';MP.hw=d.hw;MP.gw=d.gw;MP.mw=d.mw;
+  $('#mon').classList.remove('on');$('#mon').style.transform='';$('#vig').classList.remove('warn');
+  $('#shutter').hidden=true;$('#bar').style.display='none';
+  const me=MP.host?'host':'guest';
+  if(d.w===me){say('Vyhrál jsi kolo!');beep(880,.25);buzz(60)}
+  else if(d.w==='none'){say('Příšera sežrala oba!');buzz(400)}
+  else{say('Kolo bere soupeř.');beep(200,.3,'square')}
+  mpScore();
+  if(!MP.host)MP.timers.push(setTimeout(()=>{if(MP.phase==='result')mpIdle()},3000));
+}
 
 // ================== REŽIM STRAŠENÍ PŘÍŠER ==================
 function scareStart(){
