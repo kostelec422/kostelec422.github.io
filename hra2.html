@@ -534,7 +534,7 @@ input[type="number"]:focus { border-color: var(--accent); }
         <button class="choice" onclick="openCode()"><svg class="ic"><use href="#i-refresh"/></svg>Můj kód<small>přenos klíčů na jiné zařízení</small></button>
         <button class="choice" onclick="openBank()"><svg class="ic"><use href="#i-shield"/></svg>Banka<small id="bank-label">v bance 0 klíčů</small></button>
       </div>
-      <p class="version">VERZE 9 · množství klíčů</p>
+      <p class="version">VERZE 10 · převod klíčů bez QR</p>
     </div>
   </div>
 
@@ -598,9 +598,8 @@ input[type="number"]:focus { border-color: var(--accent); }
             </div>
             <div id="xfer-code-box" class="hidden">
               <p id="xfer-amount-sent" class="lead" style="margin:10px 0 0;text-align:center;font-weight:800;color:var(--accent)"></p>
-              <p class="lead" style="margin:6px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
+              <p class="lead" style="margin:6px 0 0">Na druhém zařízení otevři hru ve svém obvyklém prohlížeči, klikni na <b>Přijmout klíče</b> a zadej tento kód ručně:</p>
               <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
-              <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
             </div>
             <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
           </div>
@@ -972,8 +971,6 @@ function xferStartSend(amountArg) {
   let used = false;
   pr.on('open', () => {
     setSt('xfer-send-status', 'Čekám na druhé zařízení...');
-    document.getElementById('xfer-qr').innerHTML = '';
-    new QRCode(document.getElementById('xfer-qr'), { text: window.location.href.split('?')[0] + '?take=' + code, width: 120, height: 120 });
   });
   pr.on('connection', (c) => {
     if (used) { try { c.close(); } catch (e) {} return; }
@@ -1013,6 +1010,13 @@ function xferShowReceive() {
 function xferReceive(auto) {
   const code = String(typeof auto === 'string' ? auto : val('xfer-code-in')).trim().toUpperCase();
   if (code.length < 4) { setSt('xfer-recv-status', 'Zadej kód z prvního zařízení.', false); return; }
+  refreshShop();
+  if (shop.keys === 0 && shop.bank === 0 && typeof auto !== 'string' && !window.__xferWarned) {
+    window.__xferWarned = true;
+    setSt('xfer-recv-status', '⚠ V tomto prohlížeči máš 0 klíčů. Pokud máš klíče jinde, otevři hru v prohlížeči, kde obvykle hraješ, a zadej kód tam. Chceš-li přijmout i tak, klepni na Přijmout ještě jednou.', false);
+    return;
+  }
+  window.__xferWarned = false;
   closeXfer();
   setSt('xfer-recv-status', 'Připojuji se...');
   const pr = new Peer();
