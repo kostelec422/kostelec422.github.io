@@ -140,6 +140,7 @@ button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 </div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
 <!-- Animační engine pro režim Strašení příšer (kreslí na 2D canvas, žádné další knihovny) -->
 <script id="fx">
@@ -647,6 +648,47 @@ function mkThumb(){
 function myPeer(){try{const p=MP.room.peers().find(x=>x.sameTab);return p?p.peer:''}catch(e){return ''}}
 function emitMP(t,d){try{if(MP.room)Promise.resolve(MP.room.emit(t,d)).catch(()=>{})}catch(e){}}
 
+// Spojení: PeerJS (přímo mezi telefony, bez přihlášení). Kdo kód zadá první, je „hub“, druhý se k němu připojí.
+// Když PeerJS nejde (např. uvnitř stránky na claude.ai), zkusí se sdílená místnost Claude.
+function mpConnect(code){
+  return new Promise(resolve=>{
+    let done=false;const fin=r=>{if(!done){done=true;clearTimeout(to);resolve(r)}};
+    const viaClaude=async()=>{try{const r=await claude.use('room');fin(r?await r.join('dm-'+code):null)}catch(e){fin(null)}};
+    let pr=null,me='me',to=0;
+    const kill=()=>{try{pr&&pr.destroy()}catch(e){}pr=null};
+    if(!window.Peer){viaClaude();return}
+    const handlers={},cbs=[],conns=[];
+    const notify=()=>cbs.slice().forEach(f=>{try{f({})}catch(e){}});
+    const api={
+      emit(t,d){conns.forEach(c=>{try{if(c.open)c.send({t:t,d:d})}catch(e){}});return Promise.resolve()},
+      on(t,f){(handlers[t]=handlers[t]||[]).push(f);return()=>{handlers[t]=(handlers[t]||[]).filter(x=>x!==f)}},
+      peers(){const a=[{peer:me,isMe:true,sameTab:true,kind:'viewer'}];conns.forEach(c=>{if(c.open)a.push({peer:c.peer,isMe:false,sameTab:false,kind:'viewer'})});return a},
+      onPeers(f){cbs.push(f);return()=>{const i=cbs.indexOf(f);if(i>=0)cbs.splice(i,1)}},
+      leave(){kill();return Promise.resolve()}
+    };
+    const attach=c=>{
+      if(conns.length>=1){try{c.close()}catch(e){}return}
+      conns.push(c);
+      c.on('open',()=>{fin(api);notify()});
+      c.on('data',m=>{if(!m||typeof m.t!=='string')return;(handlers[m.t]||[]).slice().forEach(f=>{try{f({topic:m.t,data:m.d,peer:c.peer,isMe:false,sameTab:false,kind:'viewer'})}catch(e){}})});
+      c.on('close',()=>{const i=conns.indexOf(c);if(i>=0)conns.splice(i,1);notify()});
+    };
+    const id='DM-'+code.toUpperCase();
+    const asGuest=()=>{
+      kill();pr=new Peer();
+      pr.on('open',pid=>{me=pid;attach(pr.connect(id,{reliable:true}))});
+      pr.on('error',()=>{if(!done){kill();viaClaude()}});
+    };
+    to=setTimeout(()=>{if(!done){kill();viaClaude()}},9000);
+    try{
+      pr=new Peer(id);
+      pr.on('open',pid=>{me=pid;fin(api)});
+      pr.on('connection',attach);
+      pr.on('error',e=>{if(done)return;if(e&&e.type==='unavailable-id')asGuest();else{kill();viaClaude()}});
+    }catch(e){viaClaude()}
+  });
+}
+
 function mpCleanup(){
   MP.timers.forEach(clearTimeout);MP.timers=[];clearTimeout(MP.gto);clearInterval(MP.tick);clearInterval(MP.refTimer);
   MP.unsub.forEach(f=>{try{f()}catch(e){}});MP.unsub=[];
@@ -665,8 +707,8 @@ $('#mpgo').onclick=async()=>{
   if(code.length<3){$('#mperr').textContent='Zadej aspoň 3 znaky kódu (písmena a čísla bez diakritiky).';return}
   $('#mperr').textContent='Připojuji…';
   let room=null;
-  try{const r=await claude.use('room');if(r)room=await r.join('dm-'+code)}catch(e){room=null}
-  if(!room){$('#mperr').textContent='Nepodařilo se připojit. Hra ve dvou funguje jen pro přihlášené, kterým je stránka sdílená (s právem přispívat).';return}
+  try{room=await mpConnect(code)}catch(e){room=null}
+  if(!room){$('#mperr').textContent='Nepodařilo se připojit. Zkontroluj internet a kód a zkus to znovu.';return}
   mpCleanup();
   Object.assign(MP,{on:true,room:room,code:code,host:false,ack:false,ref:null,thumb:'',round:0,r:0,resolved:0,hw:0,gw:0,mw:0,hitLeft:null,oppHitLeft:null});
   $('#mpjoin').hidden=true;state='mp-wait';ref=null;
