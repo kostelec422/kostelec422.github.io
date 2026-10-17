@@ -1,4 +1,4 @@
-+<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
@@ -598,9 +598,8 @@ input[type="number"]:focus { border-color: var(--accent); }
             </div>
             <div id="xfer-code-box" class="hidden">
               <p id="xfer-amount-sent" class="lead" style="margin:10px 0 0;text-align:center;font-weight:800;color:var(--accent)"></p>
-              <p class="lead" style="margin:6px 0 0">Na druhém zařízení klikni na <b>Přijmout klíče</b> a zadej tento kód (nebo naskenuj QR):</p>
+              <p class="lead" style="margin:6px 0 0">Na druhém zařízení otevři hru tam, kde obvykle hraješ, klikni na <b>Přijmout klíče</b> a zadej tento kód:</p>
               <p style="text-align:center;margin:6px 0"><strong id="xfer-code" style="font-size:32px;letter-spacing:.16em;color:var(--accent)"></strong></p>
-              <div id="xfer-qr" style="background:#fff;padding:8px;display:inline-block;border-radius:10px"></div>
             </div>
             <p id="xfer-send-status" class="lead" style="margin-top:6px;font-weight:700"></p>
           </div>
@@ -972,8 +971,6 @@ function xferStartSend(amountArg) {
   let used = false;
   pr.on('open', () => {
     setSt('xfer-send-status', 'Čekám na druhé zařízení...');
-    document.getElementById('xfer-qr').innerHTML = '';
-    new QRCode(document.getElementById('xfer-qr'), { text: window.location.href.split('?')[0] + '?take=' + code, width: 120, height: 120 });
   });
   pr.on('connection', (c) => {
     if (used) { try { c.close(); } catch (e) {} return; }
@@ -1007,7 +1004,8 @@ function xferShowReceive() {
   closeXfer();
   document.getElementById('xfer-recv').classList.remove('hidden');
   document.getElementById('xfer-send').classList.add('hidden');
-  setSt('xfer-recv-status', '');
+  refreshShop();
+  setSt('xfer-recv-status', 'Tady máš teď ' + keysText(shop.keys) + ' v peněžence a ' + keysText(shop.bank) + ' v bance. Pokud tu čekáš víc, otevři hru v prohlížeči, kde obvykle hraješ.');
 }
 
 function xferReceive(auto) {
