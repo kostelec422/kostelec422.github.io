@@ -1,0 +1,742 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Příklady z násobilky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: jeden sloupec jako list z čtverečkovaného sešitu; obrazovky se přepínají, vždy je vidět jen jedna. */
+:root{
+  --bg:#f3f6fc;
+  --grid:#d7e1f3;
+  --surface:#ffffff;
+  --ink:#15203b;
+  --ink-2:#4a5778;
+  --line:#c2cfe8;
+  --accent:#2756d4;
+  --accent-ink:#ffffff;
+  --good:#13793f;
+  --good-bg:#dcf2e4;
+  --bad:#c0283a;
+  --bad-bg:#fbe2e6;
+  --font-body:'Lexend',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --font-hand:'Caveat','Segoe Print','Comic Sans MS',cursive;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1424;--grid:#19233c;--surface:#161f35;--ink:#e8edf9;--ink-2:#9ba9ca;--line:#2b3a5c;
+    --accent:#82a5ff;--accent-ink:#0b1430;--good:#62d598;--good-bg:#12382a;--bad:#ff8090;--bad-bg:#401a23;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1424;--grid:#19233c;--surface:#161f35;--ink:#e8edf9;--ink-2:#9ba9ca;--line:#2b3a5c;
+  --accent:#82a5ff;--accent-ink:#0b1430;--good:#62d598;--good-bg:#12382a;--bad:#ff8090;--bad-bg:#401a23;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0;
+  background-color:var(--bg);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:17px;
+  line-height:1.5;
+  padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  min-height:100vh;
+}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(28px,8vw,38px);line-height:1.15;font-weight:700;text-wrap:balance}
+h2{font-size:clamp(22px,6vw,28px);line-height:1.2;font-weight:700;text-wrap:balance}
+h3{font-size:18px;font-weight:600}
+[data-focus]:focus{outline:none}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+.lead{color:var(--ink-2)}
+.screen{display:flex;flex-direction:column;gap:20px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.hand{font-family:var(--font-hand);font-size:30px;line-height:1.1;font-weight:600}
+
+button,input{font:inherit;color:inherit}
+.btn{
+  appearance:none;border:2px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  border-radius:10px;padding:14px 20px;font-weight:600;font-size:17px;cursor:pointer;min-height:52px;
+  text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:hover{filter:brightness(1.07)}
+.btn:focus-visible,.count:focus-visible,.opt:focus-visible,.chip:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>*{flex:1 1 180px}
+
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.count{
+  appearance:none;cursor:pointer;background:var(--surface);border:2px solid var(--ink);border-radius:12px;
+  padding:16px 6px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;
+}
+.count b{font-size:clamp(40px,13vw,58px);line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.count span{font-size:14px;color:var(--ink-2)}
+.count:hover{border-color:var(--accent);background:var(--bg)}
+.count:active{transform:translateY(1px)}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{
+  appearance:none;cursor:pointer;background:transparent;border:2px solid var(--line);border-radius:999px;
+  min-width:52px;min-height:44px;padding:6px 14px;font-weight:600;font-variant-numeric:tabular-nums;
+}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+label.field{display:flex;flex-direction:column;gap:6px;font-size:15px;color:var(--ink-2)}
+input[type=number],input[type=text],input[type=url]{
+  width:100%;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);min-height:46px;
+}
+.num{max-width:120px;font-weight:600;font-variant-numeric:tabular-nums}
+details summary{cursor:pointer;color:var(--ink-2);font-size:15px}
+details[open] summary{margin-bottom:10px}
+.note{font-size:14px;color:var(--ink-2)}
+.warn{font-size:14px;border:2px solid var(--bad);color:var(--bad);border-radius:10px;padding:10px 12px;background:var(--bad-bg)}
+
+.qrbox{background:#fff;border-radius:10px;padding:8px;width:min(100%,320px);align-self:center;border:1px solid var(--line)}
+.qrbox svg{display:block;width:100%;height:auto}
+.linkline{display:flex;gap:8px}
+.linkline input{flex:1;min-width:0;font-size:13px}
+.linkline .btn{min-height:46px;padding:8px 14px;font-size:15px}
+
+/* kvíz */
+.status{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums;font-weight:500}
+.status .err{color:var(--bad)}
+.bar{height:12px;border-radius:99px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .25s}
+.question{
+  font-size:clamp(44px,13vw,72px);line-height:1.1;font-weight:700;text-align:center;
+  padding:28px 8px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opt{
+  appearance:none;cursor:pointer;background:var(--surface);color:var(--ink);border:2px solid var(--ink);border-radius:12px;
+  min-height:84px;padding:10px;font-size:clamp(28px,8vw,38px);font-weight:600;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;justify-content:center;gap:10px;position:relative;min-width:0;
+}
+.opt small{position:absolute;top:6px;left:10px;font-size:12px;color:var(--ink-2);font-weight:500}
+.opt:not(:disabled):hover{border-color:var(--accent);background:var(--bg)}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--good);background:var(--good-bg);color:var(--good)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.opt.dim{opacity:.5}
+.opt .mark{font-size:24px}
+.feedback{min-height:1px;display:flex;flex-direction:column;gap:12px}
+.feedback .hand.good{color:var(--good)}
+.feedback .hand.bad{color:var(--bad)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;background:var(--bg)}
+.stat b{display:block;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--ink-2)}
+.big{font-size:clamp(56px,20vw,96px);line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.badge{display:inline-block;border-radius:99px;padding:4px 12px;font-size:14px;font-weight:600}
+.badge.ok{background:var(--good-bg);color:var(--good)}
+.badge.no{background:var(--bad-bg);color:var(--bad)}
+.linkbtn{background:none;border:0;color:var(--ink-2);text-decoration:underline;cursor:pointer;padding:8px;font-size:15px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap">
+
+  <!-- ÚVOD -->
+  <section id="home" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Malá násobilka · násobení · dělení</p>
+      <h1 data-focus tabindex="-1">Kolik příkladů to bude?</h1>
+      <p class="lead">Ke každému příkladu jsou čtyři výsledky a jen jeden je správný. Za špatnou odpověď přibude jeden příklad navíc.</p>
+    </header>
+    <div class="counts" role="group" aria-label="Počet příkladů">
+      <button class="count" data-n="5"><b>5</b><span>příkladů</span></button>
+      <button class="count" data-n="10"><b>10</b><span>příkladů</span></button>
+      <button class="count" data-n="15"><b>15</b><span>příkladů</span></button>
+    </div>
+
+    <div class="sheet" id="parent">
+      <div>
+        <h3>Pro rodiče: zadat trest přes QR kód</h3>
+        <p class="note" style="margin-top:4px">Zvolte počet správných odpovědí. Syn kód načte fotoaparátem v telefonu a po splnění vám ukáže QR s výsledkem.</p>
+      </div>
+      <div class="chips" role="group" aria-label="Počet správných odpovědí">
+        <button class="chip" data-p="5" aria-pressed="false">5</button>
+        <button class="chip" data-p="10" aria-pressed="true">10</button>
+        <button class="chip" data-p="15" aria-pressed="false">15</button>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px" for="pcount">jiný počet
+          <input id="pcount" class="num" type="number" inputmode="numeric" min="1" max="99" value="10">
+        </label>
+      </div>
+      <button class="btn" id="makeQr">Vytvořit QR kód</button>
+    </div>
+  </section>
+
+  <!-- QR PRO SYNA -->
+  <section id="qr" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Trest pro syna</p>
+      <h2 data-focus tabindex="-1" id="qrTitle">10 správných příkladů</h2>
+      <p class="lead">Syn načte tento kód fotoaparátem v telefonu a otevře se mu stránka s příklady.</p>
+    </header>
+    <div class="sheet">
+      <div class="qrbox" id="qrBox"></div>
+      <div class="linkline">
+        <input type="text" id="qrLink" readonly aria-label="Odkaz na trest">
+        <button class="btn ghost" id="copyQr">Kopírovat</button>
+      </div>
+      <p class="warn" id="qrWarn" hidden>Stránka je otevřená ze souboru v počítači. QR kód bude fungovat jen tehdy, když ji otevřete z webové adresy. Adresu můžete upravit níže.</p>
+      <details>
+        <summary>Změnit adresu stránky</summary>
+        <label class="field" for="baseInput">Adresa, na kterou QR kód odkáže
+          <input id="baseInput" type="url" inputmode="url" autocomplete="off">
+        </label>
+      </details>
+    </div>
+    <div class="row">
+      <button class="btn" id="startHere">Spustit na tomto zařízení</button>
+      <button class="btn ghost" data-go="home">Zpět</button>
+    </div>
+  </section>
+
+  <!-- ÚVOD TRESTU (syn) -->
+  <section id="intro" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Zadaný trest</p>
+      <h2 data-focus tabindex="-1">Máš příklady k vyřešení</h2>
+    </header>
+    <div class="sheet" style="align-items:center;text-align:center">
+      <div class="big" id="introN">10</div>
+      <p id="introLabel">správných odpovědí</p>
+    </div>
+    <ul class="rules">
+      <li>Ke každému příkladu vyber jeden ze čtyř výsledků.</li>
+      <li>Za každou chybu přibude jeden příklad navíc.</li>
+      <li>Na konci ukážeš rodiči QR kód s výsledkem.</li>
+    </ul>
+    <button class="btn" id="introStart">Začít</button>
+  </section>
+
+  <!-- KVÍZ -->
+  <section id="quiz" class="screen" hidden>
+    <div class="status" aria-live="polite">
+      <span id="stCorrect">Správně 0 z 10</span>
+      <span class="err" id="stWrong">Chyby 0</span>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+    <div class="question" id="qtext" data-focus tabindex="-1" aria-live="polite">7 × 8 = ?</div>
+    <div class="opts" id="opts" role="group" aria-label="Možné výsledky">
+      <button class="opt" data-i="0"></button>
+      <button class="opt" data-i="1"></button>
+      <button class="opt" data-i="2"></button>
+      <button class="opt" data-i="3"></button>
+    </div>
+    <div class="feedback" id="feedback" aria-live="assertive">
+      <p class="hand" id="fbText" hidden></p>
+      <button class="btn" id="nextBtn" hidden>Další příklad</button>
+    </div>
+  </section>
+
+  <!-- HOTOVO -->
+  <section id="done" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Splněno</p>
+      <h2 data-focus tabindex="-1">Hotovo, výsledek ukaž rodiči</h2>
+    </header>
+    <div class="stats">
+      <div class="stat"><b id="dCorrect">0</b><span>správně</span></div>
+      <div class="stat"><b id="dWrong">0</b><span>chyb</span></div>
+      <div class="stat"><b id="dTime">0:00</b><span>čas</span></div>
+    </div>
+    <div class="sheet">
+      <p>Rodič načte tento kód telefonem a uvidí výsledek.</p>
+      <div class="qrbox" id="doneQr"></div>
+      <div class="linkline">
+        <input type="text" id="doneLink" readonly aria-label="Odkaz s výsledkem">
+        <button class="btn ghost" id="copyDone">Kopírovat</button>
+      </div>
+      <p class="note">Kód obsahuje čas dokončení, rodič tak pozná, že je čerstvý.</p>
+      <p class="warn" id="doneWarn" hidden>Stránka je otevřená ze souboru v počítači. QR kód se v telefonu neotevře. Otevři stránku z webové adresy.</p>
+    </div>
+    <button class="btn ghost" data-go="home">Zpět na začátek</button>
+  </section>
+
+  <!-- VÝSLEDEK (telefon rodiče) -->
+  <section id="result" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Výsledek příkladů</p>
+      <h2 data-focus tabindex="-1">Trest splněn</h2>
+      <p><span class="badge ok" id="resBadge">Kontrolní kód sedí</span></p>
+    </header>
+    <div class="stats">
+      <div class="stat"><b id="rCorrect">0</b><span>správně</span></div>
+      <div class="stat"><b id="rWrong">0</b><span>chyb</span></div>
+      <div class="stat"><b id="rTime">0:00</b><span>čas</span></div>
+    </div>
+    <div class="sheet">
+      <p>Dokončeno: <strong id="rWhen"></strong></p>
+      <p class="note" id="rTotal"></p>
+    </div>
+    <button class="btn" data-go="home">Zadat další trest</button>
+  </section>
+
+  <!-- NEPLATNÝ ODKAZ -->
+  <section id="bad" class="screen" hidden>
+    <h2 data-focus tabindex="-1">Odkaz nejde přečíst</h2>
+    <p class="lead">Kód je poškozený nebo neúplný. Načtěte QR kód znovu.</p>
+    <button class="btn" data-go="home">Na začátek</button>
+  </section>
+
+</div>
+
+<script>
+const QR=(function(){
+  // QR kodér: bajtový režim, korekce chyb M, verze 1 až 15 (až 412 bajtů)
+  const ECC=[10,16,26,18,24,16,18,22,22,26,30,22,22,24,24];
+  const BLK=[1,1,1,2,2,4,4,4,5,5,5,8,9,9,10];
+  function alignPos(ver){
+    if(ver===1) return [];
+    const n=Math.floor(ver/7)+2, size=ver*4+17;
+    const step=Math.ceil((ver*4+4)/(n*2-2))*2;
+    const r=[6];
+    for(let p=size-7;r.length<n;p-=step) r.splice(1,0,p);
+    return r;
+  }
+  function rawModules(ver){
+    let r=(16*ver+128)*ver+64;
+    if(ver>=2){const n=Math.floor(ver/7)+2; r-=(25*n-10)*n-55; if(ver>=7) r-=36;}
+    return r;
+  }
+  function dataCodewords(ver){return Math.floor(rawModules(ver)/8)-ECC[ver-1]*BLK[ver-1];}
+  function rsMul(x,y){let z=0;for(let i=7;i>=0;i--){z=(z<<1)^((z>>>7)*0x11D);z^=((y>>>i)&1)*x;}return z;}
+  function rsDivisor(deg){
+    const r=new Array(deg).fill(0); r[deg-1]=1; let root=1;
+    for(let i=0;i<deg;i++){
+      for(let j=0;j<r.length;j++){r[j]=rsMul(r[j],root); if(j+1<r.length) r[j]^=r[j+1];}
+      root=rsMul(root,2);
+    }
+    return r;
+  }
+  function rsRem(data,div){
+    const r=div.map(()=>0);
+    for(const b of data){const f=b^r.shift(); r.push(0); div.forEach((c,i)=>{r[i]^=rsMul(c,f);});}
+    return r;
+  }
+  function penalty(m,size){
+    let p=0;
+    for(let pass=0;pass<2;pass++){
+      for(let a=0;a<size;a++){
+        let run=1,str='';
+        for(let b=0;b<size;b++){
+          const v=pass?m[b][a]:m[a][b];
+          str+=v?'1':'0';
+          if(b>0){
+            const prev=pass?m[b-1][a]:m[a][b-1];
+            if(v===prev){run++; if(run===5)p+=3; else if(run>5)p++;} else run=1;
+          }
+        }
+        for(const pat of ['10111010000','00001011101']){
+          let idx=-1; while((idx=str.indexOf(pat,idx+1))>=0) p+=40;
+        }
+      }
+    }
+    for(let y=0;y<size-1;y++)for(let x=0;x<size-1;x++){
+      const v=m[y][x]; if(v===m[y][x+1]&&v===m[y+1][x]&&v===m[y+1][x+1]) p+=3;
+    }
+    let dark=0; m.forEach(r=>r.forEach(v=>{if(v)dark++;}));
+    const total=size*size;
+    p+=(Math.ceil(Math.abs(dark*20-total*10)/total)-1)*10;
+    return p;
+  }
+  function encode(text){
+    const bytes=Array.from(new TextEncoder().encode(text));
+    let ver=1;
+    for(;ver<=15;ver++){const cc=ver<=9?8:16; if(4+cc+bytes.length*8<=dataCodewords(ver)*8) break;}
+    if(ver>15) throw new Error('Text je příliš dlouhý pro QR kód');
+    const bits=[]; const put=(v,len)=>{for(let i=len-1;i>=0;i--) bits.push((v>>>i)&1);};
+    put(4,4); put(bytes.length,ver<=9?8:16); bytes.forEach(b=>put(b,8));
+    const cap=dataCodewords(ver)*8;
+    put(0,Math.min(4,cap-bits.length));
+    while(bits.length%8) bits.push(0);
+    for(let pad=0xEC;bits.length<cap;pad^=0xEC^0x11) put(pad,8);
+    const data=[];
+    for(let i=0;i<bits.length;i+=8){let v=0; for(let j=0;j<8;j++) v=(v<<1)|bits[i+j]; data.push(v);}
+    const nb=BLK[ver-1], eccLen=ECC[ver-1], raw=Math.floor(rawModules(ver)/8);
+    const nShort=nb-raw%nb, shortLen=Math.floor(raw/nb), div=rsDivisor(eccLen);
+    const blocks=[];
+    for(let i=0,k=0;i<nb;i++){
+      const dat=data.slice(k,k+shortLen-eccLen+(i<nShort?0:1)); k+=dat.length;
+      const ecc=rsRem(dat,div); if(i<nShort) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    const all=[];
+    for(let i=0;i<blocks[0].length;i++) blocks.forEach((b,j)=>{if(i!==shortLen-eccLen||j>=nShort) all.push(b[i]);});
+
+    const size=ver*4+17;
+    const m=Array.from({length:size},()=>new Array(size).fill(false));
+    const fn=Array.from({length:size},()=>new Array(size).fill(false));
+    const setFn=(x,y,v)=>{m[y][x]=v; fn[y][x]=true;};
+    for(let i=0;i<size;i++){setFn(6,i,i%2===0); setFn(i,6,i%2===0);}
+    const finder=(cx,cy)=>{
+      for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+        const d=Math.max(Math.abs(dx),Math.abs(dy)), x=cx+dx, y=cy+dy;
+        if(x>=0&&x<size&&y>=0&&y<size) setFn(x,y,d!==2&&d!==4);
+      }
+    };
+    finder(3,3); finder(size-4,3); finder(3,size-4);
+    const ap=alignPos(ver), n=ap.length;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+      if((i===0&&j===0)||(i===0&&j===n-1)||(i===n-1&&j===0)) continue;
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++) setFn(ap[i]+dx,ap[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1);
+    }
+    const bit=(x,i)=>((x>>>i)&1)!==0;
+    const formatBits=(mask)=>{
+      const d=mask; let rem=d;
+      for(let i=0;i<10;i++) rem=(rem<<1)^((rem>>>9)*0x537);
+      const bits2=((d<<10)|rem)^0x5412;
+      for(let i=0;i<=5;i++) setFn(8,i,bit(bits2,i));
+      setFn(8,7,bit(bits2,6)); setFn(8,8,bit(bits2,7)); setFn(7,8,bit(bits2,8));
+      for(let i=9;i<15;i++) setFn(14-i,8,bit(bits2,i));
+      for(let i=0;i<8;i++) setFn(size-1-i,8,bit(bits2,i));
+      for(let i=8;i<15;i++) setFn(8,size-15+i,bit(bits2,i));
+      setFn(8,size-8,true);
+    };
+    formatBits(0);
+    if(ver>=7){
+      let rem=ver; for(let i=0;i<12;i++) rem=(rem<<1)^((rem>>>11)*0x1F25);
+      const vb=(ver<<12)|rem;
+      for(let i=0;i<18;i++){const c=bit(vb,i), a=size-11+i%3, b=Math.floor(i/3); setFn(a,b,c); setFn(b,a,c);}
+    }
+    let i=0;
+    for(let right=size-1;right>=1;right-=2){
+      if(right===6) right=5;
+      for(let vert=0;vert<size;vert++){
+        for(let j=0;j<2;j++){
+          const x=right-j, up=((right+1)&2)===0, y=up?size-1-vert:vert;
+          if(!fn[y][x]&&i<all.length*8){m[y][x]=bit(all[i>>>3],7-(i&7)); i++;}
+        }
+      }
+    }
+    const mask=(k)=>{
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+        let inv;
+        switch(k){
+          case 0:inv=(x+y)%2===0;break;
+          case 1:inv=y%2===0;break;
+          case 2:inv=x%3===0;break;
+          case 3:inv=(x+y)%3===0;break;
+          case 4:inv=(Math.floor(x/3)+Math.floor(y/2))%2===0;break;
+          case 5:inv=x*y%2+x*y%3===0;break;
+          case 6:inv=(x*y%2+x*y%3)%2===0;break;
+          default:inv=((x+y)%2+x*y%3)%2===0;
+        }
+        if(!fn[y][x]&&inv) m[y][x]=!m[y][x];
+      }
+    };
+    let best=0,bestP=Infinity;
+    for(let k=0;k<8;k++){
+      mask(k); formatBits(k);
+      const p=penalty(m,size); if(p<bestP){bestP=p;best=k;}
+      mask(k);
+    }
+    mask(best); formatBits(best);
+    return m;
+  }
+  function svg(text){
+    const m=encode(text), size=m.length, q=4, total=size+q*2;
+    let d='';
+    for(let y=0;y<size;y++){
+      let x=0;
+      while(x<size){
+        if(m[y][x]){let w=1; while(x+w<size&&m[y][x+w]) w++; d+='M'+(x+q)+' '+(y+q)+'h'+w+'v1h-'+w+'z'; x+=w;} else x++;
+      }
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+total+' '+total+'" shape-rendering="crispEdges" role="img" aria-label="QR kód"><rect width="'+total+'" height="'+total+'" fill="#ffffff"/><path d="'+d+'" fill="#000000"/></svg>';
+  }
+  return {encode,svg};
+})();
+</script>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var SCREENS=['home','qr','intro','quiz','done','result','bad'];
+var state=null;           // běžící kvíz
+var pendingN=10;          // počet pro úvodní obrazovku trestu
+var MAXN=99;
+
+function show(name){
+  SCREENS.forEach(function(s){$(s).hidden=(s!==name);});
+  window.scrollTo(0,0);
+  var f=$(name).querySelector('[data-focus]');
+  if(f){try{f.focus({preventScroll:true});}catch(e){}}
+}
+
+/* ---------- Příklady: generování a vyhodnocení ---------- */
+function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function shuffle(arr){
+  for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;}
+  return arr;
+}
+// Správný výsledek se VŽDY znovu spočítá z operandů. Nikde se neukládá jako hotové číslo.
+function compute(q){return q.op==='×'?q.x*q.y:q.x/q.y;}
+
+function makeQuestion(){
+  var r=Math.random(),x,y,op,pool;
+  if(r<0.35){            // malá násobilka
+    x=randInt(2,10);y=randInt(2,10);op='×';
+  }else if(r<0.65){      // dělení v oboru násobilky
+    var a=randInt(2,10),b=randInt(2,10);
+    x=a*b;y=(Math.random()<0.5)?a:b;op='÷';
+  }else if(r<0.85){      // násobení dvojciferného jednociferným
+    x=randInt(11,30);y=randInt(2,9);op='×';
+  }else{                 // dělení většího čísla jednociferným
+    var q2=randInt(11,30),d=randInt(2,9);
+    x=q2*d;y=d;op='÷';
+  }
+  var ans=(op==='×')?x*y:x/y;
+  if(!Number.isInteger(ans)||ans<=0) return makeQuestion();
+  if(op==='×'){
+    pool=[ans+x,ans-x,ans+y,ans-y,ans+1,ans-1,ans+2,ans-2,ans+10,ans-10,ans+20,ans-20];
+  }else{
+    pool=[ans+1,ans-1,ans+2,ans-2,ans+3,ans-3,y,x%10===ans?ans+4:ans+5];
+  }
+  var uniq=[],seen={};
+  pool.forEach(function(v){
+    if(Number.isInteger(v)&&v>0&&v!==ans&&!seen[v]){seen[v]=1;uniq.push(v);}
+  });
+  shuffle(uniq);
+  var wrongs=uniq.slice(0,3),k=3;
+  while(wrongs.length<3){var c=ans+k;k++;if(c!==ans&&wrongs.indexOf(c)<0) wrongs.push(c);}
+  var opts=shuffle([ans].concat(wrongs));
+  var q={x:x,y:y,op:op,opts:opts,done:false};
+  // Kontrola: čtyři různé možnosti, právě jedna správná
+  var good=opts.filter(function(o){return o===compute(q);}).length;
+  var distinct=opts.filter(function(o,i){return opts.indexOf(o)===i;}).length;
+  if(opts.length!==4||good!==1||distinct!==4) return makeQuestion();
+  return q;
+}
+window.__makeQuestion=makeQuestion;   // pro testování
+window.__compute=compute;
+
+function newUniqueQuestion(){
+  var q;
+  for(var t=0;t<80;t++){
+    q=makeQuestion();
+    var key=q.op+'|'+q.x+'|'+q.y;
+    if(!state.seen[key]){state.seen[key]=1;return q;}
+  }
+  return q;
+}
+
+/* ---------- Průběh kvízu ---------- */
+function startQuiz(n){
+  n=Math.max(1,Math.min(MAXN,Math.floor(n)||0));
+  state={need:n,correct:0,wrong:0,seen:{},q:null,t0:Date.now()};
+  show('quiz');
+  nextQuestion();
+}
+function updateStatus(){
+  $('stCorrect').textContent='Správně '+state.correct+' z '+state.need;
+  $('stWrong').textContent='Chyby '+state.wrong;
+  $('barFill').style.width=(state.correct/state.need*100)+'%';
+}
+function nextQuestion(){
+  var q=newUniqueQuestion();
+  state.q=q;
+  $('qtext').textContent=q.x+' '+q.op+' '+q.y+' = ?';
+  var btns=$('opts').querySelectorAll('.opt');
+  for(var i=0;i<4;i++){
+    var b=btns[i];
+    b.className='opt';b.disabled=false;
+    b.innerHTML='<small>'+(i+1)+'</small><span class="val"></span>';
+    b.querySelector('.val').textContent=q.opts[i];
+  }
+  $('fbText').hidden=true;$('fbText').textContent='';$('fbText').className='hand';
+  $('nextBtn').hidden=true;
+  updateStatus();
+  try{$('qtext').focus({preventScroll:true});}catch(e){}
+}
+function answer(i){
+  var q=state&&state.q;
+  if(!q||q.done) return;
+  q.done=true;
+  var correctVal=compute(q);
+  var ok=(q.opts[i]===correctVal);
+  var btns=$('opts').querySelectorAll('.opt');
+  for(var k=0;k<4;k++){
+    var b=btns[k];b.disabled=true;
+    if(q.opts[k]===correctVal){b.classList.add('right');b.insertAdjacentHTML('beforeend','<span class="mark" aria-hidden="true">✓</span>');}
+    else if(k===i){b.classList.add('wrong');b.insertAdjacentHTML('beforeend','<span class="mark" aria-hidden="true">✗</span>');}
+    else b.classList.add('dim');
+  }
+  var fb=$('fbText');fb.hidden=false;
+  if(ok){
+    state.correct++;
+    fb.className='hand good';fb.textContent='Správně!';
+  }else{
+    state.wrong++;
+    fb.className='hand bad';
+    fb.textContent='Špatně. '+q.x+' '+q.op+' '+q.y+' = '+correctVal+'. Přibývá příklad navíc.';
+  }
+  updateStatus();
+  var nb=$('nextBtn');nb.hidden=false;
+  nb.textContent=(state.correct>=state.need)?'Hotovo':'Další příklad';
+  nb.focus({preventScroll:true});
+}
+function afterAnswer(){
+  if(state.correct>=state.need) finish(); else nextQuestion();
+}
+
+/* ---------- Kontrolní kód výsledku ---------- */
+function check(n,m,s,t){
+  var str='nasobilka|'+n+'|'+m+'|'+s+'|'+t+'|k7';
+  var h=0x811c9dc5;
+  for(var i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
+  var out=h.toString(36);
+  while(out.length<6) out='0'+out;
+  return out.slice(0,6);
+}
+function fmtTime(s){var m=Math.floor(s/60),r=s%60;return m+':'+(r<10?'0':'')+r;}
+function baseOfPage(){return location.href.split('#')[0];}
+function isWeb(u){return /^https?:/i.test(u);}
+
+function renderQr(boxId,text){
+  try{$(boxId).innerHTML=QR.svg(text);}
+  catch(e){$(boxId).textContent='QR kód se nepodařilo vytvořit.';}
+}
+function copyText(inputId,btn){
+  var inp=$(inputId);
+  inp.focus();inp.select();
+  var done=function(){var old=btn.textContent;btn.textContent='Zkopírováno';setTimeout(function(){btn.textContent=old;},1500);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(inp.value).then(done,function(){});
+  }
+}
+
+function finish(){
+  var secs=Math.max(0,Math.round((Date.now()-state.t0)/1000));
+  var t=Math.floor(Date.now()/60000);
+  var n=state.correct,m=state.wrong;
+  $('dCorrect').textContent=n;$('dWrong').textContent=m;$('dTime').textContent=fmtTime(secs);
+  var url=baseOfPage()+'#vysledek-'+n+'-'+m+'-'+secs+'-'+t+'-'+check(n,m,secs,t);
+  $('doneLink').value=url;
+  renderQr('doneQr',url);
+  $('doneWarn').hidden=isWeb(url);
+  show('done');
+}
+
+/* ---------- Obrazovky podle odkazu ---------- */
+function route(){
+  var h=location.hash.replace(/^#/,'');
+  var m;
+  if((m=/^trest-(\d{1,2})$/.exec(h))){
+    var n=parseInt(m[1],10);
+    if(n<1||n>MAXN){show('bad');return;}
+    pendingN=n;
+    $('introN').textContent=n;
+    $('introLabel').textContent=pluralSpravne(n);
+    show('intro');
+  }else if((m=/^vysledek-(\d{1,3})-(\d{1,3})-(\d{1,6})-(\d{1,9})-([0-9a-z]{1,8})$/.exec(h))){
+    var c=parseInt(m[1],10),w=parseInt(m[2],10),s=parseInt(m[3],10),t=parseInt(m[4],10);
+    var ok=(check(c,w,s,t)===m[5])&&c>=1;
+    $('rCorrect').textContent=c;$('rWrong').textContent=w;$('rTime').textContent=fmtTime(s);
+    $('rTotal').textContent='Celkem '+(c+w)+' zobrazených příkladů.';
+    var d=new Date(t*60000),when;
+    try{when=d.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+    catch(e){when=d.toString();}
+    $('rWhen').textContent=when;
+    var bd=$('resBadge');
+    bd.className='badge '+(ok?'ok':'no');
+    bd.textContent=ok?'Kontrolní kód sedí':'Kontrolní kód nesedí, údaje mohly být upraveny';
+    show('result');
+  }else if(/^(trest|vysledek)/.test(h)){
+    show('bad');
+  }else{
+    show('home');
+  }
+}
+function pluralSpravne(n){
+  if(n===1) return 'správná odpověď';
+  if(n>=2&&n<=4) return 'správné odpovědi';
+  return 'správných odpovědí';
+}
+
+/* ---------- Rodič: QR pro syna ---------- */
+var pn=10;
+function setP(n){
+  pn=n;
+  $('pcount').value=n;
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.setAttribute('aria-pressed',String(parseInt(c.dataset.p,10)===n));
+  });
+}
+function readP(){
+  var v=parseInt($('pcount').value,10);
+  if(!(v>=1)) v=1;
+  if(v>MAXN) v=MAXN;
+  return v;
+}
+function challengeUrl(){
+  var b=$('baseInput').value.trim()||baseOfPage();
+  return b.split('#')[0]+'#trest-'+pn;
+}
+function refreshQr(){
+  var url=challengeUrl();
+  $('qrLink').value=url;
+  renderQr('qrBox',url);
+  $('qrWarn').hidden=isWeb(url);
+}
+
+/* ---------- Události ---------- */
+document.querySelectorAll('.count').forEach(function(b){
+  b.addEventListener('click',function(){startQuiz(parseInt(b.dataset.n,10));});
+});
+document.querySelectorAll('.chip').forEach(function(c){
+  c.addEventListener('click',function(){setP(parseInt(c.dataset.p,10));});
+});
+$('pcount').addEventListener('input',function(){
+  var v=parseInt($('pcount').value,10);
+  if(v>=1&&v<=MAXN) setP(v);
+});
+$('makeQr').addEventListener('click',function(){
+  var n=readP();setP(n);
+  $('qrTitle').textContent=n+' '+(n===1?'správný příklad':(n<=4?'správné příklady':'správných příkladů'));
+  $('baseInput').value=baseOfPage();
+  refreshQr();
+  show('qr');
+});
+$('baseInput').addEventListener('input',refreshQr);
+$('copyQr').addEventListener('click',function(){copyText('qrLink',$('copyQr'));});
+$('copyDone').addEventListener('click',function(){copyText('doneLink',$('copyDone'));});
+$('startHere').addEventListener('click',function(){
+  if(location.hash==='#trest-'+pn) route(); else location.hash='trest-'+pn;
+});
+$('introStart').addEventListener('click',function(){startQuiz(pendingN);});
+$('nextBtn').addEventListener('click',afterAnswer);
+document.querySelectorAll('.opt').forEach(function(b){
+  b.addEventListener('click',function(){answer(parseInt(b.dataset.i,10));});
+});
+document.querySelectorAll('[data-go="home"]').forEach(function(b){
+  b.addEventListener('click',function(){
+    state=null;
+    if(location.hash){location.hash='';} else {show('home');}
+  });
+});
+document.addEventListener('keydown',function(e){
+  if($('quiz').hidden||!state||!state.q||state.q.done) return;
+  if(e.key>='1'&&e.key<='4'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){answer(parseInt(e.key,10)-1);}
+});
+window.addEventListener('hashchange',route);
+
+setP(10);
+route();
+})();
+</script>
+
+</body></html>
