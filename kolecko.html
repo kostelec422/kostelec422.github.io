@@ -9,85 +9,57 @@
   .card { background: #fff; max-width: 420px; width: 100%; padding: 28px; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
   h1 { margin-top: 0; font-size: 22px; }
   .stars { display: flex; gap: 6px; margin: 12px 0 6px; }
-  .star { font-size: 44px; line-height: 1; cursor: pointer; background: none; border: none; padding: 0; color: #ccc; transition: transform .1s, color .1s; }
+  .star { font-size: 44px; line-height: 1; cursor: pointer; background: none; border: none; padding: 0; color: #ccc; }
   .star.active { color: #f5b301; }
-  .star:hover { transform: scale(1.15); }
   #popis { font-size: 14px; color: #555; min-height: 20px; margin-bottom: 14px; }
-  textarea { width: 100%; box-sizing: border-box; height: 120px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; resize: vertical; font-family: inherit; }
-  button.send { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  button.send:disabled { background: #94a3b8; cursor: default; }
+  textarea { width: 100%; box-sizing: border-box; height: 120px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
+  .send { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
   #stav { margin-top: 12px; font-size: 14px; }
-  .ok { color: #15803d; } .chyba { color: #b91c1c; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Ohodnoťte nás</h1>
 
-  <div class="stars" id="stars" role="radiogroup" aria-label="Hodnocení"></div>
+  <div class="stars" id="stars">
+    <button type="button" class="star" data-n="1">&#9733;</button>
+    <button type="button" class="star" data-n="2">&#9733;</button>
+    <button type="button" class="star" data-n="3">&#9733;</button>
+    <button type="button" class="star" data-n="4">&#9733;</button>
+    <button type="button" class="star" data-n="5">&#9733;</button>
+  </div>
   <div id="popis">Klikněte na počet hvězdiček (1–5)</div>
 
   <textarea id="text" placeholder="Napište komentář (nepovinné)..."></textarea>
-  <button class="send" id="odeslat">Odeslat</button>
+  <button type="button" class="send" id="odeslat">Odeslat</button>
   <div id="stav"></div>
 </div>
 
 <script>
-  const EMAIL = "ondra1685@gmail.com";
-  const popisy = ["", "Velmi špatné", "Špatné", "Průměrné", "Dobré", "Výborné"];
-  let hodnoceni = 0;
-
-  const starsEl = document.getElementById("stars");
-  const popisEl = document.getElementById("popis");
-  const stavEl = document.getElementById("stav");
-  const btn = document.getElementById("odeslat");
-
-  // vytvoření 5 hvězdiček
-  for (let i = 1; i <= 5; i++) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "star";
-    b.textContent = "★";
-    b.setAttribute("aria-label", i + " z 5");
-    b.addEventListener("click", () => { hodnoceni = i; vykresli(i); });
-    b.addEventListener("mouseenter", () => vykresli(i));
-    starsEl.appendChild(b);
-  }
-  starsEl.addEventListener("mouseleave", () => vykresli(hodnoceni));
+  var EMAIL = "ondra1685@gmail.com";
+  var popisy = ["", "Velmi špatné", "Špatné", "Průměrné", "Dobré", "Výborné"];
+  var hodnoceni = 0;
+  var hvezdy = document.querySelectorAll(".star");
 
   function vykresli(n) {
-    [...starsEl.children].forEach((s, idx) => s.classList.toggle("active", idx < n));
-    popisEl.textContent = n ? n + " z 5 – " + popisy[n] : "Klikněte na počet hvězdiček (1–5)";
+    for (var i = 0; i < hvezdy.length; i++) {
+      if (i < n) { hvezdy[i].classList.add("active"); }
+      else { hvezdy[i].classList.remove("active"); }
+    }
+    document.getElementById("popis").textContent =
+      n ? n + " z 5 – " + popisy[n] : "Klikněte na počet hvězdiček (1–5)";
   }
 
-  btn.addEventListener("click", async () => {
-    if (!hodnoceni) {
-      stavEl.className = "chyba";
-      stavEl.textContent = "Nejdřív vyberte počet hvězdiček.";
-      return;
-    }
-    const komentar = document.getElementById("text").value.trim();
-    btn.disabled = true;
-    stavEl.className = "";
-    stavEl.textContent = "Odesílám...";
+  for (var i = 0; i < hvezdy.length; i++) {
+    hvezdy[i].onclick = function () {
+      hodnoceni = parseInt(this.getAttribute("data-n"));
+      vykresli(hodnoceni);
+    };
+  }
 
-    try {
-      const odpoved = await fetch("https://formsubmit.co/ajax/" + EMAIL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({
-          _subject: "Nové hodnocení: " + hodnoceni + " z 5 hvězdiček",
-          hodnoceni: hodnoceni + " z 5",
-          komentar: komentar || "(bez komentáře)"
-        })
-      });
-      if (!odpoved.ok) throw new Error("Chyba odeslání");
-      stavEl.className = "ok";
-      stavEl.textContent = "Děkujeme, hodnocení bylo odesláno!";
-      document.getElementById("text").value = "";
-    } catch (e) {
-      // záložní varianta: otevře e-mailový program
-      const predmet = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5 hvězdiček");
-      const telo = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5\n\nKomentář:\n" + (komentar || "(bez komentáře)"));
-      window.location.href = "mailto:" + EMAIL + "?subject=" + predmet + "&body=" + telo;
-      stavEl.className =
+  document.getElementById("odeslat").onclick = function () {
+    var stav = document.getElementById("stav");
+    if (!hodnoceni) { stav.textContent = "Nejdřív vyberte počet hvězdiček."; return; }
+    var komentar = document.getElementById("text").value;
+    var predmet = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5 hvězdiček");
+    var telo = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5\n\nKomentář:\n" + komentar);
