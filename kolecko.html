@@ -15,7 +15,6 @@
   .stars input:checked ~ label,
   .stars label:hover,
   .stars label:hover ~ label { color: #f5b301; }
-  .stars input:focus + label { outline: 2px solid #2563eb; }
 
   textarea { width: 100%; box-sizing: border-box; height: 120px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
   button { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
@@ -25,11 +24,7 @@
 <div class="card">
   <h1>Ohodnoťte nás</h1>
 
-  <form action="https://formsubmit.co/ondra1685@gmail.com" method="POST">
-    <input type="hidden" name="_subject" value="Nové hodnocení z webu">
-    <input type="hidden" name="_captcha" value="false">
-    <input type="hidden" name="_template" value="table">
-
+  <form action="mailto:ondra1685@gmail.com?subject=Nove%20hodnoceni" method="POST" enctype="text/plain">
     <div class="stars">
       <input type="radio" id="s5" name="hvezdicky" value="5 z 5" required><label for="s5" title="5">&#9733;</label>
       <input type="radio" id="s4" name="hvezdicky" value="4 z 5"><label for="s4" title="4">&#9733;</label>
