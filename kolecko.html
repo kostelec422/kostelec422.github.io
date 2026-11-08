@@ -8,58 +8,39 @@
   body { font-family: Arial, sans-serif; background: #f2f4f8; display: flex; justify-content: center; padding: 40px 16px; margin: 0; }
   .card { background: #fff; max-width: 420px; width: 100%; padding: 28px; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.1); }
   h1 { margin-top: 0; font-size: 22px; }
-  .stars { display: flex; gap: 6px; margin: 12px 0 6px; }
-  .star { font-size: 44px; line-height: 1; cursor: pointer; background: none; border: none; padding: 0; color: #ccc; }
-  .star.active { color: #f5b301; }
-  #popis { font-size: 14px; color: #555; min-height: 20px; margin-bottom: 14px; }
+
+  .stars { display: flex; flex-direction: row-reverse; justify-content: flex-end; margin: 12px 0; }
+  .stars input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .stars label { font-size: 48px; line-height: 1; color: #ccc; cursor: pointer; padding: 0 4px; }
+  .stars input:checked ~ label,
+  .stars label:hover,
+  .stars label:hover ~ label { color: #f5b301; }
+  .stars input:focus + label { outline: 2px solid #2563eb; }
+
   textarea { width: 100%; box-sizing: border-box; height: 120px; padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
-  .send { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  #stav { margin-top: 12px; font-size: 14px; }
+  button { margin-top: 14px; width: 100%; padding: 12px; font-size: 16px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>Ohodnoťte nás</h1>
 
-  <div class="stars" id="stars">
-    <button type="button" class="star" data-n="1">&#9733;</button>
-    <button type="button" class="star" data-n="2">&#9733;</button>
-    <button type="button" class="star" data-n="3">&#9733;</button>
-    <button type="button" class="star" data-n="4">&#9733;</button>
-    <button type="button" class="star" data-n="5">&#9733;</button>
-  </div>
-  <div id="popis">Klikněte na počet hvězdiček (1–5)</div>
+  <form action="https://formsubmit.co/ondra1685@gmail.com" method="POST">
+    <input type="hidden" name="_subject" value="Nové hodnocení z webu">
+    <input type="hidden" name="_captcha" value="false">
+    <input type="hidden" name="_template" value="table">
 
-  <textarea id="text" placeholder="Napište komentář (nepovinné)..."></textarea>
-  <button type="button" class="send" id="odeslat">Odeslat</button>
-  <div id="stav"></div>
+    <div class="stars">
+      <input type="radio" id="s5" name="hvezdicky" value="5 z 5" required><label for="s5" title="5">&#9733;</label>
+      <input type="radio" id="s4" name="hvezdicky" value="4 z 5"><label for="s4" title="4">&#9733;</label>
+      <input type="radio" id="s3" name="hvezdicky" value="3 z 5"><label for="s3" title="3">&#9733;</label>
+      <input type="radio" id="s2" name="hvezdicky" value="2 z 5"><label for="s2" title="2">&#9733;</label>
+      <input type="radio" id="s1" name="hvezdicky" value="1 z 5"><label for="s1" title="1">&#9733;</label>
+    </div>
+
+    <textarea name="komentar" placeholder="Napište komentář (nepovinné)..."></textarea>
+    <button type="submit">Odeslat</button>
+  </form>
 </div>
-
-<script>
-  var EMAIL = "ondra1685@gmail.com";
-  var popisy = ["", "Velmi špatné", "Špatné", "Průměrné", "Dobré", "Výborné"];
-  var hodnoceni = 0;
-  var hvezdy = document.querySelectorAll(".star");
-
-  function vykresli(n) {
-    for (var i = 0; i < hvezdy.length; i++) {
-      if (i < n) { hvezdy[i].classList.add("active"); }
-      else { hvezdy[i].classList.remove("active"); }
-    }
-    document.getElementById("popis").textContent =
-      n ? n + " z 5 – " + popisy[n] : "Klikněte na počet hvězdiček (1–5)";
-  }
-
-  for (var i = 0; i < hvezdy.length; i++) {
-    hvezdy[i].onclick = function () {
-      hodnoceni = parseInt(this.getAttribute("data-n"));
-      vykresli(hodnoceni);
-    };
-  }
-
-  document.getElementById("odeslat").onclick = function () {
-    var stav = document.getElementById("stav");
-    if (!hodnoceni) { stav.textContent = "Nejdřív vyberte počet hvězdiček."; return; }
-    var komentar = document.getElementById("text").value;
-    var predmet = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5 hvězdiček");
-    var telo = encodeURIComponent("Hodnocení: " + hodnoceni + " z 5\n\nKomentář:\n" + komentar);
+</body>
+</html>
