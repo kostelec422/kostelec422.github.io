@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>Generátor videa</title>
+<style>
+body{font-family:sans-serif;background:#111;color:#eee;max-width:800px;margin:20px auto;padding:10px}
+textarea{width:100%;height:100px;font-size:16px}
+button{padding:10px 20px;font-size:16px;margin:10px 0;cursor:pointer}
+canvas,video{width:100%;background:#000}
+a{color:#6cf;font-size:18px}
+</style>
+</head>
+<body>
+<h2>Generátor videa z popisku</h2>
+<textarea id="t">Ahoj světe! Tohle je moje první video. 10 sekund</textarea><br>
+<button id="b">Vytvořit video</button> <span id="s"></span>
+<canvas id="c" width="1280" height="720"></canvas>
+<div id="o"></div>
+
+<script>
+const c=document.getElementById('c'), x=c.getContext('2d');
+const b=document.getElementById('b'), s=document.getElementById('s'), o=document.getElementById('o');
+const FONT='bold 60px sans-serif', LH=84, MAXW=1080;
+
+function parse(v){
+  let d=5, text=v;
+  const m=v.match(/(\d+(?:[.,]\d+)?)\s*(minut\w*|min|sekund\w*|sek|s)\b/i);
+  if(m){
+    const n=parseFloat(m[1].replace(',','.'));
+    d=/^min/i.test(m[2])?n*60:n;
+    text=v.replace(m[0],'').trim();
+  }
+  return {d:Math.min(Math.max(d,1),300), text:text||' '};
+}
+
+function layout(text){
+  x.font=FONT;
+  const words=text.split(/\s+/), lines=[]; let cur=[];
+  for(const w of words){
+    const test=[...cur,w].join(' ');
+    if(x.measureText(test).width>MAXW && cur.length){lines.push(cur);cur=[w];}
+    else cur.push(w);
+  }
+  lines.push(cur);
+  const items=[], top=(c.height-lines.length*LH)/2+LH/2; let i=0;
+  lines.forEach((ln,li)=>{
+    const full=ln.join(' '), lw=x.measureText(full).width;
+    let px=(c.width-lw)/2;
+    ln.forEach(w=>{
+      items.push({w,x:px,y:top+li*LH,i:i++});
+      px+=x.measureText(w+' ').width;
+    });
+  });
+  return items;
+}
+
+function frame(el,d,items){
+  const p=el/d;
+  const g=x.createLinearGradient(0,0,c.width,c.height);
+  g.addColorStop(0,`hsl(${(p*120+220)%360},70%,25%)`);
+  g.addColorStop(1,`hsl(${(p*120+280)%360},70%,12%)`);
+  x.fillStyle=g; x.fillRect(0,0,c.width,c.height);
+  x.font=FONT; x.textBaseline='middle'; x.textAlign='left';
+  const N=items.length;
+  for(const it of items){
+    const start=(it.i/N)*0.8*d;
+    const a=Math.min(Math.max((el-start)/0.4,0),1);
+    if(a<=0) continue;
+    x.globalAlpha=a; x.fillStyle='#fff';
+    x.fillText(it.w,it.x,it.y+(1-a)*30);
+  }
+  x.globalAlpha=1;
+  x.fillStyle='rgba(255,255,255,.5)';
+  x.fillRect(0,c.height-8,c.width*p,8);
+}
+
+b.onclick=()=>{
+  const {d,text}=parse(document.getElementById('t').value);
+  const items=layout(text);
+  const stream=c.captureStream(30);
+  const rec=new MediaRecorder(stream,{mimeType:'video/webm'});
+  const chunks=[];
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{
+    const url=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
+    o.innerHTML=`<video src="${url}" controls></video><br><a href="${url}" download="video.webm">⬇ Stáhnout video</a>`;
+    s.textContent='Hotovo!'; b.disabled=false;
+  };
+  b.disabled=true; o.innerHTML=''; rec.start();
+  const t0=performance.now();
+  (function loop(){
+    const el=(performance.now()-t0)/1000;
+    if(el>=d){frame(d,d,items);setTimeout(()=>rec.stop(),100);return;}
+    frame(el,d,items);
+    s.textContent=`Nahrávám… ${el.toFixed(1)} / ${d} s`;
+    requestAnimationFrame(loop);
+  })();
+};
+</script>
+</body>
+</html>
