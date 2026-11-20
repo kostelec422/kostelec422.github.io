@@ -77,9 +77,9 @@
 
 <div class="overlay" id="start">
   <h1>🍺 Cesta za pivem 🍺</h1>
-  <p>Babičko, dědo, <b>držte oba svá tlačítka</b> a půjdete spolu.<br>
+  <p>Babičko, dědo, <b>držte každý své tlačítko</b> a půjdete spolu.<br>
      Když přijde překážka, musíte <b>oba zmáčknout naráz</b> a přeskočit ji.</p>
-  <p>Na konci vás čeká pivo a ohňostroj!</p>
+  <p>Na konci na vás čeká pivo. A možná i překvapení&nbsp;😉</p>
   <button class="big" id="playBtn">Hrát</button>
   <div class="love">Od vnoučka s láskou ❤️</div>
 </div>
@@ -102,14 +102,16 @@
   const btns = [document.getElementById('b0'), document.getElementById('b1')];
   const names = ['Babička', 'Děda'];
 
-  const GOAL = 1000;
+  const GOAL = 1400;
   const SPEED = 90;
   const K = 1.4;                 // pixelů na jednotku
   const STOP_GAP = 60;
   const obstacles = [
-    { at: 300, emoji: '🌊', name: 'Kaluž' },
-    { at: 600, emoji: '🪨', name: 'Kámen' },
-    { at: 850, emoji: '🪵', name: 'Klacek' },
+    { at: 280, emoji: '🌊', name: 'Kaluž' },
+    { at: 520, emoji: '🪨', name: 'Kámen' },
+    { at: 760, emoji: '🦔', name: 'Ježek' },
+    { at: 1000, emoji: '🪵', name: 'Klacek' },
+    { at: 1200, emoji: '🐌', name: 'Šnek' },
   ];
 
   let W = 0, H = 0, dpr = 1;
@@ -195,11 +197,11 @@
       if (Math.abs(a - b) < 700) {
         startJump();
       } else {
-        setMsg('Skoro! Zkuste to znovu, ale opravdu oba naráz!');
+        setMsg('Skoro! Zkuste to znovu a opravdu oba naráz!');
         lastPress[0] = lastPress[1] = 0;
       }
     } else {
-      setMsg(`${names[i]} už je připravená, ještě ${names[1 - i]}!`.replace('připravená', i === 0 ? 'připravená' : 'připravený'));
+      setMsg(i === 0 ? 'Babička je připravená, ještě dědu!' : 'Děda je připravený, ještě babičku!');
       hintTimer = performance.now() + 1500;
     }
   }
@@ -245,7 +247,7 @@
         setMsg('Jdeme! 🚶');
       } else if (holding[0] || holding[1]) {
         const who = holding[0] ? 1 : 0;
-        setMsg(who === 1 ? 'Děda, drž tlačítko taky!' : 'Babičko, drž tlačítko taky!');
+        setMsg(who === 1 ? 'Dědo, drž taky své tlačítko!' : 'Babičko, drž taky své tlačítko!');
       } else {
         setMsg('Držte obě tlačítka a jděte!');
       }
@@ -255,7 +257,7 @@
         state = 'obstacle';
         armedAt = performance.now();
         lastPress[0] = lastPress[1] = 0;
-        setMsg(`${o.name}! Pusťte a zmáčkněte oba naráz!`);
+        setMsg(`${o.name}! Pusťte tlačítka a zmáčkněte je oba naráz!`);
         blip(220);
       } else if (pos >= GOAL - 60) {
         pos = GOAL - 60;
@@ -265,7 +267,7 @@
       if (hintTimer && performance.now() > hintTimer) {
         hintTimer = 0;
         const o = obstacles[obsIndex];
-        setMsg(`${o.name}! Pusťte a zmáčkněte oba naráz!`);
+        setMsg(`${o.name}! Pusťte tlačítka a zmáčkněte je oba naráz!`);
       }
     } else if (state === 'jump') {
       jump.t += dt / 0.7;
