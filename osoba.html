@@ -27,7 +27,7 @@
   #log div{border-left:2px solid #39ff6a;padding-left:8px;margin-bottom:6px}
   #log div.warn{border-color:#ff3b3b;color:#ff7070}
   #status{font-size:12px;color:#ffd24a}
-  #cp{background:#000;color:#39ff6a;border:1px solid #39ff6a;padding:8px;font:inherit;width:100%}
+  #out{width:100%;display:none;background:#000}
 </style>
 </head>
 <body>
@@ -36,6 +36,7 @@
   <div class="btns">
     <label class="btn">Nahrát video / foto<input type="file" id="file" accept="video/*,image/*"></label>
     <button class="btn" id="snd" type="button" onclick="toggleSound()">Zvuk: ZAP</button>
+    <button class="btn" id="rec" type="button" onclick="toggleRec()">● Vytvořit video</button>
   </div>
 </header>
 <main>
@@ -49,8 +50,7 @@
     <h2>PROTOKOL UDÁLOSTÍ</h2>
     <div id="status">Načítám AI modul na pozadí…</div>
     <div id="log"></div>
-    <h2>KOPÍROVACÍ POLE</h2>
-    <input id="cp" value="hotomlokot" readonly onclick="this.select()">
+    <video id="out" controls playsinline></video>
   </aside>
 </main>
 
@@ -201,6 +201,7 @@ document.getElementById('file').addEventListener('change',function(e){
   var f=e.target.files[0]; if(!f) return;
   initAudio();
   running=false; persons=[]; holding={}; personPresent=false; absent=0; prevFrame=null; motionBox=null;
+  if(video&&video.parentNode) video.parentNode.removeChild(video);
   document.getElementById('placeholder').style.display='none'; capEl.textContent='';
   var url=URL.createObjectURL(f);
   if(f.type.indexOf('image/')===0){
@@ -212,19 +213,51 @@ document.getElementById('file').addEventListener('change',function(e){
       else {say('Snímek přijat. AI modul není dostupný – analýza osob nemožná.'); done();}
     }; img.src=url;
   } else {
-    video=document.createElement('video'); video.muted=true; video.loop=true; video.setAttribute('playsinline','');
-    video.addEventListener('loadeddata',function(){
-      cv.width=video.videoWidth; cv.height=video.videoHeight;
-      var pr=video.play(); if(pr&&pr.catch) pr.catch(function(){});
+    video=document.createElement('video'); video.muted=true; video.loop=true; video.preload='auto';
+    video.setAttribute('playsinline',''); video.setAttribute('webkit-playsinline','');
+    video.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';
+    document.body.appendChild(video);
+    var started=false, v=video;
+    var start=function(){
+      if(started||!v.videoWidth) return; started=true;
+      var s=Math.min(1,960/v.videoWidth);
+      cv.width=Math.round(v.videoWidth*s); cv.height=Math.round(v.videoHeight*s);
+      var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){say('Klepni na obrazovku pro spuštění videa.');});
       running=true;
       statusEl.textContent=model?'Sledování probíhá (AI)…':'Sledování probíhá (pouze pohyb)…';
       say('Záznam spuštěn. Sleduji.'); loop();
-    });
-    video.addEventListener('error',function(){say('Video se nepodařilo přehrát.');});
-    video.src=url; video.load();
+    };
+    v.addEventListener('loadedmetadata',start); v.addEventListener('loadeddata',start); v.addEventListener('canplay',start);
+    v.addEventListener('error',function(){say('Video se nepodařilo načíst. Zkus formát MP4.');});
+    v.src=url; v.load();
   }
   e.target.value='';
 });
+
+/* VYTVOŘENÍ VIDEA */
+var rec=null, chunks=[];
+function toggleRec(){
+  var b=document.getElementById('rec');
+  if(rec&&rec.state==='recording'){rec.stop();return;}
+  if(!running){say('Nejdřív nahraj video.');return;}
+  if(!cv.captureStream||!window.MediaRecorder){say('Tohle zařízení neumí vytvořit video z výstupu.');return;}
+  try{
+    initAudio();
+    var stream=cv.captureStream(30);
+    if(audio&&audio.createMediaStreamDestination){var dest=audio.createMediaStreamDestination(); audio.master.connect(dest); dest.stream.getAudioTracks().forEach(function(t){stream.addTrack(t);});}
+    var mime=['video/mp4','video/webm;codecs=vp9','video/webm'].filter(function(m){return MediaRecorder.isTypeSupported(m);})[0];
+    rec=new MediaRecorder(stream,mime?{mimeType:mime}:undefined); chunks=[];
+    rec.ondataavailable=function(e){if(e.data&&e.data.size) chunks.push(e.data);};
+    rec.onstop=function(){
+      var type=rec.mimeType||'video/webm', blob=new Blob(chunks,{type:type}), url=URL.createObjectURL(blob);
+      var out=document.getElementById('out'); out.src=url; out.style.display='block';
+      var a=document.createElement('a'); a.href=url; a.download='dohled.'+(type.indexOf('mp4')>-1?'mp4':'webm'); document.body.appendChild(a); a.click(); a.remove();
+      b.textContent='● Vytvořit video'; say('Video vytvořeno. Najdeš ho v panelu vpravo.');
+    };
+    rec.start(1000); b.textContent='■ Zastavit a uložit'; say('Nahrávám výstup…');
+  }catch(e){say('Vytvoření videa selhalo.');}
+}
+document.querySelector('.screen').addEventListener('click',function(){if(video&&video.paused){var p=video.play(); if(p&&p.catch) p.catch(function(){});}});
 
 /* AI MODEL NA POZADÍ */
 function loadScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=function(){rej(new Error(src));};document.head.appendChild(s);});}
