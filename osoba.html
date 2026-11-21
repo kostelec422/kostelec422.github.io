@@ -29,7 +29,7 @@
   video#src{width:100%;max-height:260px;background:#000;border-radius:10px}
   canvas#prev{width:100%;max-height:300px;background:#000;border-radius:10px;display:none;object-fit:contain;margin-top:10px}
   #timeline{position:relative;height:22px;background:#222733;border-radius:6px;margin-top:10px;overflow:hidden}
-  #timeline i{position:absolute;top:0;bottom:0;background:var(--red);opacity:.9}
+  #timeline i{position:absolute;top:0;bottom:0;background:var(--red);opacity:.9;border-right:1px solid #fff}
   #clips{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:14px}
   .clip{background:#12151b;border:1px solid var(--line);border-radius:12px;padding:10px}
   .clip video{width:100%;border-radius:8px;background:#000}
@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>🎬 Stříhač videa podle osob</h1>
-  <p class="sub">Nahraj dlouhé video. Stránka v něm najde místa, kde se pohybuje osoba, vystřihne je jako krátká videa se zvukem a osobu označí červeným rámečkem.</p>
+  <p class="sub">Nahraj dlouhé video. Stránka v něm najde každý průchod osoby, vystřihne ho jako samostatné mini video se zvukem a osobu označí červeným rámečkem.</p>
 
   <div class="card">
     <label for="file">1) Vyber dlouhé video</label>
@@ -52,9 +52,9 @@
     <div id="ai" class="note"></div>
 
     <div class="grid">
-      <div><label>Min. délka klipu (s)</label><input type="number" id="minLen" value="3" min="1" step="1"></div>
-      <div><label>Rezerva před/po (s)</label><input type="number" id="pad" value="1" min="0" step="0.5"></div>
-      <div><label>Spojit klipy s mezerou do (s)</label><input type="number" id="gap" value="2" min="0" step="0.5"></div>
+      <div><label>Min. délka klipu (s)</label><input type="number" id="minLen" value="1" min="0.5" step="0.5"></div>
+      <div><label>Rezerva před/po průchodu (s)</label><input type="number" id="pad" value="1" min="0" step="0.5"></div>
+      <div><label>Spojit průchody s mezerou do (s) – 0 = každý průchod zvlášť</label><input type="number" id="gap" value="0" min="0" step="0.5"></div>
       <div><label>Krok detekce osob (s)</label><input type="number" id="step" value="0.3" min="0.15" max="2" step="0.05"></div>
       <div>
         <label>Práh pohybu: <b id="thrVal">6</b> (menší = citlivější)</label>
@@ -62,7 +62,7 @@
       </div>
     </div>
     <label class="chk"><input type="checkbox" id="onlyMoving" checked> Střihat jen když se osoba pohybuje (jinak i když stojí – pomalejší)</label>
-    <div class="note" style="margin-top:8px">Hledání pohybu běží 8× rychleji. Mini videa se ukládají se zvukem, o něco rychleji (1,5×).</div>
+    <div class="note" style="margin-top:8px">Pro každý průchod osoby vznikne jedno mini video. Hledání pohybu běží 8× rychleji, mini videa se ukládají se zvukem o něco rychleji (1,5×).</div>
 
     <label style="margin-top:16px">2) Spusť stříhání</label>
     <button id="go" class="big" type="button">🎬 Vytvořit mini videa</button>
@@ -305,7 +305,7 @@ async function phase1(){
   for (const t of act) {
     const a = Math.max(0, t - pad1), b = Math.min(dur, t + step1 + pad1);
     const last = ranges[ranges.length - 1];
-    if (last && a - last.end <= 2) last.end = Math.max(last.end, b);
+    if (last && a - last.end <= 1) last.end = Math.max(last.end, b);
     else ranges.push({ start: a, end: b });
   }
   return ranges;
@@ -357,6 +357,7 @@ async function phase2(ranges, o){
   return samples;
 }
 
+// každý průchod osoby = jeden segment (= jedno mini video)
 function buildSegments(samples, o){
   const dur = v.duration, ranges = [];
   for (let i = 0; i < samples.length; i++) {
@@ -550,16 +551,16 @@ $('go').onclick = async () => {
     if (!segs.length) { log('V nalezených místech se nepohybuje žádná osoba. Zkus snížit práh pohybu nebo vypnout „jen když se osoba pohybuje“.'); prog(1); return; }
     const total = segs.reduce((a, s) => a + s.end - s.start, 0);
     o.total = segs.length;
-    log(`3/3 Nalezeno ${segs.length} klipů (celkem ${fmt(total)}). Exportuji se zvukem – nech záložku otevřenou a v popředí.`);
+    log(`3/3 Nalezeno ${segs.length} průchodů osob (celkem ${fmt(total)}). Exportuji se zvukem – nech záložku otevřenou a v popředí.`);
 
     for (let i = 0; i < segs.length; i++) {
       if (cancel) throw new Error('cancel');
-      log(`3/3 Exportuji klip ${i + 1} / ${segs.length}…`);
+      log(`3/3 Exportuji mini video ${i + 1} / ${segs.length}…`);
       const c = await exportClip(segs[i], i, samples, o);
       clips.push(c); addClipCard(c);
     }
     prog(1);
-    log(`Hotovo ✅ Vytvořeno ${clips.length} videí.`);
+    log(`Hotovo ✅ Vytvořeno ${clips.length} mini videí (jedno na každý průchod osoby).`);
   } catch (e) {
     log(e.message === 'cancel' ? 'Zrušeno.' : 'Chyba: ' + e.message);
   } finally {
