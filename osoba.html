@@ -321,44 +321,67 @@ function aiStatus(){
     : model ? '● AI připravena (rámečky kolem osob).'
     : 'AI nedostupná – označuje se jen pohyb (otevři jako soubor .html s internetem).';
 }
+function handlePhoto(url){
+  var img=new Image();
+  img.onload=function(){
+    try{
+      var s=Math.min(1,1280/Math.max(img.naturalWidth,img.naturalHeight));
+      var w=Math.max(2,Math.round(img.naturalWidth*s)), h=Math.max(2,Math.round(img.naturalHeight*s));
+      cv.width=w; cv.height=h;
+      render(img,false);                       /* fotka je vidět hned */
+      statusEl.textContent='Analyzuji snímek…';
+      say('Snímek přijat. Analyzuji…');
+      var wc=document.createElement('canvas'); wc.width=w; wc.height=h; wc.getContext('2d').drawImage(img,0,0,w,h);
+      var done=false;
+      var finish=function(){
+        if(done) return; done=true; clearTimeout(timer);
+        if(!model&&maskBox) say('Osoba zachycena na snímku.','alert');
+        render(img,false); aiStatus();
+      };
+      var timer=setTimeout(function(){ if(!done){say('Analýza trvá příliš dlouho. Zobrazuji snímek.'); done=true; render(img,false); aiStatus();} },15000);
+      setTimeout(function(){
+        var jobs=[];
+        try{
+          if(seg) jobs.push(seg.segmentPerson(wc,{internalResolution:'medium',segmentationThreshold:.55}).then(function(r){buildMask(r.data,r.width,r.height);}));
+          if(model) jobs.push(model.detect(wc).then(function(p){analyze(p,false);}));
+        }catch(err){}
+        if(!jobs.length){say('AI není dostupná – osobu u fotky nelze označit.'); finish(); return;}
+        Promise.all(jobs.map(function(j){return j.catch(function(){});})).then(finish);
+      },80);
+    }catch(err){statusEl.textContent='Chyba: '+err.message;}
+  };
+  img.onerror=function(){say('Fotku se nepodařilo načíst. Zkus JPG nebo PNG.');};
+  img.src=url;
+}
 document.getElementById('file').addEventListener('change',function(e){
   var f=e.target.files[0]; if(!f) return;
-  initAudio();
-  running=false; persons=[]; holding={}; personPresent=false; absent=0; bg=null; maskBox=null; motionBox=null; mctx.clearRect(0,0,maskC.width,maskC.height);
-  if(video&&video.parentNode) video.parentNode.removeChild(video);
-  document.getElementById('placeholder').style.display='none'; capEl.textContent='';
-  var url=URL.createObjectURL(f);
-  if(f.type.indexOf('image/')===0){
-    var img=new Image();
-    img.onload=function(){
-      cv.width=img.naturalWidth; cv.height=img.naturalHeight;
-      var jobs=[];
-      if(seg) jobs.push(seg.segmentPerson(img,{internalResolution:'high',segmentationThreshold:.55}).then(function(r){buildMask(r.data,r.width,r.height);}));
-      if(model) jobs.push(model.detect(img).then(function(p){analyze(p,false);}));
-      if(!jobs.length){say('Snímek přijat. AI není dostupná – osobu u fotky nelze označit.'); render(img,false); return;}
-      Promise.all(jobs.map(function(j){return j.catch(function(){});})).then(function(){
-        if(!model&&maskBox) say('Osoba zachycena na snímku.','alert');
-        render(img,false);
-      });
-    }; img.src=url;
-  } else {
-    video=document.createElement('video'); video.muted=true; video.loop=true; video.preload='auto';
-    video.setAttribute('playsinline',''); video.setAttribute('webkit-playsinline','');
-    video.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';
-    document.body.appendChild(video);
-    var started=false, v=video;
-    var start=function(){
-      if(started||!v.videoWidth) return; started=true;
-      var s=Math.min(1,960/v.videoWidth);
-      cv.width=Math.round(v.videoWidth*s); cv.height=Math.round(v.videoHeight*s);
-      var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){say('Klepni na obrazovku pro spuštění videa.');});
-      running=true; aiStatus();
-      say('Záznam spuštěn. Sleduji.'); loop();
-    };
-    v.addEventListener('loadedmetadata',start); v.addEventListener('loadeddata',start); v.addEventListener('canplay',start);
-    v.addEventListener('error',function(){say('Video se nepodařilo načíst. Zkus formát MP4.');});
-    v.src=url; v.load();
-  }
+  try{
+    initAudio();
+    running=false; persons=[]; holding={}; personPresent=false; absent=0; bg=null; maskBox=null; motionBox=null; mctx.clearRect(0,0,maskC.width,maskC.height);
+    if(video&&video.parentNode) video.parentNode.removeChild(video);
+    document.getElementById('placeholder').style.display='none'; capEl.textContent='';
+    var url=URL.createObjectURL(f);
+    if(f.type.indexOf('image/')===0 || /\.(jpe?g|png|webp|gif|bmp|heic)$/i.test(f.name)){
+      handlePhoto(url);
+    } else {
+      video=document.createElement('video'); video.muted=true; video.loop=true; video.preload='auto';
+      video.setAttribute('playsinline',''); video.setAttribute('webkit-playsinline','');
+      video.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';
+      document.body.appendChild(video);
+      var started=false, v=video;
+      var start=function(){
+        if(started||!v.videoWidth) return; started=true;
+        var s=Math.min(1,960/v.videoWidth);
+        cv.width=Math.round(v.videoWidth*s); cv.height=Math.round(v.videoHeight*s);
+        var pr=v.play(); if(pr&&pr.catch) pr.catch(function(){say('Klepni na obrazovku pro spuštění videa.');});
+        running=true; aiStatus();
+        say('Záznam spuštěn. Sleduji.'); loop();
+      };
+      v.addEventListener('loadedmetadata',start); v.addEventListener('loadeddata',start); v.addEventListener('canplay',start);
+      v.addEventListener('error',function(){say('Video se nepodařilo načíst. Zkus formát MP4.');});
+      v.src=url; v.load();
+    }
+  }catch(err){statusEl.textContent='Chyba: '+err.message;}
   e.target.value='';
 });
 
