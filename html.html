@@ -1,0 +1,329 @@
+<title>HTML náhled</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: nástroj na dva sloupce (editor | výsledek), pod nimi rozbor kódu prvek po prvku. */
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --fg: #1b2230;
+    --muted: #5b6577;
+    --line: #d9dde5;
+    --accent: #2457d6;
+    --accent-fg: #ffffff;
+    --code-bg: #0f1623;
+    --code-fg: #e4e9f4;
+    --tag-bg: #e6ecfb;
+    --tag-fg: #1d46b0;
+    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --font-code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d121b; --surface: #151c29; --fg: #e6eaf2; --muted: #9aa5ba; --line: #283245;
+      --accent: #6b95ff; --accent-fg: #0b1220; --code-bg: #0a0f19; --code-fg: #e4e9f4;
+      --tag-bg: #1e2a47; --tag-fg: #9db8ff; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d121b; --surface: #151c29; --fg: #e6eaf2; --muted: #9aa5ba; --line: #283245;
+    --accent: #6b95ff; --accent-fg: #0b1220; --code-bg: #0a0f19; --code-fg: #e4e9f4;
+    --tag-bg: #1e2a47; --tag-fg: #9db8ff; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+    padding-block: 24px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+  h1 { font-family: var(--font-head); font-size: 1.75rem; line-height: 1.15; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 4px 0 0; max-width: 60ch; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--fg);
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 800px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+  .pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .pane-title {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  textarea#kod {
+    width: 100%; height: 420px; resize: vertical; border: 0; padding: 14px;
+    background: var(--code-bg); color: var(--code-fg);
+    font-family: var(--font-code); font-size: 0.8125rem; line-height: 1.6; tab-size: 2; white-space: pre; overflow: auto;
+  }
+  iframe#vysledek { width: 100%; height: 420px; border: 0; background: #ffffff; display: block; }
+
+  section.rozbor { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  section.rozbor h2 { font-family: var(--font-head); font-size: 1.125rem; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .souhrn { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .chip { font-family: var(--font-code); font-size: 0.8125rem; background: var(--tag-bg); color: var(--tag-fg); padding: 3px 9px; border-radius: 4px; }
+  .chip b { font-weight: 700; }
+  .strom { list-style: none; margin: 0; padding: 8px 16px 16px; display: flex; flex-direction: column; }
+  .uzel { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 14px; padding: 7px 0; border-bottom: 1px dashed var(--line); align-items: baseline; }
+  .uzel:last-child { border-bottom: 0; }
+  .znacka { font-family: var(--font-code); font-size: 0.8125rem; color: var(--tag-fg); background: var(--tag-bg); padding: 2px 8px; border-radius: 4px; white-space: nowrap; justify-self: start; }
+  .popis { min-width: 0; overflow-wrap: anywhere; }
+  .popis .atr { display: block; color: var(--muted); font-size: 0.8125rem; font-family: var(--font-code); }
+  .popis .txt { color: var(--muted); font-size: 0.8125rem; }
+  .prazdno { padding: 20px 16px; color: var(--muted); }
+  .chyba { padding: 14px 16px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>HTML náhled</h1>
+      <p class="sub">Vlož HTML kód vlevo. Vpravo se hned ukáže výsledek a dole je vysvětlení, co jednotlivé značky dělají.</p>
+    </div>
+    <div class="actions">
+      <button id="vycistit" type="button">Smazat kód</button>
+    </div>
+  </header>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-title"><span>HTML kód</span><span id="pocet">0 znaků</span></div>
+      <textarea id="kod" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="HTML kód"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-title"><span>Výsledek</span><span>jak to uvidí návštěvník</span></div>
+      <iframe id="vysledek" title="Výsledek HTML kódu" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+
+  <section class="rozbor" aria-live="polite">
+    <h2>Co kód dělá</h2>
+    <div class="souhrn" id="souhrn"></div>
+    <ul class="strom" id="strom"></ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  var kod = document.getElementById('kod');
+  var okno = document.getElementById('vysledek');
+  var pocet = document.getElementById('pocet');
+  var souhrn = document.getElementById('souhrn');
+  var strom = document.getElementById('strom');
+
+  var POPISY = {
+    html: 'Kořen celé stránky, obsahuje všechno ostatní.',
+    head: 'Hlavička: údaje o stránce, které se nezobrazují přímo (titulek, styly, kódování).',
+    body: 'Tělo stránky: všechno, co návštěvník vidí.',
+    title: 'Titulek stránky, ukazuje se v záložce prohlížeče.',
+    meta: 'Doplňující informace o stránce (například kódování znaků).',
+    link: 'Propojení s externím souborem, nejčastěji se styly.',
+    style: 'CSS styly: určují barvy, písmo, rozložení a vzhled prvků.',
+    script: 'JavaScript: kód, který stránku oživí (reaguje na kliknutí, mění obsah).',
+    h1: 'Hlavní nadpis stránky, největší.',
+    h2: 'Nadpis druhé úrovně.',
+    h3: 'Nadpis třetí úrovně.',
+    h4: 'Nadpis čtvrté úrovně.',
+    h5: 'Nadpis páté úrovně.',
+    h6: 'Nadpis šesté úrovně, nejmenší.',
+    p: 'Odstavec textu.',
+    a: 'Odkaz. Adresa, kam vede, je v atributu href.',
+    img: 'Obrázek. Soubor určuje atribut src, alternativní text atribut alt.',
+    ul: 'Nečíslovaný seznam (odrážky).',
+    ol: 'Číslovaný seznam.',
+    li: 'Jedna položka seznamu.',
+    div: 'Obecný blok, který seskupuje jiné prvky. Sám nic nezobrazuje, vzhled mu dají styly.',
+    span: 'Obecný vložený prvek uvnitř textu, hodí se pro obarvení části věty.',
+    button: 'Tlačítko, na které se dá kliknout.',
+    input: 'Pole pro zadání údaje (text, číslo, zaškrtávátko podle atributu type).',
+    textarea: 'Víceřádkové textové pole.',
+    select: 'Rozbalovací nabídka.',
+    option: 'Jedna volba v rozbalovací nabídce.',
+    form: 'Formulář: skupina polí, která se odesílají dohromady.',
+    label: 'Popisek k poli formuláře.',
+    table: 'Tabulka.',
+    thead: 'Hlavička tabulky.',
+    tbody: 'Tělo tabulky.',
+    tr: 'Řádek tabulky.',
+    th: 'Buňka záhlaví tabulky (tučně a vystředěná).',
+    td: 'Běžná buňka tabulky.',
+    br: 'Zalomení řádku.',
+    hr: 'Vodorovná oddělovací čára.',
+    strong: 'Důležitý text, zobrazí se tučně.',
+    b: 'Tučné písmo.',
+    em: 'Zdůrazněný text, zobrazí se kurzívou.',
+    i: 'Kurzíva.',
+    u: 'Podtržený text.',
+    small: 'Menší písmo, třeba pro drobný text.',
+    code: 'Ukázka kódu, písmo s pevnou šířkou znaků.',
+    pre: 'Předformátovaný text, zachová mezery a zalomení řádků.',
+    blockquote: 'Delší citace.',
+    section: 'Tematická část stránky.',
+    header: 'Úvodní část stránky nebo sekce.',
+    footer: 'Patička stránky nebo sekce.',
+    nav: 'Navigace, tedy skupina hlavních odkazů.',
+    main: 'Hlavní obsah stránky.',
+    article: 'Samostatný článek nebo příspěvek.',
+    aside: 'Vedlejší obsah, například postranní panel.',
+    video: 'Přehrávač videa.',
+    audio: 'Přehrávač zvuku.',
+    canvas: 'Plocha pro kreslení pomocí JavaScriptu.',
+    svg: 'Vektorová grafika.',
+    iframe: 'Vložená jiná stránka v rámečku.'
+  };
+
+  var ATRIBUTY = {
+    href: 'cíl odkazu', src: 'zdroj souboru', alt: 'náhradní text', class: 'třída pro styly',
+    id: 'jedinečné jméno', style: 'styl přímo na prvku', type: 'druh pole', onclick: 'kód po kliknutí'
+  };
+
+  function popisZnacky(tag) {
+    return POPISY[tag] || 'Značka <' + tag + '>. Pro ni zatím nemám vlastní vysvětlení.';
+  }
+
+  function textPrvku(el) {
+    var t = '';
+    for (var i = 0; i < el.childNodes.length; i++) {
+      if (el.childNodes[i].nodeType === 3) t += el.childNodes[i].nodeValue;
+    }
+    t = t.replace(/\s+/g, ' ').trim();
+    if (t.length > 70) t = t.slice(0, 70) + '…';
+    return t;
+  }
+
+  function atributy(el) {
+    var out = [];
+    for (var i = 0; i < el.attributes.length; i++) {
+      var a = el.attributes[i];
+      var v = a.value.length > 60 ? a.value.slice(0, 60) + '…' : a.value;
+      var vys = ATRIBUTY[a.name] ? ' (' + ATRIBUTY[a.name] + ')' : '';
+      out.push(a.name + '="' + v + '"' + vys);
+    }
+    return out;
+  }
+
+  function chip(html) {
+    var s = document.createElement('span');
+    s.className = 'chip';
+    s.innerHTML = html;
+    return s;
+  }
+
+  function rozbor(code) {
+    souhrn.textContent = '';
+    strom.textContent = '';
+    if (!code.trim()) {
+      var li0 = document.createElement('li');
+      li0.className = 'prazdno';
+      li0.textContent = 'Zatím tu není žádný kód. Vlož ho do pole vlevo a tady se objeví vysvětlení.';
+      strom.appendChild(li0);
+      return;
+    }
+    var doc = new DOMParser().parseFromString(code, 'text/html');
+    var pocty = {};
+    var radky = [];
+    var hlavni = /<html[\s>]/i.test(code);
+    var maHead = /<head[\s>]/i.test(code);
+    var maBody = /<body[\s>]/i.test(code);
+
+    function projdi(el, hloubka) {
+      var tag = el.tagName.toLowerCase();
+      var vlastni = true;
+      if (tag === 'html' && !hlavni) vlastni = false;
+      if (tag === 'head' && !maHead && !el.children.length) vlastni = false;
+      if (tag === 'head' && !maHead) vlastni = false;
+      if (tag === 'body' && !maBody) vlastni = false;
+      var d = hloubka;
+      if (vlastni) {
+        pocty[tag] = (pocty[tag] || 0) + 1;
+        radky.push({ tag: tag, hloubka: hloubka, el: el });
+        d = hloubka + 1;
+      }
+      for (var i = 0; i < el.children.length; i++) projdi(el.children[i], d);
+    }
+    projdi(doc.documentElement, 0);
+
+    var celkem = radky.length;
+    souhrn.appendChild(chip('prvků celkem: <b>' + celkem + '</b>'));
+    Object.keys(pocty).sort().forEach(function (t) {
+      souhrn.appendChild(chip('&lt;' + t + '&gt; <b>×' + pocty[t] + '</b>'));
+    });
+
+    radky.slice(0, 300).forEach(function (r) {
+      var li = document.createElement('li');
+      li.className = 'uzel';
+      li.style.paddingLeft = Math.min(r.hloubka, 8) * 18 + 'px';
+      var z = document.createElement('span');
+      z.className = 'znacka';
+      z.textContent = '<' + r.tag + '>';
+      var p = document.createElement('div');
+      p.className = 'popis';
+      var hlavniText = document.createElement('div');
+      hlavniText.textContent = popisZnacky(r.tag);
+      p.appendChild(hlavniText);
+      var at = atributy(r.el);
+      if (at.length) {
+        var sa = document.createElement('span');
+        sa.className = 'atr';
+        sa.textContent = at.join('  ');
+        p.appendChild(sa);
+      }
+      if (r.tag !== 'script' && r.tag !== 'style') {
+        var tx = textPrvku(r.el);
+        if (tx) {
+          var st = document.createElement('span');
+          st.className = 'txt';
+          st.textContent = 'Text: „' + tx + '“';
+          p.appendChild(st);
+        }
+      }
+      li.appendChild(z);
+      li.appendChild(p);
+      strom.appendChild(li);
+    });
+    if (radky.length > 300) {
+      var more = document.createElement('li');
+      more.className = 'prazdno';
+      more.textContent = 'Zobrazuji prvních 300 prvků z ' + radky.length + '.';
+      strom.appendChild(more);
+    }
+  }
+
+  var casovac = null;
+  function obnov() {
+    var code = kod.value;
+    pocet.textContent = code.length.toLocaleString('cs-CZ') + ' znaků';
+    okno.srcdoc = code;
+    try { rozbor(code); } catch (e) {
+      strom.textContent = '';
+      var li = document.createElement('li');
+      li.className = 'chyba';
+      li.textContent = 'Kód se nepodařilo rozebrat.';
+      strom.appendChild(li);
+    }
+  }
+  function odlozene() { clearTimeout(casovac); casovac = setTimeout(obnov, 250); }
+
+  kod.addEventListener('input', odlozene);
+  kod.addEventListener('keydown', function (e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      var s = kod.selectionStart, k = kod.selectionEnd;
+      kod.value = kod.value.slice(0, s) + '  ' + kod.value.slice(k);
+      kod.selectionStart = kod.selectionEnd = s + 2;
+      odlozene();
+    }
+  });
+  document.getElementById('vycistit').addEventListener('click', function () { kod.value = ''; obnov(); kod.focus(); });
+
+  obnov();
+})();
+</script>
