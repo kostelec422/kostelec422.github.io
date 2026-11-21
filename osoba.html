@@ -42,7 +42,7 @@
 <body>
 <div class="wrap">
   <h1>🎬 Stříhač videa podle osob</h1>
-  <p class="sub">Nahraj dlouhé video. Stránka v něm najde každý průchod osoby, vystřihne ho jako samostatné mini video se zvukem a osobu označí červeným rámečkem.</p>
+  <p class="sub">Nahraj dlouhé video. Stránka v něm najde každý průchod osoby, vystřihne ho jako samostatné mini video se zvukem a osobu označí červeným rámečkem. Ve chvíli, kdy se osoba označí, se video na chvíli zastaví.</p>
 
   <div class="card">
     <label for="file">1) Vyber dlouhé video</label>
@@ -55,6 +55,7 @@
       <div><label>Min. délka klipu (s)</label><input type="number" id="minLen" value="1" min="0.5" step="0.5"></div>
       <div><label>Rezerva před/po průchodu (s)</label><input type="number" id="pad" value="1" min="0" step="0.5"></div>
       <div><label>Spojit průchody s mezerou do (s) – 0 = každý průchod zvlášť</label><input type="number" id="gap" value="0" min="0" step="0.5"></div>
+      <div><label>Zastavit video při označení osoby (s) – 0 = nezastavovat</label><input type="number" id="hold" value="1" min="0" max="5" step="0.5"></div>
       <div><label>Krok detekce osob (s)</label><input type="number" id="step" value="0.3" min="0.15" max="2" step="0.05"></div>
       <div>
         <label>Práh pohybu: <b id="thrVal">6</b> (menší = citlivější)</label>
@@ -444,10 +445,22 @@ async function exportClip(seg, idx, samples, o){
   v.playbackRate = EXPORT_RATE;
   rec.start(200);
   await v.play();
+
+  // při prvním označení osoby se video na chvíli zastaví a pak pokračuje
+  let froze = false, resumed = false, resumeAt = 0;
   await new Promise(resolve => {
     const frame = () => {
       if (cancel || v.currentTime >= seg.end || v.ended) { resolve(); return; }
       draw();
+      if (o.hold > 0 && !froze && boxesAt(samples, v.currentTime).length) {
+        froze = true;
+        v.pause();
+        resumeAt = performance.now() + o.hold * 1000;
+      }
+      if (froze && !resumed && performance.now() >= resumeAt) {
+        resumed = true;
+        v.play().catch(() => {});
+      }
       prog(0.6 + 0.4 * ((idx + (v.currentTime - seg.start) / (seg.end - seg.start)) / o.total));
       requestAnimationFrame(frame);
     };
@@ -524,6 +537,7 @@ $('go').onclick = async () => {
   $('go').disabled = true; $('stop').disabled = false; $('file').disabled = true;
   const o = {
     minLen: +$('minLen').value, pad: +$('pad').value, gap: +$('gap').value,
+    hold: Math.max(0, +$('hold').value || 0),
     step: Math.max(0.15, +$('step').value), thr: +$('thr').value, onlyMoving: $('onlyMoving').checked
   };
   try {
