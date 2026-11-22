@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spojení videí</title>
+<style>
+  :root { --bg:#fff; --fg:#1b1b1f; --card:#f3f4f7; --acc:#3b5bdb; --mut:#6b6f7a; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16171b; --fg:#ececf1; --card:#23252b; --acc:#7c96ff; --mut:#9a9eab; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:20px; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; }
+  main { max-width:680px; margin:0 auto; }
+  h1 { font-size:1.4rem; }
+  .card { background:var(--card); border-radius:12px; padding:14px; margin:14px 0; }
+  button, select { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--mut); background:var(--bg); color:var(--fg); cursor:pointer; }
+  button.main { background:var(--acc); color:#fff; border:none; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  ul { list-style:none; padding:0; margin:10px 0 0; }
+  li { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--bg); }
+  li span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  li button { padding:4px 10px; }
+  progress { width:100%; height:14px; }
+  video, canvas { width:100%; border-radius:10px; background:#000; }
+  canvas { display:none; }
+  .mut { color:var(--mut); font-size:.9rem; }
+  a.dl { display:inline-block; margin-top:10px; padding:10px 16px; background:var(--acc); color:#fff; border-radius:8px; text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎬 Spojení videí do jednoho</h1>
+
+  <div class="card">
+    <input type="file" id="files" accept="video/*" multiple>
+    <ul id="list"></ul>
+    <p class="mut" id="empty">Zatím žádná videa. Vyber alespoň dvě.</p>
+  </div>
+
+  <div class="card">
+    <label>Rozlišení:
+      <select id="res">
+        <option value="1280x720">1280×720 (HD)</option>
+        <option value="1920x1080">1920×1080 (Full HD)</option>
+        <option value="854x480">854×480</option>
+        <option value="720x1280">720×1280 (na výšku)</option>
+      </select>
+    </label>
+    <p><button class="main" id="go" disabled>Spojit videa</button></p>
+    <progress id="bar" value="0" max="1" hidden></progress>
+    <p class="mut" id="status"></p>
+    <p class="mut">Spojení běží v reálném čase. Nech záložku otevřenou a v popředí.</p>
+  </div>
+
+  <canvas id="cv"></canvas>
+  <div id="out"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let items = [];
+
+$('files').addEventListener('change', e => {
+  for (const f of e.target.files) items.push({ file: f, url: URL.createObjectURL(f) });
+  e.target.value = '';
+  render();
+});
+
+function render() {
+  const ul = $('list'); ul.innerHTML = '';
+  items.forEach((it, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${i + 1}. ${it.file.name.replace(/</g,'&lt;')}</span>`;
+    const mk = (txt, fn, dis) => { const b = document.createElement('button'); b.textContent = txt; b.disabled = dis; b.onclick = fn; li.appendChild(b); };
+    mk('↑', () => { [items[i-1], items[i]] = [items[i], items[i-1]]; render(); }, i === 0);
+    mk('↓', () => { [items[i+1], items[i]] = [items[i], items[i+1]]; render(); }, i === items.length - 1);
+    mk('✕', () => { items.splice(i, 1); render(); }, false);
+    ul.appendChild(li);
+  });
+  $('empty').hidden = items.length > 0;
+  $('go').disabled = items.length < 2;
+}
+
+function loadVideo(url) {
+  return new Promise((res, rej) => {
+    const v = document.createElement('video');
+    v.playsInline = true; v.preload = 'auto'; v.src = url;
+    v.onloadedmetadata = () => res(v);
+    v.onerror = () => rej(new Error('Video nelze načíst'));
+  });
+}
+
+$('go').onclick = async () => {
+  const [W, H] = $('res').value.split('x').map(Number);
+  const cv = $('cv'); cv.width = W; cv.height = H;
+  const ctx2d = cv.getContext('2d');
+  $('go').disabled = true; $('out').innerHTML = '';
+  $('bar').hidden = false; $('bar').value = 0;
+
+  try {
+    const audioCtx = new AudioContext();
+    const dest = audioCtx.createMediaStreamDestination();
+    const stream = new MediaStream([
+      ...cv.captureStream(30).getVideoTracks(),
+      ...dest.stream.getAudioTracks()
+    ]);
+    const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+      .find(m => MediaRecorder.isTypeSupported(m));
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5000000 });
+    const chunks = [];
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    const stopped = new Promise(r => rec.onstop = r);
+
+    ctx2d.fillStyle = '#000'; ctx2d.fillRect(0, 0, W, H);
+    rec.start(1000);
+
+    for (let i = 0; i < items.length; i++) {
+      $('status').textContent = `Zpracovávám video ${i + 1} z ${items.length}…`;
+      const v = await loadVideo(items[i].url);
+      const src = audioCtx.createMediaElementSource(v);
+      src.connect(dest);
+
+      let raf;
+      const draw = () => {
+        const s = Math.min(W / v.videoWidth, H / v.videoHeight);
+        const w = v.videoWidth * s, h = v.videoHeight * s;
+        ctx2d.fillStyle = '#000'; ctx2d.fillRect(0, 0, W, H);
+        ctx2d.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+        $('bar').value = (i + (v.currentTime / v.duration || 0)) / items.length;
+        raf = requestAnimationFrame(draw);
+      };
+      await audioCtx.resume();
+      await v.play();
+      draw();
+      await new Promise(r => v.onended = r);
+      cancelAnimationFrame(raf);
+      src.disconnect();
+    }
+
+    rec.stop();
+    await stopped;
+    audioCtx.close();
+
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    $('out').innerHTML = `<h2>Hotovo ✅</h2><video controls src="${url}"></video>
+      <a class="dl" href="${url}" download="spojene-video.webm">⬇ Stáhnout (WebM)</a>`;
+    $('status').textContent = 'Video je hotové.';
+    $('bar').value = 1;
+  } catch (err) {
+    $('status').textContent = 'Chyba: ' + err.message;
+  }
+  $('go').disabled = items.length < 2;
+};
+</script>
+</body>
+</html>
