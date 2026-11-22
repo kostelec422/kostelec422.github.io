@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Náhodná šipka</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { margin: 0 0 20px; color: #333; }
+  .box {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  .arrows {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .arrow {
+    font-size: 40px;
+    padding: 18px;
+    border: 3px solid #ccc;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    background: #fafafa;
+    transition: 0.15s;
+  }
+  .arrow:hover { background: #eef; }
+  .arrow.checked {
+    border-color: #2e8b57;
+    background: #e6f7ee;
+  }
+  .arrow .tick {
+    display: block;
+    font-size: 18px;
+    color: #2e8b57;
+    min-height: 22px;
+  }
+  button {
+    font-size: 18px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #3b82f6;
+    color: #fff;
+    margin: 4px;
+  }
+  button:hover { background: #2563eb; }
+  button.sec { background: #888; }
+  button.sec:hover { background: #666; }
+  #result {
+    font-size: 90px;
+    min-height: 110px;
+    margin: 15px 0 5px;
+  }
+  #info { color: #666; min-height: 22px; }
+  #history {
+    margin-top: 20px;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+    font-size: 26px;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  #historyTitle { font-size: 14px; color: #888; margin-top: 15px; }
+</style>
+</head>
+<body>
+
+<h1>Náhodná šipka</h1>
+
+<div class="box">
+  <div class="arrows" id="arrows"></div>
+
+  <button onclick="pick()">Vybrat náhodnou</button>
+  <button class="sec" onclick="resetChecks()">Zrušit fajfky</button>
+
+  <div id="result"></div>
+  <div id="info"></div>
+
+  <div id="historyTitle">Historie (<span id="count">0</span>):</div>
+  <div id="history"></div>
+  <button class="sec" onclick="clearHistory()" style="margin-top:10px;font-size:14px;padding:8px 14px;">Smazat historii</button>
+</div>
+
+<script>
+  const options = [
+    { symbol: "⬆️", name: "nahoru" },
+    { symbol: "⬇️", name: "dolů" },
+    { symbol: "⬅️", name: "doleva" },
+    { symbol: "➡️", name: "doprava" }
+  ];
+  const selected = new Set();
+  const history = [];
+
+  const arrowsEl = document.getElementById("arrows");
+  options.forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "arrow";
+    d.innerHTML = o.symbol + '<span class="tick"></span>';
+    d.onclick = () => toggle(i, d);
+    arrowsEl.appendChild(d);
+  });
+
+  function toggle(i, el) {
+    if (selected.has(i)) {
+      selected.delete(i);
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    } else {
+      selected.add(i);
+      el.classList.add("checked");
+      el.querySelector(".tick").textContent = "✔";
+    }
+  }
+
+  function pick() {
+    const info = document.getElementById("info");
+    if (selected.size === 0) {
+      info.textContent = "Nejdřív zaškrtni aspoň jednu šipku.";
+      document.getElementById("result").textContent = "";
+      return;
+    }
+    const arr = Array.from(selected);
+    const chosen = options[arr[Math.floor(Math.random() * arr.length)]];
+    document.getElementById("result").textContent = chosen.symbol;
+    info.textContent = "Vybráno: " + chosen.name;
+    history.push(chosen.symbol);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    document.getElementById("count").textContent = history.length;
+    const h = document.getElementById("history");
+    h.textContent = history.join(" ");
+    h.scrollTop = h.scrollHeight;
+  }
+
+  function clearHistory() {
+    history.length = 0;
+    renderHistory();
+    document.getElementById("result").textContent = "";
+    document.getElementById("info").textContent = "";
+  }
+
+  function resetChecks() {
+    selected.clear();
+    document.querySelectorAll(".arrow").forEach(el => {
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    });
+  }
+</script>
+
+</body>
+</html>
