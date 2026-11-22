@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stříhač videa podle osob</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://storage.googleapis.com" crossorigin>
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" crossorigin>
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" crossorigin>
 <style>
   :root{--bg:#0f1115;--card:#181b22;--line:#2a2f3a;--txt:#e8eaf0;--mut:#8b93a5;--red:#ff2d2d}
   *{box-sizing:border-box}
@@ -74,11 +78,11 @@
 <script>
 const SEARCH_RATE = 8;     // rychlost hledání pohybu
 const EXPORT_RATE = 1.5;   // rychlost mini videí (se zvukem)
-const STEP = 0.25;         // krok detekce osob (s) – hustší = všímá si víc
+const STEP = 0.25;         // krok detekce osob (s)
 const HOLD = 1;            // zastavení videa při označení osoby (s)
 const PAD = 1;             // rezerva před/po průchodu (s)
 const ABS_GAP = 2;         // když je záběr bez osoby déle než toto (s), je to konec průchodu
-const MIN_SCORE = 0.2;     // nízká hranice jistoty AI = všímá si i nejistých osob
+const MIN_SCORE = 0.2;     // nízká hranice jistoty AI
 
 const $ = id => document.getElementById(id);
 const v = $('src');
@@ -102,11 +106,11 @@ $('thr').oninput = () => $('thrVal').textContent = $('thr').value;
 
 try { v.preservesPitch = true; v.webkitPreservesPitch = true; v.mozPreservesPitch = true; } catch (e) {}
 
-/* ---------- načítání AI modelu (už při otevření stránky, na pozadí) ---------- */
+/* ---------- načítání AI modelu (hned při otevření, vše paralelně) ---------- */
 function loadScript(src){
   return new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = src; s.onload = res;
+    s.src = src; s.crossOrigin = 'anonymous'; s.onload = res;
     s.onerror = () => rej(new Error('Nepodařilo se načíst ' + src));
     document.head.appendChild(s);
   });
@@ -118,9 +122,13 @@ function tryLoadModel(){
       $('ai').textContent = 'AI model osob: načítám na pozadí…';
       await withTimeout((async () => {
         await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js');
+        // inicializace WebGL běží souběžně se stahováním coco-ssd
+        const backendReady = (async () => { try { await tf.setBackend('webgl'); await tf.ready(); } catch (e) {} })();
         await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js');
+        await backendReady;
         model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-        try { const c = document.createElement('canvas'); c.width = c.height = 128; await model.detect(c); } catch (e) {}
+        // zahřátí modelu neblokuje – běží na pozadí
+        setTimeout(() => { try { const c = document.createElement('canvas'); c.width = c.height = 64; model.detect(c); } catch (e) {} }, 0);
       })(), 60000);
       $('ai').textContent = 'AI model osob: připraven ✅';
       return true;
@@ -513,22 +521,22 @@ $('go').onclick = async () => {
     await Promise.race([unlock, sleep(3000)]);
     v.pause();
     await ensureMeta();
-    // minimální délka mini videa se nastaví automaticky podle délky velkého videa
     o.minLen = Math.min(1, Math.max(0.5, v.duration / 1200));
     await seekTo(0);
     v.controls = false;
 
-    log('Připravuji AI model…');
-    const ok = await tryLoadModel();
-    boxLabel = ok ? 'OSOBA' : 'POHYB';
-
     let ranges;
     if (o.onlyMoving) {
+      // fáze 1 nepotřebuje AI – model se mezitím dál načítá na pozadí
       ranges = await phase1(o);
       if (!ranges.length) { log('Nenašel jsem žádné místo s pohybem. Zkus snížit práh pohybu.'); prog(1); return; }
     } else {
       ranges = [{ start: 0, end: v.duration }];
     }
+
+    log('Připravuji AI model…');
+    const ok = await tryLoadModel();
+    boxLabel = ok ? 'OSOBA' : 'POHYB';
 
     const samples = await phase2(ranges, o);
     const segs = buildSegments(samples, o);
