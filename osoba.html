@@ -32,8 +32,6 @@
   .clip{background:#12151b;border:1px solid var(--line);border-radius:12px;padding:10px}
   .clip video{width:100%;border-radius:8px;background:#000}
   .clip .meta{font-size:.85rem;color:var(--mut);margin:6px 0}
-  .clip .row{margin-top:6px}
-  .clip button{padding:8px 12px;font-size:.9rem}
   .note{font-size:.85rem;color:var(--mut)}
 </style>
 </head>
@@ -50,11 +48,11 @@
     <div id="ai" class="note"></div>
 
     <div style="margin-top:14px">
-      <label>Práh pohybu: <b id="thrVal">6</b> (menší = citlivější)</label>
-      <input type="range" id="thr" min="2" max="25" value="6">
+      <label>Práh pohybu: <b id="thrVal">3</b> (menší = citlivější)</label>
+      <input type="range" id="thr" min="1" max="25" value="3">
     </div>
     <label class="chk"><input type="checkbox" id="onlyMoving" checked> Střihat jen když se osoba pohybuje (jinak i když stojí – pomalejší)</label>
-    <div class="note" style="margin-top:8px">Kolikrát osoba přejde, tolik mini videí vznikne. Hledání pohybu běží 8× rychleji, mini videa se ukládají se zvukem o něco rychleji (1,5×).</div>
+    <div class="note" style="margin-top:8px">Kolikrát osoba přejde, tolik mini videí vznikne. Detekce je nastavená velmi citlivě, aby si všimla i malých a vzdálených osob. Hledání pohybu běží 8× rychleji, mini videa se ukládají se zvukem o něco rychleji (1,5×).</div>
 
     <label style="margin-top:16px">2) Spusť stříhání</label>
     <button id="go" class="big" type="button">🎬 Vytvořit mini videa</button>
@@ -69,11 +67,6 @@
 
   <div class="card" id="results" style="display:none">
     <h2 style="margin:0 0 4px;font-size:1.15rem">Hotová videa (<span id="count">0</span>)</h2>
-    <div class="note">Webová stránka nemůže tiše zapisovat do Fotek. Na iPhonu/iPadu: tlačítko „Uložit do Fotek“ otevře sdílení → <b>Uložit video</b>. Na Androidu a počítači se video stáhne do složky Stažené / Galerie.</div>
-    <div class="row">
-      <button id="saveAll" type="button">📲 Uložit vše do Fotek</button>
-      <button id="dlAll" class="sec" type="button">⬇ Stáhnout vše</button>
-    </div>
     <div id="clips"></div>
   </div>
 </div>
@@ -81,10 +74,11 @@
 <script>
 const SEARCH_RATE = 8;     // rychlost hledání pohybu
 const EXPORT_RATE = 1.5;   // rychlost mini videí (se zvukem)
-const STEP = 0.3;          // krok detekce osob (s)
+const STEP = 0.25;         // krok detekce osob (s) – hustší = všímá si víc
 const HOLD = 1;            // zastavení videa při označení osoby (s)
 const PAD = 1;             // rezerva před/po průchodu (s)
-const ABS_GAP = 1.5;       // když je záběr bez osoby déle než toto (s), je to konec průchodu
+const ABS_GAP = 2;         // když je záběr bez osoby déle než toto (s), je to konec průchodu
+const MIN_SCORE = 0.2;     // nízká hranice jistoty AI = všímá si i nejistých osob
 
 const $ = id => document.getElementById(id);
 const v = $('src');
@@ -241,19 +235,19 @@ function isMoving(p, gray, prev, prevPersons, sw, sh, thr){
     const d = Math.hypot(q.x + q.w/2 - cx, q.y + q.h/2 - cy);
     if (d < bd) { bd = d; shift = d; }
   }
-  return diff > thr || shift > thr / 200;
+  return diff > thr * 0.6 || shift > thr / 400;
 }
 
 // záložní režim bez AI: rámeček kolem oblasti, kde se mění obraz
 function motionBox(gray, prev, sw, sh, thr){
   if (!prev) return [];
-  const th = Math.max(12, thr * 2.5);
+  const th = Math.max(8, thr * 2);
   const cx = new Uint32Array(sw), cy = new Uint32Array(sh);
   let total = 0;
   for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
     if (Math.abs(gray[y*sw+x] - prev[y*sw+x]) > th) { cx[x]++; cy[y]++; total++; }
   }
-  if (total < sw * sh * 0.004) return [];
+  if (total < sw * sh * 0.0015) return [];
   const pct = (arr, f) => { let c = 0; const lim = total * f; for (let i = 0; i < arr.length; i++) { c += arr[i]; if (c >= lim) return i; } return arr.length - 1; };
   const xl = Math.max(0, pct(cx, 0.03) - 2), xh = Math.min(sw - 1, pct(cx, 0.97) + 2);
   const yl = Math.max(0, pct(cy, 0.03) - 2), yh = Math.min(sh - 1, pct(cy, 0.97) + 2);
@@ -274,12 +268,13 @@ function drawBoxes(ctx, boxes, W, H){
 }
 
 /* ---------- FÁZE 1: velmi rychlé hledání míst s pohybem (bez AI) ---------- */
-async function phase1(){
-  const dur = v.duration, step1 = 0.5;
-  const sw = 160, sh = Math.max(1, Math.round(160 * v.videoHeight / v.videoWidth));
+async function phase1(o){
+  const dur = v.duration, step1 = 0.4;
+  const sw = 192, sh = Math.max(1, Math.round(192 * v.videoHeight / v.videoWidth));
   const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
   const sctx = sc.getContext('2d', { willReadFrequently: true });
   const act = [];
+  const pixTh = Math.max(8, 8 + o.thr * 0.5);
   let prev = null, nextT = 0;
   v.muted = true;
   await scanRange(0, dur, SEARCH_RATE, async t => {
@@ -289,15 +284,15 @@ async function phase1(){
     const g = toGray(sctx.getImageData(0, 0, sw, sh).data);
     if (prev) {
       let c = 0;
-      for (let i = 0; i < g.length; i++) if (Math.abs(g[i] - prev[i]) > 18) c++;
-      if (c > g.length * 0.002) act.push(t);
+      for (let i = 0; i < g.length; i++) if (Math.abs(g[i] - prev[i]) > pixTh) c++;
+      if (c > g.length * 0.0004) act.push(t);
     }
     prev = g;
     prog(t / dur * 0.3);
     log(`1/3 Rychlé hledání pohybu (8×)… ${fmt(t)} / ${fmt(dur)} • míst s pohybem: ${act.length}`);
   });
   if (cancel) throw new Error('cancel');
-  const pad1 = 1.5, ranges = [];
+  const pad1 = 2, ranges = [];
   for (const t of act) {
     const a = Math.max(0, t - pad1), b = Math.min(dur, t + step1 + pad1);
     const last = ranges[ranges.length - 1];
@@ -309,10 +304,10 @@ async function phase1(){
 
 /* ---------- FÁZE 2: přesná detekce osob jen v nalezených místech ---------- */
 async function phase2(ranges, o){
-  const aw = Math.min(384, v.videoWidth), ah = Math.round(aw * v.videoHeight / v.videoWidth);
+  const aw = Math.min(512, v.videoWidth), ah = Math.round(aw * v.videoHeight / v.videoWidth);
   const ac = document.createElement('canvas'); ac.width = aw; ac.height = ah;
   const actx = ac.getContext('2d', { willReadFrequently: true });
-  const sw = 160, sh = Math.max(1, Math.round(160 * v.videoHeight / v.videoWidth));
+  const sw = 192, sh = Math.max(1, Math.round(192 * v.videoHeight / v.videoWidth));
   const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
   const sctx = sc.getContext('2d', { willReadFrequently: true });
   const pc = $('prev'); pc.style.display = 'block'; pc.width = aw; pc.height = ah;
@@ -333,8 +328,8 @@ async function phase2(ranges, o){
       const gray = toGray(sctx.getImageData(0, 0, sw, sh).data);
       let persons;
       if (model) {
-        const preds = await model.detect(ac);
-        persons = preds.filter(p => p.class === 'person').map(p => ({
+        const preds = await model.detect(ac, 20, MIN_SCORE);
+        persons = preds.filter(p => p.class === 'person' && p.score >= MIN_SCORE).map(p => ({
           x: p.bbox[0] / aw, y: p.bbox[1] / ah, w: p.bbox[2] / aw, h: p.bbox[3] / ah
         }));
         for (const p of persons) p.moving = isMoving(p, gray, prevGray, prevPersons, sw, sh, o.thr);
@@ -414,7 +409,7 @@ function makeClip(blob, idx, seg){
   const type = (blob.type || 'video/webm').split(';')[0];
   const ext = type.includes('mp4') ? 'mp4' : 'webm';
   const name = `klip_${String(idx + 1).padStart(3, '0')}_${fmt(seg.start).replace(':','m')}s.${ext}`;
-  return { blob, file: new File([blob], name, { type }), url: URL.createObjectURL(blob), start: seg.start, end: seg.end, name };
+  return { blob, url: URL.createObjectURL(blob), start: seg.start, end: seg.end, name };
 }
 
 async function exportClip(seg, idx, samples, o){
@@ -489,33 +484,10 @@ function addClipCard(c){
   $('count').textContent = clips.length;
   const d = document.createElement('div'); d.className = 'clip';
   d.innerHTML = `<video controls playsinline preload="metadata" src="${c.url}"></video>
-    <div class="meta">${c.name} • ${fmt(c.start)}–${fmt(c.end)} • ${(c.blob.size/1048576).toFixed(1)} MB</div>
-    <div class="row"><button type="button" class="b-save">📲 Do Fotek</button><button type="button" class="sec b-dl">⬇ Stáhnout</button></div>`;
-  d.querySelector('.b-save').onclick = () => saveFiles([c.file]);
-  d.querySelector('.b-dl').onclick = () => download(c);
+    <div class="meta">${c.name} • ${fmt(c.start)}–${fmt(c.end)} • ${(c.blob.size/1048576).toFixed(1)} MB</div>`;
   $('clips').appendChild(d);
 }
 
-function download(c){
-  const a = document.createElement('a'); a.href = c.url; a.download = c.name;
-  document.body.appendChild(a); a.click(); a.remove();
-}
-
-async function saveFiles(files){
-  try {
-    if (navigator.canShare && navigator.canShare({ files })) {
-      await navigator.share({ files });
-      return;
-    }
-  } catch (e) { if (e.name === 'AbortError') return; }
-  for (const f of files) {
-    const c = clips.find(x => x.file === f);
-    if (c) { download(c); await sleep(400); }
-  }
-}
-
-$('saveAll').onclick = () => saveFiles(clips.map(c => c.file));
-$('dlAll').onclick = async () => { for (const c of clips) { download(c); await sleep(400); } };
 $('stop').onclick = () => { cancel = true; log('Ruším…'); };
 
 /* ---------- hlavní tlačítko ---------- */
@@ -552,7 +524,7 @@ $('go').onclick = async () => {
 
     let ranges;
     if (o.onlyMoving) {
-      ranges = await phase1();
+      ranges = await phase1(o);
       if (!ranges.length) { log('Nenašel jsem žádné místo s pohybem. Zkus snížit práh pohybu.'); prog(1); return; }
     } else {
       ranges = [{ start: 0, end: v.duration }];
