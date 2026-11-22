@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Připomínač se zvonkem</title>
+<style>
+:root{
+  --bg:#eef1ec; --surface:#fbfcfa; --ink:#1d2a24; --muted:#5d6b64; --line:#cfd8d1;
+  --accent:#1f6b52; --accent-ink:#ffffff; --alert:#b3401f; --alert-ink:#ffffff;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121a16; --surface:#1b2520; --ink:#e6eee9; --muted:#9baba3; --line:#2f3d36;
+    --accent:#5fc19c; --accent-ink:#0c1a14; --alert:#ee8a63; --alert-ink:#1a0c06;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121a16; --surface:#1b2520; --ink:#e6eee9; --muted:#9baba3; --line:#2f3d36;
+  --accent:#5fc19c; --accent-ink:#0c1a14; --alert:#ee8a63; --alert-ink:#1a0c06; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px 18px 60px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2rem;line-height:1.15;margin:0 0 4px}
+.clock{font-family:Georgia,"Times New Roman",serif;font-size:3.2rem;letter-spacing:.02em;margin:0;font-variant-numeric:tabular-nums}
+.date{color:var(--muted);margin:0 0 24px}
+.banner{position:sticky;top:8px;z-index:5;margin:0 0 16px;padding:10px 14px;border-radius:10px;font-weight:600;font-size:.95rem}
+.banner[hidden]{display:none}
+.banner.ok{background:var(--accent);color:var(--accent-ink)}
+.banner.warn{background:var(--alert);color:var(--alert-ink)}
+form,.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+label{display:block;font-weight:600;margin:0 0 6px}
+textarea,input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:84px;resize:vertical}
+.chk{display:flex;gap:8px;align-items:center;font-weight:400}
+.chk input{width:auto}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.field{margin-top:14px}
+.row .field{margin-top:0}
+.tone{display:flex;gap:8px}
+.tone select{flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;width:100%;margin-top:18px;padding:12px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.list{margin-top:22px}
+.list h2{margin:0 0 10px;font-size:1.1rem}
+.empty{color:var(--muted);margin:0}
+.item{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item p{margin:0}
+.when{font-weight:600;font-variant-numeric:tabular-nums}
+.meta{color:var(--muted);font-size:.9rem}
+.item.done .when,.item.done .txt{text-decoration:line-through;color:var(--muted)}
+.msg{margin:10px 0 0;font-weight:600}.msg.err{color:var(--alert)}.msg.ok{color:var(--accent)}
+.hint{color:var(--muted);font-size:.9rem;margin:14px 0 0}
+.ring{position:fixed;inset:0;background:var(--alert);color:var(--alert-ink);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;z-index:10;gap:18px}
+.ring.on{display:flex}
+.ring h2{font-family:Georgia,serif;font-size:2.4rem;margin:0}
+.ring p{font-size:1.4rem;margin:0;max-width:28ch;overflow-wrap:anywhere}
+.ring p.rw{font-size:1rem;font-weight:700}
+.ring button{background:var(--alert-ink);color:var(--alert);border:0;font-weight:700;font-size:1.1rem;padding:16px 28px;max-width:100%}
+.ring #done{background:transparent;color:var(--alert-ink);border:2px solid var(--alert-ink)}
+@media (max-width:420px){.row{grid-template-columns:1fr}.clock{font-size:2.6rem}}
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" id="banner" role="status" hidden></div>
+  <h1>Připomínač</h1>
+  <p class="clock" id="clock">--:--:--</p>
+  <p class="date" id="today"></p>
+
+  <form id="f" novalidate>
+    <label for="txt">Co si chceš připomenout?</label>
+    <textarea id="txt" placeholder="Např. Zavolat doktorovi" required></textarea>
+    <div class="row">
+      <div class="field"><label for="d">Datum</label><input type="date" id="d" required></div>
+      <div class="field"><label for="t">Čas</label><input type="time" id="t" required></div>
+    </div>
+    <div class="field">
+      <label for="tone">Znělka</label>
+      <div class="tone">
+        <select id="tone"></select>
+        <button type="button" id="prev">Přehrát</button>
+      </div>
+    </div>
+    <div class="field"><label class="chk"><input type="checkbox" id="ics" checked> Nastavit i budík v kalendáři (zazvoní a zavibruje i při zhasnutém telefonu)</label></div>
+    <button class="primary" type="submit">Přidat připomínku</button>
+    <p class="msg" id="msg" role="status"></p>
+    <div class="field"><button type="button" id="notif">Povolit upozornění nahoře na obrazovce</button><p class="hint" id="notifState"></p></div>
+    <p class="hint">Po přidání otevři stažený soubor a ulož událost do kalendáře. Kalendář zazvoní a zavibruje spolehlivě i při zamčeném telefonu a zavřeném prohlížeči. Stránka sama funguje jen dokud ji prohlížeč nechá běžet na pozadí, proto ji nech otevřenou a povol upozornění.</p>
+  </form>
+
+  <section class="list" aria-live="polite">
+    <h2>Naplánováno</h2>
+    <div id="items"></div>
+  </section>
+</main>
+
+<div class="ring" id="ring" role="alertdialog" aria-live="assertive">
+  <h2>Je čas!</h2>
+  <p id="ringTxt"></p>
+  <p class="rw" id="ringWarn"></p>
+  <button id="unmute" hidden>Spustit zvuk</button>
+  <button id="stop">Vypnout (zazvoní znovu za 1 minutu)</button>
+  <button id="done">Úplně vypnout</button>
+</div>
+
+<script>
+(function(){
+  var KEY = "pripominac:v1", TITLE = document.title;
+  var $ = function(id){ return document.getElementById(id); };
+  var items = [], toneUrls = {}, toneSamples = {}, silentUrl = null;
+  var queue = [], current = null, prevTimer = null, vibT = null;
+  // jeden sdílený přehrávač pro znělky i hlídání na pozadí
+  var el = new Audio(); el.loop = true; el.setAttribute("playsinline", "");
+  var token = 0, mode = "idle", armed = false, gesture = false;
+  var actxO = null, wsrc = null;
+
+  var TONES = {
+    zvonek:  {n:"Zvonek",  type:"sine",     seq:[[880,.14],[0,.06],[880,.14],[0,.06],[880,.14],[0,.7]]},
+    alarm:   {n:"Alarm",   type:"square",   seq:[[1000,.2],[700,.2],[1000,.2],[700,.2],[0,.5]]},
+    melodie: {n:"Melodie", type:"triangle", seq:[[523,.2],[659,.2],[784,.2],[1047,.45],[0,.7]]},
+    digital: {n:"Digitální pípání", type:"square", seq:[[1500,.07],[0,.07],[1500,.07],[0,.07],[1500,.07],[0,.6]]},
+    gong:    {n:"Gong",    type:"sine",     seq:[[196,1.6],[0,.8]]}
+  };
+
+  var sel = $("tone");
+  Object.keys(TONES).forEach(function(k){
+    var o = document.createElement("option"); o.value = k; o.textContent = TONES[k].n; sel.appendChild(o);
+  });
+
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function fmt(ms){
+    var x = new Date(ms);
+    return x.getDate() + ". " + (x.getMonth()+1) + ". " + x.getFullYear() + " v " + pad(x.getHours()) + ":" + pad(x.getMinutes());
+  }
+  function load(){
+    try { var r = localStorage.getItem(KEY); items = r ? JSON.parse(r) : []; } catch(e){ items = []; }
+    if (!Array.isArray(items)) items = [];
+  }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(items)); } catch(e){} }
+  function setMsg(t, err){ var m = $("msg"); m.textContent = t; m.className = "msg " + (err ? "err" : "ok"); }
+
+  /* ---------- generování zvuků do WAV ---------- */
+  function wavUrl(s, sr){
+    var n = s.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), i;
+    function w(o, str){ for (var j = 0; j < str.length; j++) v.setUint8(o + j, str.charCodeAt(j)); }
+    w(0,"RIFF"); v.setUint32(4, 36 + n*2, true); w(8,"WAVE"); w(12,"fmt ");
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    w(36,"data"); v.setUint32(40, n*2, true);
+    for (i = 0; i < n; i++) v.setInt16(44 + i*2, Math.max(-1, Math.min(1, s[i])) * 32767, true);
+    return URL.createObjectURL(new Blob([b], {type:"audio/wav"}));
+  }
+  function toneUrl(key){
+    if (toneUrls[key]) return toneUrls[key];
+    var t = TONES[key] || TONES.zvonek, sr = 22050;
+    var total = t.seq.reduce(function(s,x){ return s + x[1]; }, 0);
+    var reps = Math.max(1, Math.ceil(4 / total));
+    var out = new Float32Array(Math.round(total * reps * sr)), pos = 0;
+    for (var r = 0; r < reps; r++) t.seq.forEach(function(x){
+      var len = Math.round(x[1] * sr);
+      if (x[0] > 0) for (var i = 0; i < len && pos + i < out.length; i++){
+        var tt = i / sr, ph = (tt * x[0]) % 1, wv;
+        wv = t.type === "sine" ? Math.sin(2 * Math.PI * ph) : t.type === "square" ? (ph < .5 ? 1 : -1) : (ph < .5 ? 4*ph - 1 : 3 - 4*ph);
+        out[pos + i] = .4 * wv * (tt < .01 ? tt / .01 : Math.pow(.004, (tt - .01) / (x[1] - .01)));
+      }
+      pos += len;
+    });
+    toneSamples[key] = {s: out, sr: sr};
+    return (toneUrls[key] = wavUrl(out, sr));
+  }
+  function toneSrc(key){ var u = toneUrl(key); return {url: u, samples: toneSamples[key]}; }
+  function getSilent(){
+    if (silentUrl) return silentUrl;
+    var s = new Float32Array(8000);
+    for (var i = 0; i < s.length; i++) s[i] = (i % 2 ? 1 : -1) / 32767;
+    return (silentUrl = wavUrl(s, 8000));
+  }
+
+  /* ---------- přehrávání ---------- */
+  function playUrl(url){
+    var my = ++token, p;
+    el.loop = true; el.muted = false; el.volume = 1; el.src = url;
+    try { p = el.play(); } catch(e){ p = Promise.reject(e); }
+    return Promise.resolve(p).then(function(){ return my === token; },
+      function(err){ if (my !== token) return false; throw err; });
+  }
+  function actx(){
+    if (!actxO) { var C = window.AudioContext || window.webkitAudioContext; if (C) { try { actxO = new C(); } catch(e){} } }
+    if (actxO && actxO.state === "suspended") { try { actxO.resume(); } catch(e){} }
+    return actxO;
+  }
+  function wstop(){ if (wsrc) { try { wsrc.stop(); } catch(e){} wsrc = null; } }
+  function webPlay(src, my){
+    var a = actx();
+    if (!a) return Promise.reject(new Error("WebAudio není dostupné"));
+    if (!src.samples) return Promise.reject(new Error("žádný zdroj"));
+    var b = a.createBuffer(1, src.samples.s.length, src.samples.sr);
+    b.getChannelData(0).set(src.samples.s);
+    if (my !== token) return Promise.resolve(false);
+    var s = a.createBufferSource(); s.buffer = b; s.loop = true; s.connect(a.destination); s.start(); wsrc = s;
+    return Promise.resolve(true);
+  }
+  // nejdřív běžný přehrávač, když selže, zkusí se WebAudio
+  function playSrc(src){
+    wstop();
+    var pr = playUrl(src.url), my = token;
+    return pr.catch(function(err){
+      if (my !== token) return false;
+      return webPlay(src, my).catch(function(e2){ throw (err && err.name === "NotAllowedError") ? err : e2; });
+    });
+  }
+  function halt(){ token++; try { el.pause(); } catch(e){} wstop(); mode = "idle"; armed = false; }
+  function pending(){ return items.some(function(i){ return !i.done; }); }
+
+  function startKeep(){
+    if (mode !== "idle" || !pending() || !gesture) return;
+    mode = "keep";
+    playUrl(getSilent()).then(function(ok){
+      if (!ok) return;
+      armed = true; banner();
+      try { if (navigator.mediaSession) navigator.mediaSession.metadata = new MediaMetadata({title:"Připomínač běží", artist:"Čeká na zadaný čas"}); } catch(e){}
+    }, function(){ if (mode === "keep") { mode = "idle"; armed = false; } banner(); });
+  }
+  function syncKeep(){
+    if (pending()) { if (mode === "idle") startKeep(); }
+    else if (mode === "keep") halt();
+    banner();
+  }
+  function banner(){
+    var b = $("banner");
+    if (mode === "ring" || mode === "preview") return;
+    if (!pending()) { b.hidden = true; return; }
+    b.hidden = false;
+    if (armed) { b.className = "banner ok"; b.textContent = "● Hlídání zapnuto: nech stránku otevřenou, v nastavený čas se spustí zvuk." + (window.Notification && Notification.permission !== "granted" ? " Povol upozornění tlačítkem níže." : ""); }
+    else if (!gesture) { b.className = "banner warn"; b.textContent = "⚠ Klepni kamkoli na stránku, aby prohlížeč povolil zvuk. Bez toho nemusí zazvonit."; }
+    else { b.className = "banner warn"; b.textContent = "⚠ Prohlížeč nepovolil zvuk na pozadí. Zvonění mimo stránku nemusí fungovat, použij soubor do kalendáře."; }
+  }
+
+  function playAlarm(it){
+    Promise.resolve(toneSrc(it.tone)).then(playSrc).then(function(){ if (current === it) $("unmute").hidden = true; })
+    .catch(function(){ if (current === it) blocked(); });
+  }
+  function blocked(){
+    $("ringWarn").textContent = "Prohlížeč zablokoval zvuk. Klepni na „Spustit zvuk“.";
+    $("unmute").hidden = false;
+  }
+
+  function startRing(it){
+    if (current) { queue.push(it); return; }
+    stopPreview(true);
+    current = it; mode = "ring";
+    $("ringTxt").textContent = it.text; $("ringWarn").textContent = ""; $("unmute").hidden = true;
+    $("ring").classList.add("on");
+    document.title = "⏰ Je čas! " + it.text;
+    playAlarm(it);
+    if (navigator.vibrate) {
+      var vib = function(){ try { navigator.vibrate([500,250,500,250,500]); } catch(e){} };
+      vib(); clearInterval(vibT); vibT = setInterval(vib, 3000);
+    }
+    if (window.Notification && Notification.permission === "granted") {
+      try { new Notification("Je čas! ⏰", {body: it.text, tag: "pripominac", requireInteraction: true, renotify: true, silent: false, vibrate: [500,250,500,250,500]}); } catch(e){}
+    }
+  }
+  function closeRing(snooze){
+    var it = current;
+    halt(); current = null; clearInterval(vibT);
+    $("ring").classList.remove("on"); document.title = TITLE;
+    if (it) {
+      if (snooze) { it.at = Date.now() + 60000; it.done = false; }
+      save(); render();
+    }
+    var next = queue.shift();
+    if (next) startRing(next); else syncKeep();
+  }
+  $("stop").addEventListener("click", function(){ closeRing(true); });
+  $("done").addEventListener("click", function(){ closeRing(false); });
+  $("unmute").addEventListener("click", function(){ if (current) { $("ringWarn").textContent = ""; playAlarm(current); } });
+
+  function tick(){
+    var now = new Date();
+    $("clock").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
+    $("today").textContent = now.toLocaleDateString("cs-CZ", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+    var changed = false;
+    items.forEach(function(it){
+      if (!it.done && it.at <= now.getTime()) { it.done = true; changed = true; startRing(it); }
+    });
+    if (changed) { save(); render(); }
+    syncKeep();
+  }
+
+  function render(){
+    var box = $("items"); box.textContent = "";
+    if (!items.length) {
+      var p = document.createElement("p"); p.className = "empty";
+      p.textContent = "Zatím nic. Napiš poznámku, nastav datum a čas a přidej ji.";
+      box.appendChild(p); return;
+    }
+    items.slice().sort(function(a,b){ return a.at - b.at; }).forEach(function(it){
+      var d = document.createElement("div"); d.className = "item" + (it.done ? " done" : "");
+      var l = document.createElement("div");
+      var w = document.createElement("p"); w.className = "when"; w.textContent = fmt(it.at);
+      var x = document.createElement("p"); x.className = "txt"; x.textContent = it.text;
+      var m = document.createElement("p"); m.className = "meta";
+      m.textContent = "Znělka: " + (TONES[it.tone] ? TONES[it.tone].n : "Zvonek") + (it.done ? " · odezněla" : "");
+      l.appendChild(w); l.appendChild(x); l.appendChild(m);
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "Smazat";
+      b.addEventListener("click", function(){
+        items = items.filter(function(z){ return z.id !== it.id; });
+        save(); render(); syncKeep();
+      });
+      var c = document.createElement("button"); c.type = "button"; c.textContent = "Do kalendáře";
+      c.addEventListener("click", function(){ exportIcs(it); });
+      var bw = document.createElement("div"); bw.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end";
+      bw.appendChild(c); bw.appendChild(b);
+      d.appendChild(l); d.appendChild(bw); box.appendChild(d);
+    });
+  }
+
+  /* ---------- tlačítko Přehrát ---------- */
+  function stopPreview(noSync){
+    if (mode !== "preview") return;
+    clearTimeout(prevTimer); halt();
+    $("prev").textContent = "Přehrát";
+    if (!noSync) syncKeep();
+  }
+  $("prev").addEventListener("click", function(){
+    if (mode === "preview") { stopPreview(); return; }
+    if (current) return;
+    actx();
+    mode = "preview"; $("prev").textContent = "Zastavit"; setMsg("", false);
+    playSrc(toneSrc(sel.value)).catch(function(err){
+      stopPreview();
+      setMsg(err && err.name === "NotAllowedError" ? "Prohlížeč zablokoval zvuk, zkus to znovu." : "Zvuk se nepodařilo přehrát: " + (err && (err.name || err.message) || ""), true);
+    });
+    prevTimer = setTimeout(function(){ stopPreview(); }, 8000);
+  });
+
+  /* ---------- přidání připomínky ---------- */
+  $("f").addEventListener("submit", function(e){
+    e.preventDefault();
+    try {
+      gesture = true;
+      var text = $("txt").value.trim();
+      if (!text) { setMsg("Napiš, co si chceš připomenout.", true); return; }
+      var at = new Date($("d").value + "T" + $("t").value).getTime();
+      if (isNaN(at)) { setMsg("Vyber datum a čas.", true); return; }
+      var id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
+      var it = {id: id, text: text, at: at, tone: sel.value, done: false};
+      items.push(it);
+      if (window.Notification && Notification.permission === "default") { try { Notification.requestPermission(); } catch(e2){} }
+      stopPreview(true);
+      save(); render(); syncKeep();
+      $("txt").value = "";
+      setMsg("Přidáno na " + fmt(at) + ".", false);
+      if ($("ics").checked) { try { exportIcs(it); } catch(e3){} }
+    } catch(err) {
+      setMsg("Chyba: " + (err && err.message ? err.message : err), true);
+    }
+  });
+
+  var n = new Date(Date.now() + 60000);
+  $("d").value = n.getFullYear() + "-" + pad(n.getMonth()+1) + "-" + pad(n.getDate());
+  $("t").value = pad(n.getHours()) + ":" + pad(n.getMinutes());
+
+  function notifState(){
+    var el2 = $("notifState");
+    if (!window.Notification) { el2.textContent = "Tento prohlížeč upozornění nepodporuje."; $("notif").hidden = true; return; }
+    if (Notification.permission === "granted") { el2.textContent = "Upozornění jsou povolená."; $("notif").hidden = true; }
+    else if (Notification.permission === "denied") { el2.textContent = "Upozornění jsou zablokovaná. Povol je v nastavení webu v prohlížeči."; $("notif").hidden = true; }
+    else el2.textContent = "";
+  }
+  $("notif").addEventListener("click", function(){
+    try {
+      var r = Notification.requestPermission(function(){ notifState(); });
+      if (r && r.then) r.then(notifState);
+    } catch(e){ notifState(); }
+  });
+  notifState();
+
+  ["pointerdown","touchend","keydown","click"].forEach(function(ev){
+    document.addEventListener(ev, function(){ gesture = true; actx(); syncKeep(); }, true);
+  });
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") tick(); });
+
+  /* ---------- kalendář (.ics) ---------- */
+  function icsDate(ms){
+    var x = new Date(ms);
+    return x.getFullYear() + pad(x.getMonth()+1) + pad(x.getDate()) + "T" + pad(x.getHours()) + pad(x.getMinutes()) + "00";
+  }
+  function exportIcs(it){
+    var txt = it.text.replace(/[\\;,]/g, " ").replace(/\r?\n/g, " ");
+    var lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Pripominac//CS","BEGIN:VEVENT",
+      "UID:" + it.id + "@pripominac","DTSTAMP:" + icsDate(Date.now()),
+      "DTSTART:" + icsDate(it.at),"DTEND:" + icsDate(it.at + 300000),
+      "SUMMARY:" + txt,"BEGIN:VALARM","TRIGGER:PT0S","ACTION:DISPLAY","DESCRIPTION:" + txt,"END:VALARM","END:VEVENT","END:VCALENDAR"];
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], {type:"text/calendar"})); a.download = "pripominka.ics";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  load(); render(); tick();
+  setInterval(tick, 1000);
+  // časovač ve workeru se na pozadí neomezuje tak jako běžný setInterval
+  try {
+    var wk = new Worker(URL.createObjectURL(new Blob(["setInterval(function(){postMessage(1)},1000)"], {type:"text/javascript"})));
+    wk.onmessage = tick;
+  } catch(e){}
+})();
+</script>
+</body>
+</html>
