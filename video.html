@@ -14,7 +14,7 @@
   main { max-width:680px; margin:0 auto; }
   h1 { font-size:1.4rem; }
   .card { background:var(--card); border-radius:12px; padding:14px; margin:14px 0; }
-  button, select { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--mut); background:var(--bg); color:var(--fg); cursor:pointer; }
+  button { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--mut); background:var(--bg); color:var(--fg); cursor:pointer; }
   button.main { background:var(--acc); color:#fff; border:none; }
   button:disabled { opacity:.5; cursor:not-allowed; }
   ul { list-style:none; padding:0; margin:10px 0 0; }
@@ -39,14 +39,7 @@
   </div>
 
   <div class="card">
-    <label>Rozlišení:
-      <select id="res">
-        <option value="1280x720">1280×720 (HD)</option>
-        <option value="1920x1080">1920×1080 (Full HD)</option>
-        <option value="854x480">854×480</option>
-        <option value="720x1280">720×1280 (na výšku)</option>
-      </select>
-    </label>
+    <p class="mut">Výstup: 854×480</p>
     <p><button class="main" id="go" disabled>Spojit videa</button></p>
     <progress id="bar" value="0" max="1" hidden></progress>
     <p class="mut" id="status"></p>
@@ -59,6 +52,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
+const W = 854, H = 480;
 let items = [];
 
 $('files').addEventListener('change', e => {
@@ -92,7 +86,6 @@ function loadVideo(url) {
 }
 
 $('go').onclick = async () => {
-  const [W, H] = $('res').value.split('x').map(Number);
   const cv = $('cv'); cv.width = W; cv.height = H;
   const ctx2d = cv.getContext('2d');
   $('go').disabled = true; $('out').innerHTML = '';
@@ -107,7 +100,7 @@ $('go').onclick = async () => {
     ]);
     const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
       .find(m => MediaRecorder.isTypeSupported(m));
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5000000 });
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2500000 });
     const chunks = [];
     rec.ondataavailable = e => e.data.size && chunks.push(e.data);
     const stopped = new Promise(r => rec.onstop = r);
