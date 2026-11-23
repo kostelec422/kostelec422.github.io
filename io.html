@@ -1,1 +1,167 @@
-d
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Útok kláves</title>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--text:#1a1d23;--muted:#6b7280;--accent:#4f46e5;--danger:#dc2626;--key:#e5e7eb;--border:#d1d5db;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1115;--surface:#1a1d24;--text:#f3f4f6;--muted:#9ca3af;--accent:#818cf8;--danger:#f87171;--key:#2a2f3a;--border:#3a4050;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1115;--surface:#1a1d24;--text:#f3f4f6;--muted:#9ca3af;--accent:#818cf8;--danger:#f87171;--key:#2a2f3a;--border:#3a4050;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding:12px;gap:10px;overflow:hidden}
+.top{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+#field{position:relative;flex:1;min-height:180px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+#floor{position:absolute;left:0;right:0;top:45%;bottom:0;background:linear-gradient(var(--key),var(--surface))}#hands{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:38px;z-index:4}
+.k{position:absolute;border-radius:12%;background:var(--surface);border:1px solid var(--border);border-bottom-width:4px;display:flex;align-items:center;justify-content:center;font-weight:700;will-change:transform}
+.k.first{border-color:var(--accent);color:var(--accent)}
+#overlay{position:absolute;inset:0;z-index:5;background:color-mix(in srgb,var(--surface) 92%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px}
+#overlay h1{margin:0;font-size:24px}
+#overlay p{margin:0;color:var(--muted);max-width:340px}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;cursor:pointer}
+.btn{padding:12px 20px;border-radius:10px;border:1px solid var(--border);background:var(--accent);color:#fff;font-weight:600}
+.btn.alt{background:var(--surface);color:var(--text)}
+#typed{width:100%;font-size:20px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center}
+#typed:disabled{opacity:.5}
+#kb{display:none;flex-direction:column;gap:6px}
+#kb .r{display:flex;gap:4px;justify-content:center}
+#kb button{flex:1;max-width:40px;height:44px;border-radius:7px;border:1px solid var(--border);background:var(--key);color:var(--text);font-weight:600;font-size:16px;padding:0}
+#kb button:active{background:var(--accent);color:#fff}
+.lost{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="top"><span>Skóre: <b id="score">0</b></span><span>Rekord: <b id="best">0</b></span></div>
+<div id="field">
+  <div id="floor"></div><div id="hands">🙌</div>
+  <div id="overlay">
+    <h1 id="ov-title">Útok kláves</h1>
+    <p id="ov-text">Hraješ z první osoby: klávesy se k tobě řítí z dálky a postupně zrychlují. Zmáčkni písmeno té nejbližší, než ti vrazí do obličeje.</p>
+    <div class="row" id="ov-btns">
+      <button class="btn" data-mode="pc">💻 Počítač</button>
+      <button class="btn alt" data-mode="mobile">📱 Mobil</button>
+    </div>
+  </div>
+</div>
+<input id="typed" disabled placeholder="Stiskni Spustit hru" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="1">
+<div id="kb"></div>
+<script>
+(function(){
+  var field=document.getElementById('field'),overlay=document.getElementById('overlay'),
+      typed=document.getElementById('typed'),kb=document.getElementById('kb'),
+      scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),
+      ovTitle=document.getElementById('ov-title'),ovText=document.getElementById('ov-text'),ovBtns=document.getElementById('ov-btns');
+  var mode=null,keys=[],running=false,score=0,best=0,last=0,spawnT=0,elapsed=0,raf=0;
+  var LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  try{best=+localStorage.getItem('klavesy-best')||0}catch(e){}
+  bestEl.textContent=best;
+
+  function buildKb(){
+    var rows=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+    kb.innerHTML='';
+    rows.forEach(function(r){
+      var d=document.createElement('div');d.className='r';
+      r.split('').forEach(function(c){
+        var b=document.createElement('button');b.textContent=c;
+        b.addEventListener('pointerdown',function(e){e.preventDefault();press(c)});
+        d.appendChild(b);
+      });
+      kb.appendChild(d);
+    });
+  }
+
+  function showMenu(title,text,btnLabel){
+    ovTitle.textContent=title;ovText.textContent=text;
+    ovBtns.innerHTML='';
+    var b=document.createElement('button');b.className='btn';b.textContent=btnLabel;
+    b.addEventListener('click',start);ovBtns.appendChild(b);
+    var m=document.createElement('button');m.className='btn alt';m.textContent='Změnit zařízení';
+    m.addEventListener('click',function(){location.reload()});ovBtns.appendChild(m);
+    overlay.style.display='flex';
+  }
+
+  function chooseMode(m){
+    mode=m;
+    if(m==='mobile'){kb.style.display='flex';buildKb();typed.readOnly=true;typed.setAttribute('inputmode','none')}
+    else{kb.style.display='none';typed.readOnly=false}
+    ovTitle.textContent=m==='pc'?'Počítač':'Mobil';
+    ovText.textContent=m==='pc'?'Psát můžeš až po spuštění hry.':'Klávesnice se ukáže dole po spuštění.';
+    ovBtns.innerHTML='';
+    var b=document.createElement('button');b.className='btn';b.textContent='Spustit hru';
+    b.addEventListener('click',start);ovBtns.appendChild(b);
+  }
+  Array.prototype.forEach.call(ovBtns.querySelectorAll('[data-mode]'),function(b){
+    b.addEventListener('click',function(){chooseMode(b.getAttribute('data-mode'))});
+  });
+
+  function start(){
+    keys.forEach(function(k){k.el.remove()});keys=[];
+    score=0;scoreEl.textContent=0;elapsed=0;spawnT=0.4;last=0;running=true;
+    overlay.style.display='none';
+    if(mode==='pc'){typed.disabled=false;typed.value='';typed.placeholder='Piš písmena…';typed.focus()}
+    else{typed.value='';typed.placeholder='Mačkej klávesy níže'}
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  }
+
+  function spawn(w){
+    var el=document.createElement('div');el.className='k';
+    var c=LETTERS[Math.floor(Math.random()*26)];el.textContent=c;
+    field.appendChild(el);
+    keys.push({c:c,d:60,lane:Math.random()*1.2-0.6,el:el});
+  }
+
+  function front(){
+    var f=null;keys.forEach(function(k){if(!f||k.d<f.d)f=k});return f;
+  }
+
+  function press(c){
+    if(!running)return;
+    c=c.toUpperCase();typed.value=c;
+    var f=front();
+    if(f&&f.c===c){
+      f.el.remove();keys.splice(keys.indexOf(f),1);
+      score++;scoreEl.textContent=score;
+    }
+  }
+
+  typed.addEventListener('keydown',function(e){
+    if(e.key.length===1&&/[a-zA-Z]/.test(e.key)){e.preventDefault();press(e.key)}
+  });
+
+  function lose(){
+    running=false;cancelAnimationFrame(raf);
+    if(score>best){best=score;bestEl.textContent=best;try{localStorage.setItem('klavesy-best',best)}catch(e){}}
+    typed.disabled=true;typed.placeholder='Stiskni Spustit hru';typed.value='';
+    showMenu('Prohrál jsi','Zničených kláves: '+score,'Hrát znovu');
+  }
+
+  function loop(t){
+    if(!running)return;
+    if(!last)last=t;
+    var dt=Math.min((t-last)/1000,0.05);last=t;
+    elapsed+=dt;
+    var w=field.clientWidth,h=field.clientHeight,speed=9+elapsed*0.35;
+    var interval=Math.max(0.7,1.8-elapsed*0.012);
+    spawnT-=dt;
+    if(spawnT<=0){spawn(w);spawnT=interval}
+    var f=front();
+    keys.forEach(function(k){
+      k.d-=speed*dt;
+      var s=440/Math.max(k.d,4);
+      var st=k.el.style;
+      st.width=st.height=s+'px';
+      st.fontSize=(s*0.5)+'px';
+      st.left=(w/2+k.lane*w*2.5/Math.max(k.d,4)-s/2)+'px';
+      st.top=(h*0.45+h*0.9/Math.max(k.d,4)-s/2)+'px';
+      k.el.className='k'+(k===f?' first':'');
+    });
+    if(f&&f.d<=4){lose();return}
+    raf=requestAnimationFrame(loop);
+  }
+})();
+</script>
+</body>
+</html>
