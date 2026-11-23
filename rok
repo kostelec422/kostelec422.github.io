@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kolik je dítěti let</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #fff7e6;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+  }
+  h1 { font-size: 22px; margin: 0 0 18px; text-align: center; color: #444; }
+  h2 { font-size: 16px; margin: 0 0 8px; color: #666; }
+  .row { display: flex; gap: 10px; }
+  .field { flex: 1; }
+  .full { margin-bottom: 14px; }
+  label { display: block; font-size: 14px; color: #666; margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    font-size: 20px;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    text-align: center;
+    background: #fff;
+  }
+  input[type="text"] { text-align: left; }
+  select { text-align: left; font-size: 18px; }
+  input:focus, select:focus { outline: none; border-color: #f5a623; }
+  button {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  #tlacitko { background: #f5a623; margin-top: 18px; font-size: 20px; }
+  #tlacitko:active { background: #d98f14; }
+  #uloz { background: #3a9d5d; margin-top: 10px; }
+  #uloz:active { background: #2b7a3d; }
+  #smaz { background: #d9534f; flex: 0 0 auto; width: auto; padding: 10px 16px; font-size: 16px; }
+  #smaz:active { background: #b52b27; }
+  #stahni { background: #3b7dd8; font-size: 16px; padding: 12px; }
+  #stahni:active { background: #2a5fa8; }
+  .ulozene {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 2px dashed #eee;
+  }
+  .ulozene .row { align-items: center; }
+  .zaloha { margin-top: 16px; }
+  .napoveda { font-size: 13px; color: #888; margin-top: 8px; line-height: 1.4; }
+  #vysledek {
+    margin-top: 22px;
+    min-height: 70px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2b7a3d;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #vysledek .jmeno { font-size: 18px; font-weight: 500; color: #666; margin-bottom: 4px; }
+  #vysledek.chyba { font-size: 17px; font-weight: 500; color: #c0392b; }
+  #vysledek.info { font-size: 17px; font-weight: 400; color: #999; }
+  #zprava { text-align: center; font-size: 14px; color: #3a9d5d; min-height: 20px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎈 Kolik je dítěti let</h1>
+
+  <div class="full">
+    <label for="jmeno">Jméno dítěte</label>
+    <input id="jmeno" type="text" placeholder="Např. Honzík" autocomplete="off">
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="den">Den</label>
+      <input id="den" type="number" inputmode="numeric" min="1" max="31" placeholder="18">
+    </div>
+    <div class="field">
+      <label for="mesic">Měsíc</label>
+      <input id="mesic" type="number" inputmode="numeric" min="1" max="12" placeholder="11">
+    </div>
+    <div class="field">
+      <label for="rok">Rok</label>
+      <input id="rok" type="number" inputmode="numeric" min="1900" max="2100" placeholder="2018">
+    </div>
+  </div>
+
+  <button id="tlacitko" type="button">Potvrdit</button>
+  <button id="uloz" type="button">Uložit dítě</button>
+  <div id="zprava"></div>
+
+  <div id="vysledek" class="info">Zadej datum narození a potvrď</div>
+
+  <div class="ulozene">
+    <h2>Uložené děti</h2>
+    <div class="row">
+      <select id="seznam"></select>
+      <button id="smaz" type="button">Smazat</button>
+    </div>
+
+    <div class="zaloha">
+      <h2>Trvalé uložení</h2>
+      <button id="stahni" type="button">⬇ Stáhnout do souboru</button>
+      <div class="napoveda">
+        Stáhne se celá aplikace i se všemi uloženými dětmi (soubor .html).
+        Příště otevři tento stažený soubor a děti v něm zůstanou navždy,
+        i po resetu Opery. Po každém přidání nebo smazání dítěte stáhni soubor znovu.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="data" type="application/json">[]</script>
+
+<script>
+  var zdroj = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  var KLIC = 'deti_vek_ulozene_v2';
+
+  var jmenoEl = document.getElementById('jmeno');
+  var denEl = document.getElementById('den');
+  var mesicEl = document.getElementById('mesic');
+  var rokEl = document.getElementById('rok');
+  var tlacitko = document.getElementById('tlacitko');
+  var ulozBtn = document.getElementById('uloz');
+  var smazBtn = document.getElementById('smaz');
+  var stahniBtn = document.getElementById('stahni');
+  var seznamEl = document.getElementById('seznam');
+  var out = document.getElementById('vysledek');
+  var zpravaEl = document.getElementById('zprava');
+
+  var deti = [];
+  var smazane = [];
+
+  function nactiVsechno() {
+    var vlozene = [];
+    try {
+      var d = JSON.parse(document.getElementById('data').textContent);
+      if (Array.isArray(d)) vlozene = d;
+    } catch (e) {}
+
+    var lokalni = [];
+    try {
+      var raw = localStorage.getItem(KLIC);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && Array.isArray(o.deti)) lokalni = o.deti;
+        if (o && Array.isArray(o.smazane)) smazane = o.smazane;
+      }
+    } catch (e) {}
+
+    var vysledek = [];
+    vlozene.forEach(function (x) {
+      if (smazane.indexOf(x.jmeno.toLowerCase()) === -1) vysledek.push(x);
+    });
+    lokalni.forEach(function (x) {
+      var nalezeno = false;
+      for (var i = 0; i < vysledek.length; i++) {
+        if (vysledek[i].jmeno.toLowerCase() === x.jmeno.toLowerCase()) {
+          vysledek[i] = x;
+          nalezeno = true;
+          break;
+        }
+      }
+      if (!nalezeno) vysledek.push(x);
+    });
+    return vysledek;
+  }
+
+  function ulozLokalne() {
+    try {
+      localStorage.setItem(KLIC, JSON.stringify({ deti: deti, smazane: smazane }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function vykresliSeznam(vybraneJmeno) {
+    seznamEl.innerHTML = '';
+    var prvni = document.createElement('option');
+    prvni.value = '';
+    prvni.textContent = deti.length ? 'Vyber uložené dítě…' : 'Zatím nikdo není uložen';
+    seznamEl.appendChild(prvni);
+
+    deti.slice().sort(function (a, b) {
+      return a.jmeno.localeCompare(b.jmeno, 'cs');
+    }).forEach(function (dite) {
+      var o = document.createElement('option');
+      o.value = dite.jmeno;
+      o.textContent = dite.jmeno + ' (' + dite.d + '. ' + dite.m + '. ' + dite.r + ')';
+      seznamEl.appendChild(o);
+    });
+
+    if (vybraneJmeno) seznamEl.value = vybraneJmeno;
+  }
+
+  function sklonuj(n, jeden, dva, pet) {
+    if (n === 1) return n + ' ' + jeden;
+    if (n >= 2 && n <= 4) return n + ' ' + dva;
+    return n + ' ' + pet;
+  }
+
+  function zobrazVysledek(text, trida, jmeno) {
+    out.innerHTML = '';
+    out.className = trida || '';
+    if (jmeno) {
+      var j = document.createElement('div');
+      j.className = 'jmeno';
+      j.textContent = jmeno;
+      out.appendChild(j);
+    }
+    var t = document.createElement('div');
+    t.textContent = text;
+    out.appendChild(t);
+  }
+
+  function zprava(text) {
+    zpravaEl.textContent = text;
+  }
+
+  function precti() {
+    return {
+      jmeno: jmenoEl.value.trim(),
+      d: parseInt(denEl.value, 10),
+      m: parseInt(mesicEl.value, 10),
+      r: parseInt(rokEl.value, 10)
+    };
+  }
+
+  function platneDatum(d, m, r) {
+    if (!d || !m || !r || String(r).length < 4) return 'Vyplň prosím den, měsíc i rok.';
+    var n = new Date(r, m - 1, d);
+    if (n.getFullYear() !== r || n.getMonth() !== m - 1 || n.getDate() !== d) {
+      return 'Takové datum neexistuje, zkontroluj den a měsíc.';
+    }
+    var dnes = new Date();
+    dnes.setHours(0, 0, 0, 0);
+    if (n > dnes) return 'Datum je v budoucnosti.';
+    return '';
+  }
+
+  function spocitej() {
+    zprava('');
+    var v = precti();
+    var chyba = platneDatum(v.d, v.m, v.r);
+    if (chyba) {
+      zobrazVysledek(chyba, 'chyba');
+      return;
+    }
+
+    var narozeni = new Date(v.r, v.m - 1, v.d);
+    var dnes = new Date();
+    dnes.setHours(0, 0, 0, 0);
+
+    var roky = dnes.getFullYear() - narozeni.getFullYear();
+    var mesice = dnes.getMonth() - narozeni.getMonth();
+    var dny = dnes.getDate() - narozeni.getDate();
+
+    if (dny < 0) {
+      mesice--;
+      var predchozi = new Date(dnes.getFullYear(), dnes.getMonth(), 0);
+      dny += predchozi.getDate();
+    }
+    if (mesice < 0) {
+      roky--;
+      mesice += 12;
+    }
+
+    var casti = [];
+    if (roky > 0) casti.push(sklonuj(roky, 'rok', 'roky', 'let'));
+    if (mesice > 0) casti.push(sklonuj(mesice, 'měsíc', 'měsíce', 'měsíců'));
+    if (dny > 0) casti.push(sklonuj(dny, 'den', 'dny', 'dní'));
+
+    if (casti.length === 0) {
+      zobrazVysledek('Dnes se narodilo! 🎉', '', v.jmeno);
+      return;
+    }
+
+    var text;
+    if (casti.length === 1) {
+      text = casti[0];
+    } else {
+      text = casti.slice(0, -1).join(', ') + ' a ' + casti[casti.length - 1];
+    }
+
+    if (mesice === 0 && dny === 0 && roky > 0) {
+      text += ' 🎂';
+    }
+
+    zobrazVysledek(text, '', v.jmeno);
+  }
+
+  function ulozDite() {
+    var v = precti();
+    if (!v.jmeno) {
+      zprava('');
+      zobrazVysledek('Napiš prosím jméno dítěte.', 'chyba');
+      return;
+    }
+    var chyba = platneDatum(v.d, v.m, v.r);
+    if (chyba) {
+      zprava('');
+      zobrazVysledek(chyba, 'chyba');
+      return;
+    }
+
+    var klic = v.jmeno.toLowerCase();
+    smazane = smazane.filter(function (n) { return n !== klic; });
+
+    var nalezeno = false;
+    for (var i = 0; i < deti.length; i++) {
+      if (deti[i].jmeno.toLowerCase() === klic) {
+        deti[i] = { jmeno: v.jmeno, d: v.d, m: v.m, r: v.r };
+        nalezeno = true;
+        break;
+      }
+    }
+    if (!nalezeno) deti.push({ jmeno: v.jmeno, d: v.d, m: v.m, r: v.r });
+
+    ulozLokalne();
+    vykresliSeznam(v.jmeno);
+    zprava('Uloženo: ' + v.jmeno + '. Pro trvalé uložení stáhni soubor.');
+  }
+
+  function vyberDite() {
+    var jmeno = seznamEl.value;
+    if (!jmeno) return;
+    for (var i = 0; i < deti.length; i++) {
+      if (deti[i].jmeno === jmeno) {
+        jmenoEl.value = deti[i].jmeno;
+        denEl.value = deti[i].d;
+        mesicEl.value = deti[i].m;
+        rokEl.value = deti[i].r;
+        zprava('');
+        zobrazVysledek('Datum je vyplněno, stiskni Potvrdit', 'info');
+        return;
+      }
+    }
+  }
+
+  function smazDite() {
+    var jmeno = seznamEl.value;
+    if (!jmeno) {
+      zprava('Nejdřív vyber dítě v seznamu.');
+      return;
+    }
+    if (!confirm('Opravdu smazat: ' + jmeno + '?')) return;
+    var klic = jmeno.toLowerCase();
+    deti = deti.filter(function (d) { return d.jmeno !== jmeno; });
+    if (smazane.indexOf(klic) === -1) smazane.push(klic);
+    ulozLokalne();
+    vykresliSeznam();
+    zprava('Smazáno: ' + jmeno + '. Pro trvalé smazání stáhni soubor znovu.');
+  }
+
+  function stahniSoubor() {
+    var json = JSON.stringify(deti).replace(/</g, '\\u003c');
+    var html = zdroj.replace(
+      /(<script id="data" type="application\/json">)[\s\S]*?(<\/script>)/,
+      function (cely, zacatek, konec) { return zacatek + json + konec; }
+    );
+    var blob = new Blob([html], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'deti-vek.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    zprava('Soubor stažen (' + deti.length + ' dětí). Příště otevři tento soubor.');
+  }
+
+  tlacitko.addEventListener('click', spocitej);
+  ulozBtn.addEventListener('click', ulozDite);
+  smazBtn.addEventListener('click', smazDite);
+  seznamEl.addEventListener('change', vyberDite);
+  stahniBtn.addEventListener('click', stahniSoubor);
+
+  [jmenoEl, denEl, mesicEl, rokEl].forEach(function (el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        spocitej();
+      }
+    });
+  });
+
+  deti = nactiVsechno();
+  vykresliSeznam();
+</script>
+</body>
+</html>
