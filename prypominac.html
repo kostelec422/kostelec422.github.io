@@ -37,8 +37,6 @@ form,.list{background:var(--surface);border:1px solid var(--line);border-radius:
 label{display:block;font-weight:600;margin:0 0 6px}
 textarea,input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
 textarea{min-height:84px;resize:vertical}
-.chk{display:flex;gap:8px;align-items:center;font-weight:400}
-.chk input{width:auto}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 .field{margin-top:14px}
 .row .field{margin-top:0}
@@ -80,7 +78,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     <textarea id="txt" placeholder="Např. Zavolat doktorovi" required></textarea>
     <div class="row">
       <div class="field"><label for="d">Datum</label><input type="date" id="d" required></div>
-      <div class="field"><label for="t">Čas</label><input type="time" id="t" required></div>
+      <div class="field"><label for="t">Čas (hodiny a minuty)</label><input type="time" id="t" required><label for="s" style="margin-top:10px">Sekundy (0–59)</label><input type="number" id="s" min="0" max="59" step="1" inputmode="numeric" value="0" required></div>
     </div>
     <div class="field">
       <label for="tone">Znělka</label>
@@ -89,11 +87,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <button type="button" id="prev">Přehrát</button>
       </div>
     </div>
-    <div class="field"><label class="chk"><input type="checkbox" id="ics" checked> Nastavit i budík v kalendáři (zazvoní a zavibruje i při zhasnutém telefonu)</label></div>
     <button class="primary" type="submit">Přidat připomínku</button>
     <p class="msg" id="msg" role="status"></p>
     <div class="field"><button type="button" id="notif">Povolit upozornění nahoře na obrazovce</button><p class="hint" id="notifState"></p></div>
-    <p class="hint">Po přidání otevři stažený soubor a ulož událost do kalendáře. Kalendář zazvoní a zavibruje spolehlivě i při zamčeném telefonu a zavřeném prohlížeči. Stránka sama funguje jen dokud ji prohlížeč nechá běžet na pozadí, proto ji nech otevřenou a povol upozornění.</p>
+    <p class="hint">Připomínky se ukládají jen v tomto prohlížeči. Stránka zazvoní, jen dokud ji prohlížeč nechá běžet na pozadí, proto ji nech otevřenou a povol upozornění.</p>
   </form>
 
   <section class="list" aria-live="polite">
@@ -117,7 +114,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   var $ = function(id){ return document.getElementById(id); };
   var items = [], toneUrls = {}, toneSamples = {}, silentUrl = null;
   var queue = [], current = null, prevTimer = null, vibT = null;
-  // jeden sdílený přehrávač pro znělky i hlídání na pozadí
   var el = new Audio(); el.loop = true; el.setAttribute("playsinline", "");
   var token = 0, mode = "idle", armed = false, gesture = false;
   var actxO = null, wsrc = null;
@@ -138,7 +134,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   function pad(n){ return (n < 10 ? "0" : "") + n; }
   function fmt(ms){
     var x = new Date(ms);
-    return x.getDate() + ". " + (x.getMonth()+1) + ". " + x.getFullYear() + " v " + pad(x.getHours()) + ":" + pad(x.getMinutes());
+    return x.getDate() + ". " + (x.getMonth()+1) + ". " + x.getFullYear() + " v " + pad(x.getHours()) + ":" + pad(x.getMinutes()) + ":" + pad(x.getSeconds());
   }
   function load(){
     try { var r = localStorage.getItem(KEY); items = r ? JSON.parse(r) : []; } catch(e){ items = []; }
@@ -147,7 +143,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   function save(){ try { localStorage.setItem(KEY, JSON.stringify(items)); } catch(e){} }
   function setMsg(t, err){ var m = $("msg"); m.textContent = t; m.className = "msg " + (err ? "err" : "ok"); }
 
-  /* ---------- generování zvuků do WAV ---------- */
   function wavUrl(s, sr){
     var n = s.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), i;
     function w(o, str){ for (var j = 0; j < str.length; j++) v.setUint8(o + j, str.charCodeAt(j)); }
@@ -184,7 +179,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     return (silentUrl = wavUrl(s, 8000));
   }
 
-  /* ---------- přehrávání ---------- */
   function playUrl(url){
     var my = ++token, p;
     el.loop = true; el.muted = false; el.volume = 1; el.src = url;
@@ -208,7 +202,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     var s = a.createBufferSource(); s.buffer = b; s.loop = true; s.connect(a.destination); s.start(); wsrc = s;
     return Promise.resolve(true);
   }
-  // nejdřív běžný přehrávač, když selže, zkusí se WebAudio
   function playSrc(src){
     wstop();
     var pr = playUrl(src.url), my = token;
@@ -241,7 +234,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     b.hidden = false;
     if (armed) { b.className = "banner ok"; b.textContent = "● Hlídání zapnuto: nech stránku otevřenou, v nastavený čas se spustí zvuk." + (window.Notification && Notification.permission !== "granted" ? " Povol upozornění tlačítkem níže." : ""); }
     else if (!gesture) { b.className = "banner warn"; b.textContent = "⚠ Klepni kamkoli na stránku, aby prohlížeč povolil zvuk. Bez toho nemusí zazvonit."; }
-    else { b.className = "banner warn"; b.textContent = "⚠ Prohlížeč nepovolil zvuk na pozadí. Zvonění mimo stránku nemusí fungovat, použij soubor do kalendáře."; }
+    else { b.className = "banner warn"; b.textContent = "⚠ Prohlížeč nepovolil zvuk na pozadí. Zvonění mimo stránku nemusí fungovat."; }
   }
 
   function playAlarm(it){
@@ -316,15 +309,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         items = items.filter(function(z){ return z.id !== it.id; });
         save(); render(); syncKeep();
       });
-      var c = document.createElement("button"); c.type = "button"; c.textContent = "Do kalendáře";
-      c.addEventListener("click", function(){ exportIcs(it); });
-      var bw = document.createElement("div"); bw.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end";
-      bw.appendChild(c); bw.appendChild(b);
-      d.appendChild(l); d.appendChild(bw); box.appendChild(d);
+      d.appendChild(l); d.appendChild(b); box.appendChild(d);
     });
   }
 
-  /* ---------- tlačítko Přehrát ---------- */
   function stopPreview(noSync){
     if (mode !== "preview") return;
     clearTimeout(prevTimer); halt();
@@ -343,24 +331,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     prevTimer = setTimeout(function(){ stopPreview(); }, 8000);
   });
 
-  /* ---------- přidání připomínky ---------- */
   $("f").addEventListener("submit", function(e){
     e.preventDefault();
     try {
       gesture = true;
       var text = $("txt").value.trim();
       if (!text) { setMsg("Napiš, co si chceš připomenout.", true); return; }
-      var at = new Date($("d").value + "T" + $("t").value).getTime();
+      var tv = $("t").value.slice(0, 5), sc = parseInt($("s").value, 10);
+      if (isNaN(sc) || sc < 0 || sc > 59) { setMsg("Sekundy musí být číslo od 0 do 59.", true); return; }
+      tv += ":" + pad(sc);
+      var at = new Date($("d").value + "T" + tv).getTime();
       if (isNaN(at)) { setMsg("Vyber datum a čas.", true); return; }
       var id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
-      var it = {id: id, text: text, at: at, tone: sel.value, done: false};
-      items.push(it);
+      items.push({id: id, text: text, at: at, tone: sel.value, done: false});
       if (window.Notification && Notification.permission === "default") { try { Notification.requestPermission(); } catch(e2){} }
       stopPreview(true);
       save(); render(); syncKeep();
       $("txt").value = "";
       setMsg("Přidáno na " + fmt(at) + ".", false);
-      if ($("ics").checked) { try { exportIcs(it); } catch(e3){} }
     } catch(err) {
       setMsg("Chyba: " + (err && err.message ? err.message : err), true);
     }
@@ -368,7 +356,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
   var n = new Date(Date.now() + 60000);
   $("d").value = n.getFullYear() + "-" + pad(n.getMonth()+1) + "-" + pad(n.getDate());
-  $("t").value = pad(n.getHours()) + ":" + pad(n.getMinutes());
+  $("t").value = pad(n.getHours()) + ":" + pad(n.getMinutes()); $("s").value = n.getSeconds();
 
   function notifState(){
     var el2 = $("notifState");
@@ -390,25 +378,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   });
   document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") tick(); });
 
-  /* ---------- kalendář (.ics) ---------- */
-  function icsDate(ms){
-    var x = new Date(ms);
-    return x.getFullYear() + pad(x.getMonth()+1) + pad(x.getDate()) + "T" + pad(x.getHours()) + pad(x.getMinutes()) + "00";
-  }
-  function exportIcs(it){
-    var txt = it.text.replace(/[\\;,]/g, " ").replace(/\r?\n/g, " ");
-    var lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Pripominac//CS","BEGIN:VEVENT",
-      "UID:" + it.id + "@pripominac","DTSTAMP:" + icsDate(Date.now()),
-      "DTSTART:" + icsDate(it.at),"DTEND:" + icsDate(it.at + 300000),
-      "SUMMARY:" + txt,"BEGIN:VALARM","TRIGGER:PT0S","ACTION:DISPLAY","DESCRIPTION:" + txt,"END:VALARM","END:VEVENT","END:VCALENDAR"];
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([lines.join("\r\n")], {type:"text/calendar"})); a.download = "pripominka.ics";
-    document.body.appendChild(a); a.click(); a.remove();
-  }
-
   load(); render(); tick();
   setInterval(tick, 1000);
-  // časovač ve workeru se na pozadí neomezuje tak jako běžný setInterval
   try {
     var wk = new Worker(URL.createObjectURL(new Blob(["setInterval(function(){postMessage(1)},1000)"], {type:"text/javascript"})));
     wk.onmessage = tick;
