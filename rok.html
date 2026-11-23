@@ -154,6 +154,12 @@
   var deti = [];
   var smazane = [];
 
+  function seradDeti() {
+    deti.sort(function (a, b) {
+      return a.jmeno.localeCompare(b.jmeno, 'cs', { sensitivity: 'base' });
+    });
+  }
+
   function nactiVsechno() {
     var vlozene = [];
     try {
@@ -199,15 +205,14 @@
   }
 
   function vykresliSeznam(vybraneJmeno) {
+    seradDeti();
     seznamEl.innerHTML = '';
     var prvni = document.createElement('option');
     prvni.value = '';
     prvni.textContent = deti.length ? 'Vyber uložené dítě…' : 'Zatím nikdo není uložen';
     seznamEl.appendChild(prvni);
 
-    deti.slice().sort(function (a, b) {
-      return a.jmeno.localeCompare(b.jmeno, 'cs');
-    }).forEach(function (dite) {
+    deti.forEach(function (dite) {
       var o = document.createElement('option');
       o.value = dite.jmeno;
       o.textContent = dite.jmeno + ' (' + dite.d + '. ' + dite.m + '. ' + dite.r + ')';
@@ -340,6 +345,7 @@
     }
     if (!nalezeno) deti.push({ jmeno: v.jmeno, d: v.d, m: v.m, r: v.r });
 
+    seradDeti();
     ulozLokalne();
     vykresliSeznam(v.jmeno);
     zprava('Uloženo: ' + v.jmeno + '. Pro trvalé uložení stáhni soubor.');
@@ -377,6 +383,7 @@
   }
 
   function stahniSoubor() {
+    seradDeti();
     var json = JSON.stringify(deti).replace(/</g, '\\u003c');
     var html = zdroj.replace(
       /(<script id="data" type="application\/json">)[\s\S]*?(<\/script>)/,
