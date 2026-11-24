@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Náhodná šipka AR</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+h1 { margin: 0 0 20px; color: #333; }
+.box { background: #fff; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.1); max-width: 420px; width: 100%; text-align: center; margin-bottom: 16px; }
+.arrows { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+.arrow { font-size: 40px; padding: 18px; border: 3px solid #ccc; border-radius: 12px; cursor: pointer; user-select: none; background: #fafafa; transition: .15s; }
+.arrow:hover { background: #eef; }
+.arrow.checked { border-color: #2e8b57; background: #e6f7ee; }
+.arrow.running { border-color: #f59e0b; background: #fff3d6; box-shadow: 0 0 0 4px rgba(245,158,11,.4); }
+.arrow.winner { border-color: #dc2626; background: #fee2e2; box-shadow: 0 0 0 4px rgba(220,38,38,.4); }
+.arrow .tick { display: block; font-size: 18px; color: #2e8b57; min-height: 22px; }
+button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; background: #3b82f6; color: #fff; margin: 4px; }
+button:hover { background: #2563eb; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.sec { background: #888; }
+button.sec:hover { background: #666; }
+button.on { background: #f59e0b; }
+#stage { margin: 15px 0 5px; min-height: 120px; }
+#result { font-size: 90px; min-height: 110px; }
+#info { color: #666; min-height: 22px; }
+
+/* AR kamera */
+#cam { display: none; position: relative; width: 100%; aspect-ratio: 3/4; background: #000; border-radius: 12px; overflow: hidden; margin-top: 12px; }
+#cam video, #cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#advice { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 18px; z-index: 3; }
+#warn { font-size: 12px; color: #a16207; margin-top: 8px; }
+
+/* Ruleta */
+#roulette { display: none; position: relative; width: 100%; height: 110px; overflow: hidden; border: 3px solid #333; border-radius: 12px; background: #fafafa; }
+#strip { display: flex; height: 100%; will-change: transform; }
+#strip div { flex: 0 0 100px; width: 100px; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 54px; border-right: 1px solid #ddd; }
+#marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #dc2626; z-index: 2; }
+
+/* Kolo štěstí */
+#wheelWrap { display: none; position: relative; width: 300px; height: 320px; margin: 0 auto; }
+#pointer { position: absolute; top: 0; left: 50%; margin-left: -14px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid #dc2626; z-index: 2; }
+#wheel { position: absolute; top: 20px; left: 0; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+
+#historyTitle { font-size: 14px; color: #888; margin-top: 15px; }
+#history { margin-top: 10px; text-align: left; max-height: 200px; overflow-y: auto; border-top: 1px solid #ddd; padding-top: 10px; font-size: 26px; line-height: 1.5; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<h1>Náhodná šipka AR</h1>
+
+<div class="box">
+<button id="camBtn" onclick="toggleCam()">📷 Zapnout kameru</button>
+<button id="torchBtn" onclick="toggleTorch()" disabled>🔦 Svítilna</button>
+<label style="display:block;margin-top:6px;color:#555"><input type="checkbox" id="voice" checked> Hlasové pokyny</label>
+<div id="cam">
+<video id="video" playsinline muted></video>
+<canvas id="overlay"></canvas>
+<div id="advice">Čekám na obraz…</div>
+</div>
+<div id="warn">Odhad je jen orientační (jas a kontrast obrazu), ne záruka. Dávej pozor na cestu.</div>
+</div>
+
+<div class="box">
+<div class="arrows" id="arrows"></div>
+<button id="pickBtn" onclick="pick()">Vybrat náhodnou</button>
+<button id="resetBtn" class="sec" onclick="resetChecks()">Zrušit fajfky</button>
+<div id="stage">
+<div id="roulette"><div id="marker"></div><div id="strip"></div></div>
+<div id="wheelWrap"><div id="pointer"></div><canvas id="wheel" width="300" height="300"></canvas></div>
+<div id="result"></div>
+</div>
+<div id="info"></div>
+<div id="historyTitle">Historie (<span id="count">0</span>):</div>
+<div id="history"></div>
+<button class="sec" onclick="clearHistory()" style="margin-top:10px;font-size:14px;padding:8px 14px;">Smazat historii</button>
+</div>
+
+<script>
+const options = [
+{ symbol: "⬆️", name: "nahoru" },
+{ symbol: "⬇️", name: "dolů" },
+{ symbol: "⬅️", name: "doleva" },
+{ symbol: "➡️", name: "doprava" }
+];
+const colors = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"];
+const SEGMENTS = 12;
+const selected = new Set();
+const history = [];
+let busy = false;
+
+const arrowsEl = document.getElementById("arrows");
+const resultEl = document.getElementById("result");
+const infoEl = document.getElementById("info");
+const rouletteEl = document.getElementById("roulette");
+const stripEl = document.getElementById("strip");
+const wheelWrap = document.getElementById("wheelWrap");
+const wheelEl = document.getElementById("wheel");
+
+function shuffle(a) {
+for (let i = a.length - 1; i > 0; i--) {
+const j = Math.floor(Math.random() * (i + 1));
+[a[i], a[j]] = [a[j], a[i]];
+}
+return a;
+}
+
+function makeTracker() { return { last: [] }; }
+function drawNoTriple(tracker, list) {
+let pool = list;
+const l = tracker.last;
+if (list.length > 1 && l.length >= 2 && l[l.length - 1] === l[l.length - 2]) {
+pool = list.filter(x => x !== l[l.length - 1]);
+}
+const v = pool[Math.floor(Math.random() * pool.length)];
+l.push(v);
+if (l.length > 2) l.shift();
+return v;
+}
+const arrowTracker = makeTracker();
+const animTracker = makeTracker();
+
+options.forEach((o, i) => {
+const d = document.createElement("div");
+d.className = "arrow";
+d.innerHTML = o.symbol + '<span class="tick"></span>';
+d.onclick = () => { if (!busy) toggle(i); };
+arrowsEl.appendChild(d);
+});
+
+function paintArrow(i) {
+const el = arrowsEl.children[i];
+const on = selected.has(i);
+el.classList.toggle("checked", on);
+el.querySelector(".tick").textContent = on ? "✔" : "";
+}
+function toggle(i) {
+if (selected.has(i)) selected.delete(i); else selected.add(i);
+paintArrow(i);
+}
+function setSelected(list) {
+selected.clear();
+list.forEach(i => selected.add(i));
+options.forEach((_, i) => paintArrow(i));
+}
+
+function setBusy(b) {
+busy = b;
+document.getElementById("pickBtn").disabled = b;
+document.getElementById("resetBtn").disabled = b;
+}
+function hideAnimations() {
+rouletteEl.style.display = "none";
+wheelWrap.style.display = "none";
+document.querySelectorAll(".arrow").forEach(el => el.classList.remove("running", "winner"));
+}
+
+function pick() {
+if (busy) return;
+if (selected.size === 0) {
+infoEl.textContent = "Nejdřív zaškrtni aspoň jednu šipku.";
+resultEl.textContent = "";
+return;
+}
+const arr = Array.from(selected);
+const winnerIdx = drawNoTriple(arrowTracker, arr);
+setBusy(true);
+hideAnimations();
+resultEl.textContent = "";
+infoEl.textContent = "Losuje se...";
+const type = drawNoTriple(animTracker, [0, 1, 2]);
+if (type === 0) animRoulette(arr, winnerIdx);
+else if (type === 1) animWheel(arr, winnerIdx);
+else animSquare(arr, winnerIdx);
+}
+
+function finish(winnerIdx) {
+const chosen = options[winnerIdx];
+hideAnimations();
+resultEl.textContent = chosen.symbol;
+infoEl.textContent = "Vybráno: " + chosen.name;
+history.push(chosen.symbol);
+renderHistory();
+setBusy(false);
+say("Jdi " + chosen.name);
+}
+
+function animRoulette(arr, winnerIdx) {
+const ITEM = 100, TOTAL = 50, WIN_POS = 40;
+stripEl.innerHTML = "";
+for (let i = 0; i < TOTAL; i++) {
+const d = document.createElement("div");
+const idx = (i === WIN_POS) ? winnerIdx : arr[Math.floor(Math.random() * arr.length)];
+d.textContent = options[idx].symbol;
+stripEl.appendChild(d);
+}
+rouletteEl.style.display = "block";
+stripEl.style.transition = "none";
+stripEl.style.transform = "translateX(0)";
+void stripEl.offsetWidth;
+const w = rouletteEl.clientWidth;
+const offset = (Math.random() - 0.5) * ITEM * 0.6;
+const target = WIN_POS * ITEM + ITEM / 2 - w / 2 + offset;
+stripEl.style.transition = "transform 5s cubic-bezier(0.12, 0.7, 0.1, 1)";
+stripEl.style.transform = "translateX(" + (-target) + "px)";
+setTimeout(() => finish(winnerIdx), 5300);
+}
+
+function wheelSlots(arr) {
+const slots = [];
+for (let i = 0; i < SEGMENTS; i++) slots.push(arr[i % arr.length]);
+return slots;
+}
+function drawWheel(slots) {
+const ctx = wheelEl.getContext("2d");
+const cx = 150, cy = 150, r = 146;
+const seg = (Math.PI * 2) / SEGMENTS;
+ctx.clearRect(0, 0, 300, 300);
+slots.forEach((idx, i) => {
+const a0 = -Math.PI / 2 + i * seg;
+const a1 = a0 + seg;
+ctx.beginPath();
+ctx.moveTo(cx, cy);
+ctx.arc(cx, cy, r, a0, a1);
+ctx.closePath();
+ctx.fillStyle = colors[idx % colors.length];
+ctx.fill();
+ctx.strokeStyle = "#fff";
+ctx.lineWidth = 3;
+ctx.stroke();
+const mid = a0 + seg / 2;
+ctx.save();
+ctx.translate(cx + Math.cos(mid) * r * 0.74, cy + Math.sin(mid) * r * 0.74);
+ctx.font = "26px Arial";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+ctx.fillText(options[idx].symbol, 0, 0);
+ctx.restore();
+});
+ctx.beginPath();
+ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+ctx.fillStyle = "#333";
+ctx.fill();
+}
+function animWheel(arr, winnerIdx) {
+const slots = wheelSlots(shuffle(arr.slice()));
+drawWheel(slots);
+wheelWrap.style.display = "block";
+wheelEl.style.transition = "none";
+wheelEl.style.transform = "rotate(0deg)";
+void wheelEl.offsetWidth;
+const segDeg = 360 / SEGMENTS;
+const candidates = [];
+slots.forEach((idx, i) => { if (idx === winnerIdx) candidates.push(i); });
+const i = candidates[Math.floor(Math.random() * candidates.length)];
+const center = (i + 0.5) * segDeg;
+const jitter = (Math.random() - 0.5) * segDeg * 0.7;
+const finalDeg = 360 * 6 + (360 - center) + jitter;
+wheelEl.style.transition = "transform 5s cubic-bezier(0.15, 0.6, 0.15, 1)";
+wheelEl.style.transform = "rotate(" + finalDeg + "deg)";
+setTimeout(() => finish(winnerIdx), 5300);
+}
+
+function animSquare(arr, winnerIdx) {
+const tiles = arrowsEl.children;
+const order = shuffle(arr.slice());
+const n = order.length;
+let pos = Math.floor(Math.random() * n);
+let steps = 15 + Math.floor(Math.random() * 6);
+while (order[(pos + steps) % n] !== winnerIdx) steps++;
+let step = 0, prev = null;
+function tick() {
+if (prev !== null) tiles[prev].classList.remove("running");
+const cur = order[(pos + step) % n];
+tiles[cur].classList.add("running");
+prev = cur;
+if (step >= steps) {
+setTimeout(() => {
+tiles[cur].classList.remove("running");
+tiles[cur].classList.add("winner");
+setTimeout(() => finish(winnerIdx), 700);
+}, 300);
+return;
+}
+step++;
+setTimeout(tick, 60 + Math.pow(step / steps, 3) * 520);
+}
+tick();
+}
+
+function renderHistory() {
+document.getElementById("count").textContent = history.length;
+const h = document.getElementById("history");
+h.textContent = history.join(" ");
+h.scrollTop = h.scrollHeight;
+}
+function clearHistory() {
+if (busy) return;
+history.length = 0;
+arrowTracker.last = [];
+renderHistory();
+resultEl.textContent = "";
+infoEl.textContent = "";
+}
+function resetChecks() { setSelected([]); }
+
+/* ===== AR kamera ===== */
+const camEl = document.getElementById("cam");
+const video = document.getElementById("video");
+const overlay = document.getElementById("overlay");
+const adviceEl = document.getElementById("advice");
+const torchBtn = document.getElementById("torchBtn");
+const camBtn = document.getElementById("camBtn");
+const small = document.createElement("canvas");
+small.width = 64; small.height = 48;
+const sctx = small.getContext("2d", { willReadFrequently: true });
+let stream = null, track = null, torchOn = false, timer = null;
+let smooth = [0, 0, 0], lastKey = "", stable = 0, lastSpoken = "", lastSpeakT = 0;
+
+function say(text) {
+if (!document.getElementById("voice").checked || !window.speechSynthesis) return;
+speechSynthesis.cancel();
+const u = new SpeechSynthesisUtterance(text);
+u.lang = "cs-CZ";
+speechSynthesis.speak(u);
+}
+
+async function toggleCam() {
+if (stream) { stopCam(); return; }
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+infoEl.textContent = "Kamera vyžaduje HTTPS stránku (ne otevřený soubor).";
+return;
+}
+try {
+stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+} catch (e) {
+infoEl.textContent = "Kameru se nepodařilo zapnout: " + e.message;
+return;
+}
+video.srcObject = stream;
+await video.play();
+track = stream.getVideoTracks()[0];
+camEl.style.display = "block";
+camBtn.textContent = "📷 Vypnout kameru";
+const caps = track.getCapabilities ? track.getCapabilities() : {};
+torchBtn.disabled = !caps.torch;
+if (!caps.torch) adviceEl.textContent = "Svítilna není v tomto prohlížeči dostupná (zkus Chrome na Androidu).";
+timer = setInterval(analyze, 300);
+}
+
+function stopCam() {
+clearInterval(timer);
+if (stream) stream.getTracks().forEach(t => t.stop());
+stream = track = null; torchOn = false;
+torchBtn.classList.remove("on"); torchBtn.disabled = true;
+camEl.style.display = "none";
+camBtn.textContent = "📷 Zapnout kameru";
+}
+
+async function toggleTorch() {
+if (!track) return;
+try {
+await track.applyConstraints({ advanced: [{ torch: !torchOn }] });
+torchOn = !torchOn;
+torchBtn.classList.toggle("on", torchOn);
+} catch (e) { infoEl.textContent = "Svítilnu nelze zapnout."; }
+}
+
+/* Analýza: levá / střední / pravá třetina obrazu.
+   Se svítilnou je blízká zeď jasná, dlouhá volná cesta tmavší. */
+function analyze() {
+if (!video.videoWidth) return;
+sctx.drawImage(video, 0, 0, 64, 48);
+const d = sctx.getImageData(0, 0, 64, 48).data;
+const sum = [0, 0, 0], cnt = [0, 0, 0];
+for (let y = 14; y < 44; y++) {
+for (let x = 0; x < 64; x++) {
+const i = (y * 64 + x) * 4;
+const g = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+const z = x < 21 ? 0 : x < 43 ? 1 : 2;
+sum[z] += g; cnt[z]++;
+}
+}
+const b = sum.map((s, i) => s / cnt[i]);
+smooth = smooth.map((v, i) => v * 0.6 + b[i] * 0.4);
+const mx = Math.max(...smooth), mn = Math.min(...smooth);
+const avg = (smooth[0] + smooth[1] + smooth[2]) / 3;
+let open = [false, false, false], msg, dirs;
+
+if (avg < 25) {
+msg = "Je tma – zapni svítilnu."; dirs = [];
+} else if (mx - mn < 25) {
+if (avg > 110) { msg = "Slepá ulice nebo překážka. Otoč se zpět ⬇️"; dirs = [1]; }
+else { msg = "Daleko volno – jdi rovně ⬆️"; open = [true, true, true]; dirs = [0]; }
+} else {
+const thr = mn + (mx - mn) * 0.5;
+open = smooth.map(v => v <= thr);
+const names = ["doleva", "rovně", "doprava"], idx = [2, 0, 3];
+dirs = []; const t = [];
+open.forEach((o, i) => { if (o) { dirs.push(idx[i]); t.push(names[i]); } });
+msg = "Volno: " + t.join(", ") + ". Vyber směr.";
+}
+
+drawOverlay(open, dirs.length === 1 && dirs[0] === 1);
+adviceEl.textContent = msg;
+
+const key = dirs.join(",") + msg;
+stable = key === lastKey ? stable + 1 : 0;
+lastKey = key;
+if (stable === 3 && dirs.length && !busy) {
+setSelected(dirs);
+if (msg !== lastSpoken && Date.now() - lastSpeakT > 3000) { say(msg); lastSpoken = msg; lastSpeakT = Date.now(); }
+}
+}
+
+function drawOverlay(open, dead) {
+const w = overlay.width = overlay.clientWidth, h = overlay.height = overlay.clientHeight;
+const c = overlay.getContext("2d");
+c.clearRect(0, 0, w, h);
+const glyph = ["⬅️", "⬆️", "➡️"];
+for (let i = 0; i < 3; i++) {
+const x = i * w / 3;
+c.fillStyle = dead ? "rgba(220,38,38,.25)" : open[i] ? "rgba(34,197,94,.28)" : "rgba(220,38,38,.28)";
+c.fillRect(x + 3, h * 0.3, w / 3 - 6, h * 0.6);
+c.font = "44px Arial"; c.textAlign = "center"; c.textBaseline = "middle";
+c.fillText(dead ? "⛔" : open[i] ? glyph[i] : "✖️", x + w / 6, h * 0.6);
+}
+}
+</script>
+</body>
+</html>
