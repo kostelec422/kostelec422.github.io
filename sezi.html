@@ -1,0 +1,2878 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Moje aplikace</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--text:#1a1d23;--muted:#6b7280;--line:#d8dbe2;--accent:#2f5fd0;--accent-text:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#12141a;--card:#1c1f27;--text:#f1f2f5;--muted:#9ca3af;--line:#303541;--accent:#7b9cff;--accent-text:#0b1220;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#menu{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:1.6rem;margin:8px 0 14px}
+#q{width:100%;font:inherit;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);margin-bottom:14px}
+#q:focus{outline:2px solid var(--accent);outline-offset:1px}
+#list{display:grid;gap:10px}
+.app{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:14px}
+.app:hover{border-color:var(--accent)}
+.app b{display:block;font-size:1.05rem}
+.app span{color:var(--muted);font-size:.9rem}
+#none{color:var(--muted);text-align:center;padding:20px 0;display:none}
+#viewer{display:none;flex-direction:column;height:100%;height:100dvh}
+#bar{display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+#back{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:10px;padding:8px 14px;font-weight:600}
+#back:hover{border-color:var(--accent)}
+#title{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#frames{flex:1;position:relative;min-height:0}
+#frames iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#fff;display:none}
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>Moje aplikace</h1>
+  <input id="q" type="search" placeholder="Hledat aplikaci…" autocomplete="off">
+  <div id="list"></div>
+  <div id="none">Nic nenalezeno.</div>
+</div>
+
+<div id="viewer">
+  <div id="bar">
+    <button id="back" type="button">← Seznam</button>
+    <div id="title"></div>
+  </div>
+  <div id="frames"></div>
+</div>
+
+<script type="text/plain" id="src-zakaznici">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zákazníci</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#dcdad2;--accent:#b45309;--accent-text:#fff;--ok:#15803d;--warn:#b91c1c;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#232321;--text:#f1f0ea;--muted:#a3a29a;--line:#3a3a36;--accent:#f59e0b;--accent-text:#1a1200;--ok:#4ade80;--warn:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171716;--card:#232321;--text:#f1f0ea;--muted:#a3a29a;--line:#3a3a36;--accent:#f59e0b;--accent-text:#1a1200;--ok:#4ade80;--warn:#f87171;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:1.5rem;margin:8px 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=number],input[type=tel]{width:100%;font:inherit;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+.row{display:flex;gap:10px;margin-bottom:12px}
+.row>div{flex:1}
+.row>div.small{flex:0 0 110px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:12px 14px;display:block;width:100%;text-align:center;margin:0}
+button.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;margin:0;font-size:inherit;color:inherit}
+.toggle input{width:22px;height:22px;accent-color:var(--accent)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.seg{display:flex;gap:6px}
+.seg button{padding:10px 12px;width:auto}
+.seg button.on{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}
+.status{font-size:.9rem;min-height:1.3em;margin-top:8px}
+.status.ok{color:var(--ok)}.status.warn{color:var(--warn)}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+li:last-child{border-bottom:0}
+li .info{flex:1;min-width:0}
+li .name{word-break:break-word}
+li .phone{font-size:.9rem;color:var(--muted)}
+li .phone a{color:var(--accent)}
+li .num{font-weight:700;font-size:1.2rem;min-width:2.5ch;text-align:right}
+li .num small{font-weight:400;color:var(--muted);font-size:.8rem}
+li button{padding:8px 10px;color:var(--warn);width:auto}
+.empty{color:var(--muted);text-align:center;padding:16px 0}
+.sum{color:var(--muted);font-size:.9rem;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Zákazníci</h1>
+
+<div class="card">
+  <div class="row">
+    <div><label for="name">Jméno zákazníka</label><input type="text" id="name" autocomplete="off"></div>
+    <div class="small"><label for="doors">Počet dveří</label><input type="number" id="doors" min="1" step="1" inputmode="numeric"></div>
+  </div>
+  <div style="margin-bottom:12px">
+    <label for="phone">Telefon (nepovinné)</label>
+    <input type="tel" id="phone" autocomplete="off" inputmode="tel">
+  </div>
+  <button class="primary" id="add">Přidat</button>
+  <div class="status" id="msg"></div>
+</div>
+
+<div class="card">
+  <label class="toggle" for="auto"><span>Ukládat automaticky</span><input type="checkbox" id="auto"></label>
+  <button id="save" style="margin-top:6px">Uložit</button>
+  <div class="status" id="saveStatus"></div>
+  <button id="export" style="margin-top:10px">Stáhnout do souboru</button>
+  <div class="status" id="fileMsg"></div>
+</div>
+
+<div class="card">
+  <div class="bar">
+    <strong>Seznam</strong>
+    <div class="seg">
+      <button id="desc">Nejvíc → nejméně</button>
+      <button id="asc">Nejméně → nejvíc</button>
+    </div>
+  </div>
+  <ul id="list"></ul>
+  <div class="sum" id="sum"></div>
+</div>
+</main>
+
+<script>
+(function(){
+  var KEY_DATA='dvere:data', KEY_SET='dvere:nastaveni';
+  var items=[], sort='desc', auto=false, dirty=false, pendingDel=null, dbDoc=null, dl=null;
+  var $=function(id){return document.getElementById(id)};
+
+  function read(key){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+  function write(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); return true; }catch(e){ return false; } }
+
+  function persist(){
+    var okLocal=write(KEY_DATA,items);
+    if(dbDoc){
+      dbDoc.set({items:items}).then(function(){ dirty=false; renderStatus(); })
+        .catch(function(){ if(okLocal) dirty=false; renderStatus('db'); });
+    } else {
+      if(okLocal) dirty=false;
+      renderStatus(okLocal?null:'fail');
+    }
+  }
+  function saveSettings(){ write(KEY_SET,{auto:auto,sort:sort}); }
+
+  function renderStatus(err){
+    var el=$('saveStatus');
+    if(err==='db'){ el.textContent='Uloženo jen v tomto prohlížeči, na server se to nepovedlo.'; el.className='status warn'; return; }
+    if(err){ el.textContent='Uložení se nepovedlo.'; el.className='status warn'; return; }
+    if(dirty){ el.textContent='Neuložené změny – stiskni „Uložit“.'; el.className='status warn'; }
+    else { el.textContent='Všechno je uložené.'; el.className='status ok'; }
+  }
+
+  function changed(){
+    if(auto){ persist(); } else { dirty=true; renderStatus(); }
+    render();
+  }
+
+  function render(){
+    var sorted=items.slice().sort(function(a,b){
+      return sort==='desc' ? b.doors-a.doors : a.doors-b.doors;
+    });
+    var ul=$('list'); ul.innerHTML='';
+    if(!sorted.length){
+      var e=document.createElement('div'); e.className='empty'; e.textContent='Zatím tu nic není.'; ul.appendChild(e);
+    }
+    sorted.forEach(function(it){
+      var li=document.createElement('li');
+      var info=document.createElement('div'); info.className='info';
+      var n=document.createElement('div'); n.className='name'; n.textContent=it.name; info.appendChild(n);
+      if(it.phone){
+        var p=document.createElement('div'); p.className='phone';
+        var digits=String(it.phone).replace(/[^0-9+]/g,'');
+        if(digits){ var a=document.createElement('a'); a.href='tel:'+digits; a.textContent=it.phone; p.appendChild(a); }
+        else { p.textContent=it.phone; }
+        info.appendChild(p);
+      }
+      li.appendChild(info);
+      var d=document.createElement('span'); d.className='num'; d.textContent=it.doors+' ';
+      var s=document.createElement('small'); s.textContent='ks'; d.appendChild(s);
+      li.appendChild(d);
+      var x=document.createElement('button'); x.textContent=(pendingDel===it.id)?'Opravdu smazat?':'Smazat'; x.setAttribute('aria-label','Smazat '+it.name);
+      x.onclick=function(){
+        if(pendingDel!==it.id){
+          pendingDel=it.id; render();
+          setTimeout(function(){ if(pendingDel===it.id){ pendingDel=null; render(); } },4000);
+          return;
+        }
+        pendingDel=null;
+        items=items.filter(function(i){return i.id!==it.id});
+        changed();
+      };
+      li.appendChild(x);
+      ul.appendChild(li);
+    });
+    var total=items.reduce(function(a,i){return a+i.doors},0);
+    $('sum').textContent=items.length?('Zákazníků: '+items.length+' · Dveří celkem: '+total):'';
+    $('desc').className=sort==='desc'?'on':'';
+    $('asc').className=sort==='asc'?'on':'';
+  }
+
+  function add(){
+    var name=$('name').value.trim();
+    var doors=parseInt($('doors').value,10);
+    var phone=$('phone').value.trim();
+    var m=$('msg');
+    if(!name){ m.textContent='Napiš jméno zákazníka.'; m.className='status warn'; $('name').focus(); return; }
+    if(!doors||doors<1){ m.textContent='Napiš počet dveří (aspoň 1).'; m.className='status warn'; $('doors').focus(); return; }
+    var it={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),name:name,doors:doors};
+    if(phone) it.phone=phone;
+    items.push(it);
+    $('name').value=''; $('doors').value=''; $('phone').value='';
+    m.textContent=''; m.className='status';
+    $('name').focus();
+    changed();
+  }
+
+  function fileMsg(t,cls){ var el=$('fileMsg'); el.textContent=t; el.className='status '+(cls||''); }
+
+  function exportFile(){
+    var q=function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; };
+    var rows=items.slice().sort(function(a,b){ return sort==='desc'?b.doors-a.doors:a.doors-b.doors; });
+    var csv='\ufeff'+'Zákazník;Telefon;Počet dveří\n'+rows.map(function(i){return q(i.name)+';'+q(i.phone)+';'+i.doors}).join('\n');
+    var fname='zakaznici.csv';
+    if(dl){
+      dl.save({filename:fname,data:csv})
+        .then(function(){ fileMsg('Soubor je stažený.','ok'); })
+        .catch(function(){ fileMsg('Stažení se nepovedlo nebo bylo zrušené.','warn'); });
+      return;
+    }
+    try{
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download=fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); },2000);
+      fileMsg('Soubor je stažený.','ok');
+    }catch(e){ fileMsg('Stažení se nepovedlo.','warn'); }
+  }
+
+  $('add').onclick=add;
+  ['name','doors','phone'].forEach(function(id){
+    $(id).addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); add(); } });
+  });
+  $('save').onclick=persist;
+  $('auto').onchange=function(){
+    auto=this.checked; saveSettings();
+    if(auto && dirty) persist(); else renderStatus();
+  };
+  $('desc').onclick=function(){ sort='desc'; saveSettings(); render(); };
+  $('asc').onclick=function(){ sort='asc'; saveSettings(); render(); };
+  $('export').onclick=exportFile;
+
+  var st=read(KEY_SET); if(st){ auto=!!st.auto; if(st.sort==='asc'||st.sort==='desc') sort=st.sort; }
+  var data=read(KEY_DATA); if(Array.isArray(data)) items=data;
+  $('auto').checked=auto;
+  render(); renderStatus();
+
+  if(window.claude && window.claude.use){
+    window.claude.use('downloads').then(function(d){ if(d) dl=d; }).catch(function(){});
+    window.claude.use('db').then(function(db){
+      if(!db) return;
+      var ref=db.doc('data/seznam');
+      ref.get().then(function(snap){
+        if(snap.exists && snap.data() && Array.isArray(snap.data().items)){
+          items=snap.data().items; write(KEY_DATA,items); dirty=false;
+        } else if(items.length){
+          ref.set({items:items}).catch(function(){});
+        }
+        dbDoc=ref; render(); renderStatus();
+      }).catch(function(){});
+    }).catch(function(){});
+  }
+})();
+</scr__ipt>
+</body>
+</html>
+</script>
+
+<script type="text/plain" id="src-nahled">
+<title>HTML náhled</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: nástroj na dva sloupce (editor | výsledek), pod nimi rozbor kódu prvek po prvku. */
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --fg: #1b2230;
+    --muted: #5b6577;
+    --line: #d9dde5;
+    --accent: #2457d6;
+    --accent-fg: #ffffff;
+    --code-bg: #0f1623;
+    --code-fg: #e4e9f4;
+    --tag-bg: #e6ecfb;
+    --tag-fg: #1d46b0;
+    --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+    --font-code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d121b; --surface: #151c29; --fg: #e6eaf2; --muted: #9aa5ba; --line: #283245;
+      --accent: #6b95ff; --accent-fg: #0b1220; --code-bg: #0a0f19; --code-fg: #e4e9f4;
+      --tag-bg: #1e2a47; --tag-fg: #9db8ff; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d121b; --surface: #151c29; --fg: #e6eaf2; --muted: #9aa5ba; --line: #283245;
+    --accent: #6b95ff; --accent-fg: #0b1220; --code-bg: #0a0f19; --code-fg: #e4e9f4;
+    --tag-bg: #1e2a47; --tag-fg: #9db8ff; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+    padding-block: 24px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+  h1 { font-family: var(--font-head); font-size: 1.75rem; line-height: 1.15; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 4px 0 0; max-width: 60ch; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--fg);
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 800px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+  .pane { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .pane-title {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 8px;
+  }
+  textarea#kod {
+    width: 100%; height: 420px; resize: vertical; border: 0; padding: 14px;
+    background: var(--code-bg); color: var(--code-fg);
+    font-family: var(--font-code); font-size: 0.8125rem; line-height: 1.6; tab-size: 2; white-space: pre; overflow: auto;
+  }
+  iframe#vysledek { width: 100%; height: 420px; border: 0; background: #ffffff; display: block; }
+
+  section.rozbor { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  section.rozbor h2 { font-family: var(--font-head); font-size: 1.125rem; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .souhrn { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .chip { font-family: var(--font-code); font-size: 0.8125rem; background: var(--tag-bg); color: var(--tag-fg); padding: 3px 9px; border-radius: 4px; }
+  .chip b { font-weight: 700; }
+  .strom { list-style: none; margin: 0; padding: 8px 16px 16px; display: flex; flex-direction: column; }
+  .uzel { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr); gap: 4px 14px; padding: 7px 0; border-bottom: 1px dashed var(--line); align-items: baseline; }
+  .uzel:last-child { border-bottom: 0; }
+  .znacka { font-family: var(--font-code); font-size: 0.8125rem; color: var(--tag-fg); background: var(--tag-bg); padding: 2px 8px; border-radius: 4px; white-space: nowrap; justify-self: start; }
+  .popis { min-width: 0; overflow-wrap: anywhere; }
+  .popis .atr { display: block; color: var(--muted); font-size: 0.8125rem; font-family: var(--font-code); }
+  .popis .txt { color: var(--muted); font-size: 0.8125rem; }
+  .prazdno { padding: 20px 16px; color: var(--muted); }
+  .chyba { padding: 14px 16px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>HTML náhled</h1>
+      <p class="sub">Vlož HTML kód vlevo. Vpravo se hned ukáže výsledek a dole je vysvětlení, co jednotlivé značky dělají.</p>
+    </div>
+    <div class="actions">
+      <button id="vycistit" type="button">Smazat kód</button>
+    </div>
+  </header>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-title"><span>HTML kód</span><span id="pocet">0 znaků</span></div>
+      <textarea id="kod" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="HTML kód"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-title"><span>Výsledek</span><span>jak to uvidí návštěvník</span></div>
+      <iframe id="vysledek" title="Výsledek HTML kódu" sandbox="allow-scripts"></iframe>
+    </div>
+  </div>
+
+  <section class="rozbor" aria-live="polite">
+    <h2>Co kód dělá</h2>
+    <div class="souhrn" id="souhrn"></div>
+    <ul class="strom" id="strom"></ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  var kod = document.getElementById('kod');
+  var okno = document.getElementById('vysledek');
+  var pocet = document.getElementById('pocet');
+  var souhrn = document.getElementById('souhrn');
+  var strom = document.getElementById('strom');
+
+  var POPISY = {
+    html: 'Kořen celé stránky, obsahuje všechno ostatní.',
+    head: 'Hlavička: údaje o stránce, které se nezobrazují přímo (titulek, styly, kódování).',
+    body: 'Tělo stránky: všechno, co návštěvník vidí.',
+    title: 'Titulek stránky, ukazuje se v záložce prohlížeče.',
+    meta: 'Doplňující informace o stránce (například kódování znaků).',
+    link: 'Propojení s externím souborem, nejčastěji se styly.',
+    style: 'CSS styly: určují barvy, písmo, rozložení a vzhled prvků.',
+    script: 'JavaScript: kód, který stránku oživí (reaguje na kliknutí, mění obsah).',
+    h1: 'Hlavní nadpis stránky, největší.',
+    h2: 'Nadpis druhé úrovně.',
+    h3: 'Nadpis třetí úrovně.',
+    h4: 'Nadpis čtvrté úrovně.',
+    h5: 'Nadpis páté úrovně.',
+    h6: 'Nadpis šesté úrovně, nejmenší.',
+    p: 'Odstavec textu.',
+    a: 'Odkaz. Adresa, kam vede, je v atributu href.',
+    img: 'Obrázek. Soubor určuje atribut src, alternativní text atribut alt.',
+    ul: 'Nečíslovaný seznam (odrážky).',
+    ol: 'Číslovaný seznam.',
+    li: 'Jedna položka seznamu.',
+    div: 'Obecný blok, který seskupuje jiné prvky. Sám nic nezobrazuje, vzhled mu dají styly.',
+    span: 'Obecný vložený prvek uvnitř textu, hodí se pro obarvení části věty.',
+    button: 'Tlačítko, na které se dá kliknout.',
+    input: 'Pole pro zadání údaje (text, číslo, zaškrtávátko podle atributu type).',
+    textarea: 'Víceřádkové textové pole.',
+    select: 'Rozbalovací nabídka.',
+    option: 'Jedna volba v rozbalovací nabídce.',
+    form: 'Formulář: skupina polí, která se odesílají dohromady.',
+    label: 'Popisek k poli formuláře.',
+    table: 'Tabulka.',
+    thead: 'Hlavička tabulky.',
+    tbody: 'Tělo tabulky.',
+    tr: 'Řádek tabulky.',
+    th: 'Buňka záhlaví tabulky (tučně a vystředěná).',
+    td: 'Běžná buňka tabulky.',
+    br: 'Zalomení řádku.',
+    hr: 'Vodorovná oddělovací čára.',
+    strong: 'Důležitý text, zobrazí se tučně.',
+    b: 'Tučné písmo.',
+    em: 'Zdůrazněný text, zobrazí se kurzívou.',
+    i: 'Kurzíva.',
+    u: 'Podtržený text.',
+    small: 'Menší písmo, třeba pro drobný text.',
+    code: 'Ukázka kódu, písmo s pevnou šířkou znaků.',
+    pre: 'Předformátovaný text, zachová mezery a zalomení řádků.',
+    blockquote: 'Delší citace.',
+    section: 'Tematická část stránky.',
+    header: 'Úvodní část stránky nebo sekce.',
+    footer: 'Patička stránky nebo sekce.',
+    nav: 'Navigace, tedy skupina hlavních odkazů.',
+    main: 'Hlavní obsah stránky.',
+    article: 'Samostatný článek nebo příspěvek.',
+    aside: 'Vedlejší obsah, například postranní panel.',
+    video: 'Přehrávač videa.',
+    audio: 'Přehrávač zvuku.',
+    canvas: 'Plocha pro kreslení pomocí JavaScriptu.',
+    svg: 'Vektorová grafika.',
+    iframe: 'Vložená jiná stránka v rámečku.'
+  };
+
+  var ATRIBUTY = {
+    href: 'cíl odkazu', src: 'zdroj souboru', alt: 'náhradní text', class: 'třída pro styly',
+    id: 'jedinečné jméno', style: 'styl přímo na prvku', type: 'druh pole', onclick: 'kód po kliknutí'
+  };
+
+  function popisZnacky(tag) {
+    return POPISY[tag] || 'Značka <' + tag + '>. Pro ni zatím nemám vlastní vysvětlení.';
+  }
+
+  function textPrvku(el) {
+    var t = '';
+    for (var i = 0; i < el.childNodes.length; i++) {
+      if (el.childNodes[i].nodeType === 3) t += el.childNodes[i].nodeValue;
+    }
+    t = t.replace(/\s+/g, ' ').trim();
+    if (t.length > 70) t = t.slice(0, 70) + '…';
+    return t;
+  }
+
+  function atributy(el) {
+    var out = [];
+    for (var i = 0; i < el.attributes.length; i++) {
+      var a = el.attributes[i];
+      var v = a.value.length > 60 ? a.value.slice(0, 60) + '…' : a.value;
+      var vys = ATRIBUTY[a.name] ? ' (' + ATRIBUTY[a.name] + ')' : '';
+      out.push(a.name + '="' + v + '"' + vys);
+    }
+    return out;
+  }
+
+  function chip(html) {
+    var s = document.createElement('span');
+    s.className = 'chip';
+    s.innerHTML = html;
+    return s;
+  }
+
+  function rozbor(code) {
+    souhrn.textContent = '';
+    strom.textContent = '';
+    if (!code.trim()) {
+      var li0 = document.createElement('li');
+      li0.className = 'prazdno';
+      li0.textContent = 'Zatím tu není žádný kód. Vlož ho do pole vlevo a tady se objeví vysvětlení.';
+      strom.appendChild(li0);
+      return;
+    }
+    var doc = new DOMParser().parseFromString(code, 'text/html');
+    var pocty = {};
+    var radky = [];
+    var hlavni = /<html[\s>]/i.test(code);
+    var maHead = /<head[\s>]/i.test(code);
+    var maBody = /<body[\s>]/i.test(code);
+
+    function projdi(el, hloubka) {
+      var tag = el.tagName.toLowerCase();
+      var vlastni = true;
+      if (tag === 'html' && !hlavni) vlastni = false;
+      if (tag === 'head' && !maHead && !el.children.length) vlastni = false;
+      if (tag === 'head' && !maHead) vlastni = false;
+      if (tag === 'body' && !maBody) vlastni = false;
+      var d = hloubka;
+      if (vlastni) {
+        pocty[tag] = (pocty[tag] || 0) + 1;
+        radky.push({ tag: tag, hloubka: hloubka, el: el });
+        d = hloubka + 1;
+      }
+      for (var i = 0; i < el.children.length; i++) projdi(el.children[i], d);
+    }
+    projdi(doc.documentElement, 0);
+
+    var celkem = radky.length;
+    souhrn.appendChild(chip('prvků celkem: <b>' + celkem + '</b>'));
+    Object.keys(pocty).sort().forEach(function (t) {
+      souhrn.appendChild(chip('&lt;' + t + '&gt; <b>×' + pocty[t] + '</b>'));
+    });
+
+    radky.slice(0, 300).forEach(function (r) {
+      var li = document.createElement('li');
+      li.className = 'uzel';
+      li.style.paddingLeft = Math.min(r.hloubka, 8) * 18 + 'px';
+      var z = document.createElement('span');
+      z.className = 'znacka';
+      z.textContent = '<' + r.tag + '>';
+      var p = document.createElement('div');
+      p.className = 'popis';
+      var hlavniText = document.createElement('div');
+      hlavniText.textContent = popisZnacky(r.tag);
+      p.appendChild(hlavniText);
+      var at = atributy(r.el);
+      if (at.length) {
+        var sa = document.createElement('span');
+        sa.className = 'atr';
+        sa.textContent = at.join('  ');
+        p.appendChild(sa);
+      }
+      if (r.tag !== 'script' && r.tag !== 'style') {
+        var tx = textPrvku(r.el);
+        if (tx) {
+          var st = document.createElement('span');
+          st.className = 'txt';
+          st.textContent = 'Text: „' + tx + '“';
+          p.appendChild(st);
+        }
+      }
+      li.appendChild(z);
+      li.appendChild(p);
+      strom.appendChild(li);
+    });
+    if (radky.length > 300) {
+      var more = document.createElement('li');
+      more.className = 'prazdno';
+      more.textContent = 'Zobrazuji prvních 300 prvků z ' + radky.length + '.';
+      strom.appendChild(more);
+    }
+  }
+
+  var casovac = null;
+  function obnov() {
+    var code = kod.value;
+    pocet.textContent = code.length.toLocaleString('cs-CZ') + ' znaků';
+    okno.srcdoc = code;
+    try { rozbor(code); } catch (e) {
+      strom.textContent = '';
+      var li = document.createElement('li');
+      li.className = 'chyba';
+      li.textContent = 'Kód se nepodařilo rozebrat.';
+      strom.appendChild(li);
+    }
+  }
+  function odlozene() { clearTimeout(casovac); casovac = setTimeout(obnov, 250); }
+
+  kod.addEventListener('input', odlozene);
+  kod.addEventListener('keydown', function (e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      var s = kod.selectionStart, k = kod.selectionEnd;
+      kod.value = kod.value.slice(0, s) + '  ' + kod.value.slice(k);
+      kod.selectionStart = kod.selectionEnd = s + 2;
+      odlozene();
+    }
+  });
+  document.getElementById('vycistit').addEventListener('click', function () { kod.value = ''; obnov(); kod.focus(); });
+
+  obnov();
+})();
+</scr__ipt>
+</script>
+
+<script type="text/plain" id="src-klavesy">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Útok kláves</title>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--text:#1a1d23;--muted:#6b7280;--accent:#4f46e5;--danger:#dc2626;--key:#e5e7eb;--border:#d1d5db;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1115;--surface:#1a1d24;--text:#f3f4f6;--muted:#9ca3af;--accent:#818cf8;--danger:#f87171;--key:#2a2f3a;--border:#3a4050;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1115;--surface:#1a1d24;--text:#f3f4f6;--muted:#9ca3af;--accent:#818cf8;--danger:#f87171;--key:#2a2f3a;--border:#3a4050;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding:12px;gap:10px;overflow:hidden}
+.top{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+#field{position:relative;flex:1;min-height:180px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+#floor{position:absolute;left:0;right:0;top:45%;bottom:0;background:linear-gradient(var(--key),var(--surface))}#hands{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:38px;z-index:4}
+.k{position:absolute;border-radius:12%;background:var(--surface);border:1px solid var(--border);border-bottom-width:4px;display:flex;align-items:center;justify-content:center;font-weight:700;will-change:transform}
+.k.first{border-color:var(--accent);color:var(--accent)}
+#overlay{position:absolute;inset:0;z-index:5;background:color-mix(in srgb,var(--surface) 92%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px}
+#overlay h1{margin:0;font-size:24px}
+#overlay p{margin:0;color:var(--muted);max-width:340px}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+button{font:inherit;cursor:pointer}
+.btn{padding:12px 20px;border-radius:10px;border:1px solid var(--border);background:var(--accent);color:#fff;font-weight:600}
+.btn.alt{background:var(--surface);color:var(--text)}
+#typed{width:100%;font-size:20px;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);text-align:center}
+#typed:disabled{opacity:.5}
+#kb{display:none;flex-direction:column;gap:6px}
+#kb .r{display:flex;gap:4px;justify-content:center}
+#kb button{flex:1;max-width:40px;height:44px;border-radius:7px;border:1px solid var(--border);background:var(--key);color:var(--text);font-weight:600;font-size:16px;padding:0}
+#kb button:active{background:var(--accent);color:#fff}
+.lost{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="top"><span>Skóre: <b id="score">0</b></span><span>Rekord: <b id="best">0</b></span></div>
+<div id="field">
+  <div id="floor"></div><div id="hands">🙌</div>
+  <div id="overlay">
+    <h1 id="ov-title">Útok kláves</h1>
+    <p id="ov-text">Hraješ z první osoby: klávesy se k tobě řítí z dálky a postupně zrychlují. Zmáčkni písmeno té nejbližší, než ti vrazí do obličeje.</p>
+    <div class="row" id="ov-btns">
+      <button class="btn" data-mode="pc">💻 Počítač</button>
+      <button class="btn alt" data-mode="mobile">📱 Mobil</button>
+    </div>
+  </div>
+</div>
+<input id="typed" disabled placeholder="Stiskni Spustit hru" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="1">
+<div id="kb"></div>
+<script>
+(function(){
+  var field=document.getElementById('field'),overlay=document.getElementById('overlay'),
+      typed=document.getElementById('typed'),kb=document.getElementById('kb'),
+      scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),
+      ovTitle=document.getElementById('ov-title'),ovText=document.getElementById('ov-text'),ovBtns=document.getElementById('ov-btns');
+  var mode=null,keys=[],running=false,score=0,best=0,last=0,spawnT=0,elapsed=0,raf=0;
+  var LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  try{best=+localStorage.getItem('klavesy-best')||0}catch(e){}
+  bestEl.textContent=best;
+
+  function buildKb(){
+    var rows=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
+    kb.innerHTML='';
+    rows.forEach(function(r){
+      var d=document.createElement('div');d.className='r';
+      r.split('').forEach(function(c){
+        var b=document.createElement('button');b.textContent=c;
+        b.addEventListener('pointerdown',function(e){e.preventDefault();press(c)});
+        d.appendChild(b);
+      });
+      kb.appendChild(d);
+    });
+  }
+
+  function showMenu(title,text,btnLabel){
+    ovTitle.textContent=title;ovText.textContent=text;
+    ovBtns.innerHTML='';
+    var b=document.createElement('button');b.className='btn';b.textContent=btnLabel;
+    b.addEventListener('click',start);ovBtns.appendChild(b);
+    var m=document.createElement('button');m.className='btn alt';m.textContent='Změnit zařízení';
+    m.addEventListener('click',function(){location.reload()});ovBtns.appendChild(m);
+    overlay.style.display='flex';
+  }
+
+  function chooseMode(m){
+    mode=m;
+    if(m==='mobile'){kb.style.display='flex';buildKb();typed.readOnly=true;typed.setAttribute('inputmode','none')}
+    else{kb.style.display='none';typed.readOnly=false}
+    ovTitle.textContent=m==='pc'?'Počítač':'Mobil';
+    ovText.textContent=m==='pc'?'Psát můžeš až po spuštění hry.':'Klávesnice se ukáže dole po spuštění.';
+    ovBtns.innerHTML='';
+    var b=document.createElement('button');b.className='btn';b.textContent='Spustit hru';
+    b.addEventListener('click',start);ovBtns.appendChild(b);
+  }
+  Array.prototype.forEach.call(ovBtns.querySelectorAll('[data-mode]'),function(b){
+    b.addEventListener('click',function(){chooseMode(b.getAttribute('data-mode'))});
+  });
+
+  function start(){
+    keys.forEach(function(k){k.el.remove()});keys=[];
+    score=0;scoreEl.textContent=0;elapsed=0;spawnT=0.4;last=0;running=true;
+    overlay.style.display='none';
+    if(mode==='pc'){typed.disabled=false;typed.value='';typed.placeholder='Piš písmena…';typed.focus()}
+    else{typed.value='';typed.placeholder='Mačkej klávesy níže'}
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  }
+
+  function spawn(w){
+    var el=document.createElement('div');el.className='k';
+    var c=LETTERS[Math.floor(Math.random()*26)];el.textContent=c;
+    field.appendChild(el);
+    keys.push({c:c,d:60,lane:Math.random()*1.2-0.6,el:el});
+  }
+
+  function front(){
+    var f=null;keys.forEach(function(k){if(!f||k.d<f.d)f=k});return f;
+  }
+
+  function press(c){
+    if(!running)return;
+    c=c.toUpperCase();typed.value=c;
+    var f=front();
+    if(f&&f.c===c){
+      f.el.remove();keys.splice(keys.indexOf(f),1);
+      score++;scoreEl.textContent=score;
+    }
+  }
+
+  typed.addEventListener('keydown',function(e){
+    if(e.key.length===1&&/[a-zA-Z]/.test(e.key)){e.preventDefault();press(e.key)}
+  });
+
+  function lose(){
+    running=false;cancelAnimationFrame(raf);
+    if(score>best){best=score;bestEl.textContent=best;try{localStorage.setItem('klavesy-best',best)}catch(e){}}
+    typed.disabled=true;typed.placeholder='Stiskni Spustit hru';typed.value='';
+    showMenu('Prohrál jsi','Zničených kláves: '+score,'Hrát znovu');
+  }
+
+  function loop(t){
+    if(!running)return;
+    if(!last)last=t;
+    var dt=Math.min((t-last)/1000,0.05);last=t;
+    elapsed+=dt;
+    var w=field.clientWidth,h=field.clientHeight,speed=9+elapsed*0.35;
+    var interval=Math.max(0.7,1.8-elapsed*0.012);
+    spawnT-=dt;
+    if(spawnT<=0){spawn(w);spawnT=interval}
+    var f=front();
+    keys.forEach(function(k){
+      k.d-=speed*dt;
+      var s=440/Math.max(k.d,4);
+      var st=k.el.style;
+      st.width=st.height=s+'px';
+      st.fontSize=(s*0.5)+'px';
+      st.left=(w/2+k.lane*w*2.5/Math.max(k.d,4)-s/2)+'px';
+      st.top=(h*0.45+h*0.9/Math.max(k.d,4)-s/2)+'px';
+      k.el.className='k'+(k===f?' first':'');
+    });
+    if(f&&f.d<=4){lose();return}
+    raf=requestAnimationFrame(loop);
+  }
+})();
+</scr__ipt>
+</body>
+</html>
+</script>
+
+<script type="text/plain" id="src-nasobilka">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Příklady z násobilky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: jeden sloupec jako list z čtverečkovaného sešitu; obrazovky se přepínají, vždy je vidět jen jedna. */
+:root{
+  --bg:#f3f6fc;
+  --grid:#d7e1f3;
+  --surface:#ffffff;
+  --ink:#15203b;
+  --ink-2:#4a5778;
+  --line:#c2cfe8;
+  --accent:#2756d4;
+  --accent-ink:#ffffff;
+  --good:#13793f;
+  --good-bg:#dcf2e4;
+  --bad:#c0283a;
+  --bad-bg:#fbe2e6;
+  --font-body:'Lexend',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  --font-hand:'Caveat','Segoe Print','Comic Sans MS',cursive;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1424;--grid:#19233c;--surface:#161f35;--ink:#e8edf9;--ink-2:#9ba9ca;--line:#2b3a5c;
+    --accent:#82a5ff;--accent-ink:#0b1430;--good:#62d598;--good-bg:#12382a;--bad:#ff8090;--bad-bg:#401a23;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1424;--grid:#19233c;--surface:#161f35;--ink:#e8edf9;--ink-2:#9ba9ca;--line:#2b3a5c;
+  --accent:#82a5ff;--accent-ink:#0b1430;--good:#62d598;--good-bg:#12382a;--bad:#ff8090;--bad-bg:#401a23;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0;
+  background-color:var(--bg);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:17px;
+  line-height:1.5;
+  padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  min-height:100vh;
+}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(28px,8vw,38px);line-height:1.15;font-weight:700;text-wrap:balance}
+h2{font-size:clamp(22px,6vw,28px);line-height:1.2;font-weight:700;text-wrap:balance}
+h3{font-size:18px;font-weight:600}
+[data-focus]:focus{outline:none}
+.eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);font-weight:500}
+.lead{color:var(--ink-2)}
+.screen{display:flex;flex-direction:column;gap:20px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.hand{font-family:var(--font-hand);font-size:30px;line-height:1.1;font-weight:600}
+
+button,input{font:inherit;color:inherit}
+.btn{
+  appearance:none;border:2px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  border-radius:10px;padding:14px 20px;font-weight:600;font-size:17px;cursor:pointer;min-height:52px;
+  text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:hover{filter:brightness(1.07)}
+.btn:focus-visible,.count:focus-visible,.opt:focus-visible,.chip:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>*{flex:1 1 180px}
+
+.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.count{
+  appearance:none;cursor:pointer;background:var(--surface);border:2px solid var(--ink);border-radius:12px;
+  padding:16px 6px 12px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;
+}
+.count b{font-size:clamp(40px,13vw,58px);line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.count span{font-size:14px;color:var(--ink-2)}
+.count:hover{border-color:var(--accent);background:var(--bg)}
+.count:active{transform:translateY(1px)}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{
+  appearance:none;cursor:pointer;background:transparent;border:2px solid var(--line);border-radius:999px;
+  min-width:52px;min-height:44px;padding:6px 14px;font-weight:600;font-variant-numeric:tabular-nums;
+}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+label.field{display:flex;flex-direction:column;gap:6px;font-size:15px;color:var(--ink-2)}
+input[type=number],input[type=text],input[type=url]{
+  width:100%;background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);min-height:46px;
+}
+.num{max-width:120px;font-weight:600;font-variant-numeric:tabular-nums}
+details summary{cursor:pointer;color:var(--ink-2);font-size:15px}
+details[open] summary{margin-bottom:10px}
+.note{font-size:14px;color:var(--ink-2)}
+.warn{font-size:14px;border:2px solid var(--bad);color:var(--bad);border-radius:10px;padding:10px 12px;background:var(--bad-bg)}
+
+.qrbox{background:#fff;border-radius:10px;padding:8px;width:min(100%,320px);align-self:center;border:1px solid var(--line)}
+.qrbox svg{display:block;width:100%;height:auto}
+.linkline{display:flex;gap:8px}
+.linkline input{flex:1;min-width:0;font-size:13px}
+.linkline .btn{min-height:46px;padding:8px 14px;font-size:15px}
+
+/* kvíz */
+.status{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums;font-weight:500}
+.status .err{color:var(--bad)}
+.bar{height:12px;border-radius:99px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .25s}
+.question{
+  font-size:clamp(44px,13vw,72px);line-height:1.1;font-weight:700;text-align:center;
+  padding:28px 8px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.opt{
+  appearance:none;cursor:pointer;background:var(--surface);color:var(--ink);border:2px solid var(--ink);border-radius:12px;
+  min-height:84px;padding:10px;font-size:clamp(28px,8vw,38px);font-weight:600;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;justify-content:center;gap:10px;position:relative;min-width:0;
+}
+.opt small{position:absolute;top:6px;left:10px;font-size:12px;color:var(--ink-2);font-weight:500}
+.opt:not(:disabled):hover{border-color:var(--accent);background:var(--bg)}
+.opt:disabled{cursor:default}
+.opt.right{border-color:var(--good);background:var(--good-bg);color:var(--good)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.opt.dim{opacity:.5}
+.opt .mark{font-size:24px}
+.feedback{min-height:1px;display:flex;flex-direction:column;gap:12px}
+.feedback .hand.good{color:var(--good)}
+.feedback .hand.bad{color:var(--bad)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center;background:var(--bg)}
+.stat b{display:block;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--ink-2)}
+.big{font-size:clamp(56px,20vw,96px);line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.badge{display:inline-block;border-radius:99px;padding:4px 12px;font-size:14px;font-weight:600}
+.badge.ok{background:var(--good-bg);color:var(--good)}
+.badge.no{background:var(--bad-bg);color:var(--bad)}
+.linkbtn{background:none;border:0;color:var(--ink-2);text-decoration:underline;cursor:pointer;padding:8px;font-size:15px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="wrap">
+
+  <!-- ÚVOD -->
+  <section id="home" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Malá násobilka · násobení · dělení</p>
+      <h1 data-focus tabindex="-1">Kolik příkladů to bude?</h1>
+      <p class="lead">Ke každému příkladu jsou čtyři výsledky a jen jeden je správný. Za špatnou odpověď přibude jeden příklad navíc.</p>
+    </header>
+    <div class="counts" role="group" aria-label="Počet příkladů">
+      <button class="count" data-n="5"><b>5</b><span>příkladů</span></button>
+      <button class="count" data-n="10"><b>10</b><span>příkladů</span></button>
+      <button class="count" data-n="15"><b>15</b><span>příkladů</span></button>
+    </div>
+
+    <div class="sheet" id="parent">
+      <div>
+        <h3>Pro rodiče: zadat trest přes QR kód</h3>
+        <p class="note" style="margin-top:4px">Zvolte počet správných odpovědí. Syn kód načte fotoaparátem v telefonu a po splnění vám ukáže QR s výsledkem.</p>
+      </div>
+      <div class="chips" role="group" aria-label="Počet správných odpovědí">
+        <button class="chip" data-p="5" aria-pressed="false">5</button>
+        <button class="chip" data-p="10" aria-pressed="true">10</button>
+        <button class="chip" data-p="15" aria-pressed="false">15</button>
+        <label class="field" style="flex-direction:row;align-items:center;gap:8px" for="pcount">jiný počet
+          <input id="pcount" class="num" type="number" inputmode="numeric" min="1" max="99" value="10">
+        </label>
+      </div>
+      <button class="btn" id="makeQr">Vytvořit QR kód</button>
+    </div>
+  </section>
+
+  <!-- QR PRO SYNA -->
+  <section id="qr" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Trest pro syna</p>
+      <h2 data-focus tabindex="-1" id="qrTitle">10 správných příkladů</h2>
+      <p class="lead">Syn načte tento kód fotoaparátem v telefonu a otevře se mu stránka s příklady.</p>
+    </header>
+    <div class="sheet">
+      <div class="qrbox" id="qrBox"></div>
+      <div class="linkline">
+        <input type="text" id="qrLink" readonly aria-label="Odkaz na trest">
+        <button class="btn ghost" id="copyQr">Kopírovat</button>
+      </div>
+      <p class="warn" id="qrWarn" hidden>Stránka je otevřená ze souboru v počítači. QR kód bude fungovat jen tehdy, když ji otevřete z webové adresy. Adresu můžete upravit níže.</p>
+      <details>
+        <summary>Změnit adresu stránky</summary>
+        <label class="field" for="baseInput">Adresa, na kterou QR kód odkáže
+          <input id="baseInput" type="url" inputmode="url" autocomplete="off">
+        </label>
+      </details>
+    </div>
+    <div class="row">
+      <button class="btn" id="startHere">Spustit na tomto zařízení</button>
+      <button class="btn ghost" data-go="home">Zpět</button>
+    </div>
+  </section>
+
+  <!-- ÚVOD TRESTU (syn) -->
+  <section id="intro" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Zadaný trest</p>
+      <h2 data-focus tabindex="-1">Máš příklady k vyřešení</h2>
+    </header>
+    <div class="sheet" style="align-items:center;text-align:center">
+      <div class="big" id="introN">10</div>
+      <p id="introLabel">správných odpovědí</p>
+    </div>
+    <ul class="rules">
+      <li>Ke každému příkladu vyber jeden ze čtyř výsledků.</li>
+      <li>Za každou chybu přibude jeden příklad navíc.</li>
+      <li>Na konci ukážeš rodiči QR kód s výsledkem.</li>
+    </ul>
+    <button class="btn" id="introStart">Začít</button>
+  </section>
+
+  <!-- KVÍZ -->
+  <section id="quiz" class="screen" hidden>
+    <div class="status" aria-live="polite">
+      <span id="stCorrect">Správně 0 z 10</span>
+      <span class="err" id="stWrong">Chyby 0</span>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+    <div class="question" id="qtext" data-focus tabindex="-1" aria-live="polite">7 × 8 = ?</div>
+    <div class="opts" id="opts" role="group" aria-label="Možné výsledky">
+      <button class="opt" data-i="0"></button>
+      <button class="opt" data-i="1"></button>
+      <button class="opt" data-i="2"></button>
+      <button class="opt" data-i="3"></button>
+    </div>
+    <div class="feedback" id="feedback" aria-live="assertive">
+      <p class="hand" id="fbText" hidden></p>
+      <button class="btn" id="nextBtn" hidden>Další příklad</button>
+    </div>
+  </section>
+
+  <!-- HOTOVO -->
+  <section id="done" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Splněno</p>
+      <h2 data-focus tabindex="-1">Hotovo, výsledek ukaž rodiči</h2>
+    </header>
+    <div class="stats">
+      <div class="stat"><b id="dCorrect">0</b><span>správně</span></div>
+      <div class="stat"><b id="dWrong">0</b><span>chyb</span></div>
+      <div class="stat"><b id="dTime">0:00</b><span>čas</span></div>
+    </div>
+    <div class="sheet">
+      <p>Rodič načte tento kód telefonem a uvidí výsledek.</p>
+      <div class="qrbox" id="doneQr"></div>
+      <div class="linkline">
+        <input type="text" id="doneLink" readonly aria-label="Odkaz s výsledkem">
+        <button class="btn ghost" id="copyDone">Kopírovat</button>
+      </div>
+      <p class="note">Kód obsahuje čas dokončení, rodič tak pozná, že je čerstvý.</p>
+      <p class="warn" id="doneWarn" hidden>Stránka je otevřená ze souboru v počítači. QR kód se v telefonu neotevře. Otevři stránku z webové adresy.</p>
+    </div>
+    <button class="btn ghost" data-go="home">Zpět na začátek</button>
+  </section>
+
+  <!-- VÝSLEDEK (telefon rodiče) -->
+  <section id="result" class="screen" hidden>
+    <header style="display:flex;flex-direction:column;gap:8px">
+      <p class="eyebrow">Výsledek příkladů</p>
+      <h2 data-focus tabindex="-1">Trest splněn</h2>
+      <p><span class="badge ok" id="resBadge">Kontrolní kód sedí</span></p>
+    </header>
+    <div class="stats">
+      <div class="stat"><b id="rCorrect">0</b><span>správně</span></div>
+      <div class="stat"><b id="rWrong">0</b><span>chyb</span></div>
+      <div class="stat"><b id="rTime">0:00</b><span>čas</span></div>
+    </div>
+    <div class="sheet">
+      <p>Dokončeno: <strong id="rWhen"></strong></p>
+      <p class="note" id="rTotal"></p>
+    </div>
+    <button class="btn" data-go="home">Zadat další trest</button>
+  </section>
+
+  <!-- NEPLATNÝ ODKAZ -->
+  <section id="bad" class="screen" hidden>
+    <h2 data-focus tabindex="-1">Odkaz nejde přečíst</h2>
+    <p class="lead">Kód je poškozený nebo neúplný. Načtěte QR kód znovu.</p>
+    <button class="btn" data-go="home">Na začátek</button>
+  </section>
+
+</div>
+
+<script>
+const QR=(function(){
+  // QR kodér: bajtový režim, korekce chyb M, verze 1 až 15 (až 412 bajtů)
+  const ECC=[10,16,26,18,24,16,18,22,22,26,30,22,22,24,24];
+  const BLK=[1,1,1,2,2,4,4,4,5,5,5,8,9,9,10];
+  function alignPos(ver){
+    if(ver===1) return [];
+    const n=Math.floor(ver/7)+2, size=ver*4+17;
+    const step=Math.ceil((ver*4+4)/(n*2-2))*2;
+    const r=[6];
+    for(let p=size-7;r.length<n;p-=step) r.splice(1,0,p);
+    return r;
+  }
+  function rawModules(ver){
+    let r=(16*ver+128)*ver+64;
+    if(ver>=2){const n=Math.floor(ver/7)+2; r-=(25*n-10)*n-55; if(ver>=7) r-=36;}
+    return r;
+  }
+  function dataCodewords(ver){return Math.floor(rawModules(ver)/8)-ECC[ver-1]*BLK[ver-1];}
+  function rsMul(x,y){let z=0;for(let i=7;i>=0;i--){z=(z<<1)^((z>>>7)*0x11D);z^=((y>>>i)&1)*x;}return z;}
+  function rsDivisor(deg){
+    const r=new Array(deg).fill(0); r[deg-1]=1; let root=1;
+    for(let i=0;i<deg;i++){
+      for(let j=0;j<r.length;j++){r[j]=rsMul(r[j],root); if(j+1<r.length) r[j]^=r[j+1];}
+      root=rsMul(root,2);
+    }
+    return r;
+  }
+  function rsRem(data,div){
+    const r=div.map(()=>0);
+    for(const b of data){const f=b^r.shift(); r.push(0); div.forEach((c,i)=>{r[i]^=rsMul(c,f);});}
+    return r;
+  }
+  function penalty(m,size){
+    let p=0;
+    for(let pass=0;pass<2;pass++){
+      for(let a=0;a<size;a++){
+        let run=1,str='';
+        for(let b=0;b<size;b++){
+          const v=pass?m[b][a]:m[a][b];
+          str+=v?'1':'0';
+          if(b>0){
+            const prev=pass?m[b-1][a]:m[a][b-1];
+            if(v===prev){run++; if(run===5)p+=3; else if(run>5)p++;} else run=1;
+          }
+        }
+        for(const pat of ['10111010000','00001011101']){
+          let idx=-1; while((idx=str.indexOf(pat,idx+1))>=0) p+=40;
+        }
+      }
+    }
+    for(let y=0;y<size-1;y++)for(let x=0;x<size-1;x++){
+      const v=m[y][x]; if(v===m[y][x+1]&&v===m[y+1][x]&&v===m[y+1][x+1]) p+=3;
+    }
+    let dark=0; m.forEach(r=>r.forEach(v=>{if(v)dark++;}));
+    const total=size*size;
+    p+=(Math.ceil(Math.abs(dark*20-total*10)/total)-1)*10;
+    return p;
+  }
+  function encode(text){
+    const bytes=Array.from(new TextEncoder().encode(text));
+    let ver=1;
+    for(;ver<=15;ver++){const cc=ver<=9?8:16; if(4+cc+bytes.length*8<=dataCodewords(ver)*8) break;}
+    if(ver>15) throw new Error('Text je příliš dlouhý pro QR kód');
+    const bits=[]; const put=(v,len)=>{for(let i=len-1;i>=0;i--) bits.push((v>>>i)&1);};
+    put(4,4); put(bytes.length,ver<=9?8:16); bytes.forEach(b=>put(b,8));
+    const cap=dataCodewords(ver)*8;
+    put(0,Math.min(4,cap-bits.length));
+    while(bits.length%8) bits.push(0);
+    for(let pad=0xEC;bits.length<cap;pad^=0xEC^0x11) put(pad,8);
+    const data=[];
+    for(let i=0;i<bits.length;i+=8){let v=0; for(let j=0;j<8;j++) v=(v<<1)|bits[i+j]; data.push(v);}
+    const nb=BLK[ver-1], eccLen=ECC[ver-1], raw=Math.floor(rawModules(ver)/8);
+    const nShort=nb-raw%nb, shortLen=Math.floor(raw/nb), div=rsDivisor(eccLen);
+    const blocks=[];
+    for(let i=0,k=0;i<nb;i++){
+      const dat=data.slice(k,k+shortLen-eccLen+(i<nShort?0:1)); k+=dat.length;
+      const ecc=rsRem(dat,div); if(i<nShort) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    const all=[];
+    for(let i=0;i<blocks[0].length;i++) blocks.forEach((b,j)=>{if(i!==shortLen-eccLen||j>=nShort) all.push(b[i]);});
+
+    const size=ver*4+17;
+    const m=Array.from({length:size},()=>new Array(size).fill(false));
+    const fn=Array.from({length:size},()=>new Array(size).fill(false));
+    const setFn=(x,y,v)=>{m[y][x]=v; fn[y][x]=true;};
+    for(let i=0;i<size;i++){setFn(6,i,i%2===0); setFn(i,6,i%2===0);}
+    const finder=(cx,cy)=>{
+      for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
+        const d=Math.max(Math.abs(dx),Math.abs(dy)), x=cx+dx, y=cy+dy;
+        if(x>=0&&x<size&&y>=0&&y<size) setFn(x,y,d!==2&&d!==4);
+      }
+    };
+    finder(3,3); finder(size-4,3); finder(3,size-4);
+    const ap=alignPos(ver), n=ap.length;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+      if((i===0&&j===0)||(i===0&&j===n-1)||(i===n-1&&j===0)) continue;
+      for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++) setFn(ap[i]+dx,ap[j]+dy,Math.max(Math.abs(dx),Math.abs(dy))!==1);
+    }
+    const bit=(x,i)=>((x>>>i)&1)!==0;
+    const formatBits=(mask)=>{
+      const d=mask; let rem=d;
+      for(let i=0;i<10;i++) rem=(rem<<1)^((rem>>>9)*0x537);
+      const bits2=((d<<10)|rem)^0x5412;
+      for(let i=0;i<=5;i++) setFn(8,i,bit(bits2,i));
+      setFn(8,7,bit(bits2,6)); setFn(8,8,bit(bits2,7)); setFn(7,8,bit(bits2,8));
+      for(let i=9;i<15;i++) setFn(14-i,8,bit(bits2,i));
+      for(let i=0;i<8;i++) setFn(size-1-i,8,bit(bits2,i));
+      for(let i=8;i<15;i++) setFn(8,size-15+i,bit(bits2,i));
+      setFn(8,size-8,true);
+    };
+    formatBits(0);
+    if(ver>=7){
+      let rem=ver; for(let i=0;i<12;i++) rem=(rem<<1)^((rem>>>11)*0x1F25);
+      const vb=(ver<<12)|rem;
+      for(let i=0;i<18;i++){const c=bit(vb,i), a=size-11+i%3, b=Math.floor(i/3); setFn(a,b,c); setFn(b,a,c);}
+    }
+    let i=0;
+    for(let right=size-1;right>=1;right-=2){
+      if(right===6) right=5;
+      for(let vert=0;vert<size;vert++){
+        for(let j=0;j<2;j++){
+          const x=right-j, up=((right+1)&2)===0, y=up?size-1-vert:vert;
+          if(!fn[y][x]&&i<all.length*8){m[y][x]=bit(all[i>>>3],7-(i&7)); i++;}
+        }
+      }
+    }
+    const mask=(k)=>{
+      for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+        let inv;
+        switch(k){
+          case 0:inv=(x+y)%2===0;break;
+          case 1:inv=y%2===0;break;
+          case 2:inv=x%3===0;break;
+          case 3:inv=(x+y)%3===0;break;
+          case 4:inv=(Math.floor(x/3)+Math.floor(y/2))%2===0;break;
+          case 5:inv=x*y%2+x*y%3===0;break;
+          case 6:inv=(x*y%2+x*y%3)%2===0;break;
+          default:inv=((x+y)%2+x*y%3)%2===0;
+        }
+        if(!fn[y][x]&&inv) m[y][x]=!m[y][x];
+      }
+    };
+    let best=0,bestP=Infinity;
+    for(let k=0;k<8;k++){
+      mask(k); formatBits(k);
+      const p=penalty(m,size); if(p<bestP){bestP=p;best=k;}
+      mask(k);
+    }
+    mask(best); formatBits(best);
+    return m;
+  }
+  function svg(text){
+    const m=encode(text), size=m.length, q=4, total=size+q*2;
+    let d='';
+    for(let y=0;y<size;y++){
+      let x=0;
+      while(x<size){
+        if(m[y][x]){let w=1; while(x+w<size&&m[y][x+w]) w++; d+='M'+(x+q)+' '+(y+q)+'h'+w+'v1h-'+w+'z'; x+=w;} else x++;
+      }
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+total+' '+total+'" shape-rendering="crispEdges" role="img" aria-label="QR kód"><rect width="'+total+'" height="'+total+'" fill="#ffffff"/><path d="'+d+'" fill="#000000"/></svg>';
+  }
+  return {encode,svg};
+})();
+</scr__ipt>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var SCREENS=['home','qr','intro','quiz','done','result','bad'];
+var state=null;           // běžící kvíz
+var pendingN=10;          // počet pro úvodní obrazovku trestu
+var MAXN=99;
+
+function show(name){
+  SCREENS.forEach(function(s){$(s).hidden=(s!==name);});
+  window.scrollTo(0,0);
+  var f=$(name).querySelector('[data-focus]');
+  if(f){try{f.focus({preventScroll:true});}catch(e){}}
+}
+
+/* ---------- Příklady: generování a vyhodnocení ---------- */
+function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+function shuffle(arr){
+  for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;}
+  return arr;
+}
+// Správný výsledek se VŽDY znovu spočítá z operandů. Nikde se neukládá jako hotové číslo.
+function compute(q){return q.op==='×'?q.x*q.y:q.x/q.y;}
+
+function makeQuestion(){
+  var r=Math.random(),x,y,op,pool;
+  if(r<0.35){            // malá násobilka
+    x=randInt(2,10);y=randInt(2,10);op='×';
+  }else if(r<0.65){      // dělení v oboru násobilky
+    var a=randInt(2,10),b=randInt(2,10);
+    x=a*b;y=(Math.random()<0.5)?a:b;op='÷';
+  }else if(r<0.85){      // násobení dvojciferného jednociferným
+    x=randInt(11,30);y=randInt(2,9);op='×';
+  }else{                 // dělení většího čísla jednociferným
+    var q2=randInt(11,30),d=randInt(2,9);
+    x=q2*d;y=d;op='÷';
+  }
+  var ans=(op==='×')?x*y:x/y;
+  if(!Number.isInteger(ans)||ans<=0) return makeQuestion();
+  if(op==='×'){
+    pool=[ans+x,ans-x,ans+y,ans-y,ans+1,ans-1,ans+2,ans-2,ans+10,ans-10,ans+20,ans-20];
+  }else{
+    pool=[ans+1,ans-1,ans+2,ans-2,ans+3,ans-3,y,x%10===ans?ans+4:ans+5];
+  }
+  var uniq=[],seen={};
+  pool.forEach(function(v){
+    if(Number.isInteger(v)&&v>0&&v!==ans&&!seen[v]){seen[v]=1;uniq.push(v);}
+  });
+  shuffle(uniq);
+  var wrongs=uniq.slice(0,3),k=3;
+  while(wrongs.length<3){var c=ans+k;k++;if(c!==ans&&wrongs.indexOf(c)<0) wrongs.push(c);}
+  var opts=shuffle([ans].concat(wrongs));
+  var q={x:x,y:y,op:op,opts:opts,done:false};
+  // Kontrola: čtyři různé možnosti, právě jedna správná
+  var good=opts.filter(function(o){return o===compute(q);}).length;
+  var distinct=opts.filter(function(o,i){return opts.indexOf(o)===i;}).length;
+  if(opts.length!==4||good!==1||distinct!==4) return makeQuestion();
+  return q;
+}
+window.__makeQuestion=makeQuestion;   // pro testování
+window.__compute=compute;
+
+function newUniqueQuestion(){
+  var q;
+  for(var t=0;t<80;t++){
+    q=makeQuestion();
+    var key=q.op+'|'+q.x+'|'+q.y;
+    if(!state.seen[key]){state.seen[key]=1;return q;}
+  }
+  return q;
+}
+
+/* ---------- Průběh kvízu ---------- */
+function startQuiz(n){
+  n=Math.max(1,Math.min(MAXN,Math.floor(n)||0));
+  state={need:n,correct:0,wrong:0,seen:{},q:null,t0:Date.now()};
+  show('quiz');
+  nextQuestion();
+}
+function updateStatus(){
+  $('stCorrect').textContent='Správně '+state.correct+' z '+state.need;
+  $('stWrong').textContent='Chyby '+state.wrong;
+  $('barFill').style.width=(state.correct/state.need*100)+'%';
+}
+function nextQuestion(){
+  var q=newUniqueQuestion();
+  state.q=q;
+  $('qtext').textContent=q.x+' '+q.op+' '+q.y+' = ?';
+  var btns=$('opts').querySelectorAll('.opt');
+  for(var i=0;i<4;i++){
+    var b=btns[i];
+    b.className='opt';b.disabled=false;
+    b.innerHTML='<small>'+(i+1)+'</small><span class="val"></span>';
+    b.querySelector('.val').textContent=q.opts[i];
+  }
+  $('fbText').hidden=true;$('fbText').textContent='';$('fbText').className='hand';
+  $('nextBtn').hidden=true;
+  updateStatus();
+  try{$('qtext').focus({preventScroll:true});}catch(e){}
+}
+function answer(i){
+  var q=state&&state.q;
+  if(!q||q.done) return;
+  q.done=true;
+  var correctVal=compute(q);
+  var ok=(q.opts[i]===correctVal);
+  var btns=$('opts').querySelectorAll('.opt');
+  for(var k=0;k<4;k++){
+    var b=btns[k];b.disabled=true;
+    if(q.opts[k]===correctVal){b.classList.add('right');b.insertAdjacentHTML('beforeend','<span class="mark" aria-hidden="true">✓</span>');}
+    else if(k===i){b.classList.add('wrong');b.insertAdjacentHTML('beforeend','<span class="mark" aria-hidden="true">✗</span>');}
+    else b.classList.add('dim');
+  }
+  var fb=$('fbText');fb.hidden=false;
+  if(ok){
+    state.correct++;
+    fb.className='hand good';fb.textContent='Správně!';
+  }else{
+    state.wrong++;
+    fb.className='hand bad';
+    fb.textContent='Špatně. '+q.x+' '+q.op+' '+q.y+' = '+correctVal+'. Přibývá příklad navíc.';
+  }
+  updateStatus();
+  var nb=$('nextBtn');nb.hidden=false;
+  nb.textContent=(state.correct>=state.need)?'Hotovo':'Další příklad';
+  nb.focus({preventScroll:true});
+}
+function afterAnswer(){
+  if(state.correct>=state.need) finish(); else nextQuestion();
+}
+
+/* ---------- Kontrolní kód výsledku ---------- */
+function check(n,m,s,t){
+  var str='nasobilka|'+n+'|'+m+'|'+s+'|'+t+'|k7';
+  var h=0x811c9dc5;
+  for(var i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
+  var out=h.toString(36);
+  while(out.length<6) out='0'+out;
+  return out.slice(0,6);
+}
+function fmtTime(s){var m=Math.floor(s/60),r=s%60;return m+':'+(r<10?'0':'')+r;}
+function baseOfPage(){return location.href.split('#')[0];}
+function isWeb(u){return /^https?:/i.test(u);}
+
+function renderQr(boxId,text){
+  try{$(boxId).innerHTML=QR.svg(text);}
+  catch(e){$(boxId).textContent='QR kód se nepodařilo vytvořit.';}
+}
+function copyText(inputId,btn){
+  var inp=$(inputId);
+  inp.focus();inp.select();
+  var done=function(){var old=btn.textContent;btn.textContent='Zkopírováno';setTimeout(function(){btn.textContent=old;},1500);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(inp.value).then(done,function(){});
+  }
+}
+
+function finish(){
+  var secs=Math.max(0,Math.round((Date.now()-state.t0)/1000));
+  var t=Math.floor(Date.now()/60000);
+  var n=state.correct,m=state.wrong;
+  $('dCorrect').textContent=n;$('dWrong').textContent=m;$('dTime').textContent=fmtTime(secs);
+  var url=baseOfPage()+'#vysledek-'+n+'-'+m+'-'+secs+'-'+t+'-'+check(n,m,secs,t);
+  $('doneLink').value=url;
+  renderQr('doneQr',url);
+  $('doneWarn').hidden=isWeb(url);
+  show('done');
+}
+
+/* ---------- Obrazovky podle odkazu ---------- */
+function route(){
+  var h=location.hash.replace(/^#/,'');
+  var m;
+  if((m=/^trest-(\d{1,2})$/.exec(h))){
+    var n=parseInt(m[1],10);
+    if(n<1||n>MAXN){show('bad');return;}
+    pendingN=n;
+    $('introN').textContent=n;
+    $('introLabel').textContent=pluralSpravne(n);
+    show('intro');
+  }else if((m=/^vysledek-(\d{1,3})-(\d{1,3})-(\d{1,6})-(\d{1,9})-([0-9a-z]{1,8})$/.exec(h))){
+    var c=parseInt(m[1],10),w=parseInt(m[2],10),s=parseInt(m[3],10),t=parseInt(m[4],10);
+    var ok=(check(c,w,s,t)===m[5])&&c>=1;
+    $('rCorrect').textContent=c;$('rWrong').textContent=w;$('rTime').textContent=fmtTime(s);
+    $('rTotal').textContent='Celkem '+(c+w)+' zobrazených příkladů.';
+    var d=new Date(t*60000),when;
+    try{when=d.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+    catch(e){when=d.toString();}
+    $('rWhen').textContent=when;
+    var bd=$('resBadge');
+    bd.className='badge '+(ok?'ok':'no');
+    bd.textContent=ok?'Kontrolní kód sedí':'Kontrolní kód nesedí, údaje mohly být upraveny';
+    show('result');
+  }else if(/^(trest|vysledek)/.test(h)){
+    show('bad');
+  }else{
+    show('home');
+  }
+}
+function pluralSpravne(n){
+  if(n===1) return 'správná odpověď';
+  if(n>=2&&n<=4) return 'správné odpovědi';
+  return 'správných odpovědí';
+}
+
+/* ---------- Rodič: QR pro syna ---------- */
+var pn=10;
+function setP(n){
+  pn=n;
+  $('pcount').value=n;
+  document.querySelectorAll('.chip').forEach(function(c){
+    c.setAttribute('aria-pressed',String(parseInt(c.dataset.p,10)===n));
+  });
+}
+function readP(){
+  var v=parseInt($('pcount').value,10);
+  if(!(v>=1)) v=1;
+  if(v>MAXN) v=MAXN;
+  return v;
+}
+function challengeUrl(){
+  var b=$('baseInput').value.trim()||baseOfPage();
+  return b.split('#')[0]+'#trest-'+pn;
+}
+function refreshQr(){
+  var url=challengeUrl();
+  $('qrLink').value=url;
+  renderQr('qrBox',url);
+  $('qrWarn').hidden=isWeb(url);
+}
+
+/* ---------- Události ---------- */
+document.querySelectorAll('.count').forEach(function(b){
+  b.addEventListener('click',function(){startQuiz(parseInt(b.dataset.n,10));});
+});
+document.querySelectorAll('.chip').forEach(function(c){
+  c.addEventListener('click',function(){setP(parseInt(c.dataset.p,10));});
+});
+$('pcount').addEventListener('input',function(){
+  var v=parseInt($('pcount').value,10);
+  if(v>=1&&v<=MAXN) setP(v);
+});
+$('makeQr').addEventListener('click',function(){
+  var n=readP();setP(n);
+  $('qrTitle').textContent=n+' '+(n===1?'správný příklad':(n<=4?'správné příklady':'správných příkladů'));
+  $('baseInput').value=baseOfPage();
+  refreshQr();
+  show('qr');
+});
+$('baseInput').addEventListener('input',refreshQr);
+$('copyQr').addEventListener('click',function(){copyText('qrLink',$('copyQr'));});
+$('copyDone').addEventListener('click',function(){copyText('doneLink',$('copyDone'));});
+$('startHere').addEventListener('click',function(){
+  if(location.hash==='#trest-'+pn) route(); else location.hash='trest-'+pn;
+});
+$('introStart').addEventListener('click',function(){startQuiz(pendingN);});
+$('nextBtn').addEventListener('click',afterAnswer);
+document.querySelectorAll('.opt').forEach(function(b){
+  b.addEventListener('click',function(){answer(parseInt(b.dataset.i,10));});
+});
+document.querySelectorAll('[data-go="home"]').forEach(function(b){
+  b.addEventListener('click',function(){
+    state=null;
+    if(location.hash){location.hash='';} else {show('home');}
+  });
+});
+document.addEventListener('keydown',function(e){
+  if($('quiz').hidden||!state||!state.q||state.q.done) return;
+  if(e.key>='1'&&e.key<='4'&&!e.ctrlKey&&!e.metaKey&&!e.altKey){answer(parseInt(e.key,10)-1);}
+});
+window.addEventListener('hashchange',route);
+
+setP(10);
+route();
+})();
+</scr__ipt>
+
+</body></html>
+</script>
+
+<script type="text/plain" id="src-pripominac">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Připomínač se zvonkem</title>
+<style>
+:root{
+  --bg:#eef1ec; --surface:#fbfcfa; --ink:#1d2a24; --muted:#5d6b64; --line:#cfd8d1;
+  --accent:#1f6b52; --accent-ink:#ffffff; --alert:#b3401f; --alert-ink:#ffffff;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121a16; --surface:#1b2520; --ink:#e6eee9; --muted:#9baba3; --line:#2f3d36;
+    --accent:#5fc19c; --accent-ink:#0c1a14; --alert:#ee8a63; --alert-ink:#1a0c06;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121a16; --surface:#1b2520; --ink:#e6eee9; --muted:#9baba3; --line:#2f3d36;
+  --accent:#5fc19c; --accent-ink:#0c1a14; --alert:#ee8a63; --alert-ink:#1a0c06; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px 18px 60px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2rem;line-height:1.15;margin:0 0 4px}
+.clock{font-family:Georgia,"Times New Roman",serif;font-size:3.2rem;letter-spacing:.02em;margin:0;font-variant-numeric:tabular-nums}
+.date{color:var(--muted);margin:0 0 24px}
+.banner{position:sticky;top:8px;z-index:5;margin:0 0 16px;padding:10px 14px;border-radius:10px;font-weight:600;font-size:.95rem}
+.banner[hidden]{display:none}
+.banner.ok{background:var(--accent);color:var(--accent-ink)}
+.banner.warn{background:var(--alert);color:var(--alert-ink)}
+form,.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+label{display:block;font-weight:600;margin:0 0 6px}
+textarea,input,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:84px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.field{margin-top:14px}
+.row .field{margin-top:0}
+.tone{display:flex;gap:8px}
+.tone select{flex:1}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;width:100%;margin-top:18px;padding:12px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.list{margin-top:22px}
+.list h2{margin:0 0 10px;font-size:1.1rem}
+.empty{color:var(--muted);margin:0}
+.item{display:flex;gap:12px;justify-content:space-between;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item p{margin:0}
+.when{font-weight:600;font-variant-numeric:tabular-nums}
+.meta{color:var(--muted);font-size:.9rem}
+.item.done .when,.item.done .txt{text-decoration:line-through;color:var(--muted)}
+.msg{margin:10px 0 0;font-weight:600}.msg.err{color:var(--alert)}.msg.ok{color:var(--accent)}
+.hint{color:var(--muted);font-size:.9rem;margin:14px 0 0}
+.ring{position:fixed;inset:0;background:var(--alert);color:var(--alert-ink);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;z-index:10;gap:18px}
+.ring.on{display:flex}
+.ring h2{font-family:Georgia,serif;font-size:2.4rem;margin:0}
+.ring p{font-size:1.4rem;margin:0;max-width:28ch;overflow-wrap:anywhere}
+.ring p.rw{font-size:1rem;font-weight:700}
+.ring button{background:var(--alert-ink);color:var(--alert);border:0;font-weight:700;font-size:1.1rem;padding:16px 28px;max-width:100%}
+.ring #done{background:transparent;color:var(--alert-ink);border:2px solid var(--alert-ink)}
+@media (max-width:420px){.row{grid-template-columns:1fr}.clock{font-size:2.6rem}}
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" id="banner" role="status" hidden></div>
+  <h1>Připomínač</h1>
+  <p class="clock" id="clock">--:--:--</p>
+  <p class="date" id="today"></p>
+
+  <form id="f" novalidate>
+    <label for="txt">Co si chceš připomenout?</label>
+    <textarea id="txt" placeholder="Např. Zavolat doktorovi" required></textarea>
+    <div class="row">
+      <div class="field"><label for="d">Datum</label><input type="date" id="d" required></div>
+      <div class="field"><label for="t">Čas (hodiny a minuty)</label><input type="time" id="t" required><label for="s" style="margin-top:10px">Sekundy (0–59)</label><input type="number" id="s" min="0" max="59" step="1" inputmode="numeric" value="0" required></div>
+    </div>
+    <div class="field">
+      <label for="tone">Znělka</label>
+      <div class="tone">
+        <select id="tone"></select>
+        <button type="button" id="prev">Přehrát</button>
+      </div>
+    </div>
+    <button class="primary" type="submit">Přidat připomínku</button>
+    <p class="msg" id="msg" role="status"></p>
+    <div class="field"><button type="button" id="notif">Povolit upozornění nahoře na obrazovce</button><p class="hint" id="notifState"></p></div>
+    <p class="hint">Připomínky se ukládají jen v tomto prohlížeči. Stránka zazvoní, jen dokud ji prohlížeč nechá běžet na pozadí, proto ji nech otevřenou a povol upozornění.</p>
+  </form>
+
+  <section class="list" aria-live="polite">
+    <h2>Naplánováno</h2>
+    <div id="items"></div>
+  </section>
+</main>
+
+<div class="ring" id="ring" role="alertdialog" aria-live="assertive">
+  <h2>Je čas!</h2>
+  <p id="ringTxt"></p>
+  <p class="rw" id="ringWarn"></p>
+  <button id="unmute" hidden>Spustit zvuk</button>
+  <button id="stop">Vypnout (zazvoní znovu za 1 minutu)</button>
+  <button id="done">Úplně vypnout</button>
+</div>
+
+<script>
+(function(){
+  var KEY = "pripominac:v1", TITLE = document.title;
+  var $ = function(id){ return document.getElementById(id); };
+  var items = [], toneUrls = {}, toneSamples = {}, silentUrl = null;
+  var queue = [], current = null, prevTimer = null, vibT = null;
+  var el = new Audio(); el.loop = true; el.setAttribute("playsinline", "");
+  var token = 0, mode = "idle", armed = false, gesture = false;
+  var actxO = null, wsrc = null;
+
+  var TONES = {
+    zvonek:  {n:"Zvonek",  type:"sine",     seq:[[880,.14],[0,.06],[880,.14],[0,.06],[880,.14],[0,.7]]},
+    alarm:   {n:"Alarm",   type:"square",   seq:[[1000,.2],[700,.2],[1000,.2],[700,.2],[0,.5]]},
+    melodie: {n:"Melodie", type:"triangle", seq:[[523,.2],[659,.2],[784,.2],[1047,.45],[0,.7]]},
+    digital: {n:"Digitální pípání", type:"square", seq:[[1500,.07],[0,.07],[1500,.07],[0,.07],[1500,.07],[0,.6]]},
+    gong:    {n:"Gong",    type:"sine",     seq:[[196,1.6],[0,.8]]}
+  };
+
+  var sel = $("tone");
+  Object.keys(TONES).forEach(function(k){
+    var o = document.createElement("option"); o.value = k; o.textContent = TONES[k].n; sel.appendChild(o);
+  });
+
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function fmt(ms){
+    var x = new Date(ms);
+    return x.getDate() + ". " + (x.getMonth()+1) + ". " + x.getFullYear() + " v " + pad(x.getHours()) + ":" + pad(x.getMinutes()) + ":" + pad(x.getSeconds());
+  }
+  function load(){
+    try { var r = localStorage.getItem(KEY); items = r ? JSON.parse(r) : []; } catch(e){ items = []; }
+    if (!Array.isArray(items)) items = [];
+  }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(items)); } catch(e){} }
+  function setMsg(t, err){ var m = $("msg"); m.textContent = t; m.className = "msg " + (err ? "err" : "ok"); }
+
+  function wavUrl(s, sr){
+    var n = s.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), i;
+    function w(o, str){ for (var j = 0; j < str.length; j++) v.setUint8(o + j, str.charCodeAt(j)); }
+    w(0,"RIFF"); v.setUint32(4, 36 + n*2, true); w(8,"WAVE"); w(12,"fmt ");
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    w(36,"data"); v.setUint32(40, n*2, true);
+    for (i = 0; i < n; i++) v.setInt16(44 + i*2, Math.max(-1, Math.min(1, s[i])) * 32767, true);
+    return URL.createObjectURL(new Blob([b], {type:"audio/wav"}));
+  }
+  function toneUrl(key){
+    if (toneUrls[key]) return toneUrls[key];
+    var t = TONES[key] || TONES.zvonek, sr = 22050;
+    var total = t.seq.reduce(function(s,x){ return s + x[1]; }, 0);
+    var reps = Math.max(1, Math.ceil(4 / total));
+    var out = new Float32Array(Math.round(total * reps * sr)), pos = 0;
+    for (var r = 0; r < reps; r++) t.seq.forEach(function(x){
+      var len = Math.round(x[1] * sr);
+      if (x[0] > 0) for (var i = 0; i < len && pos + i < out.length; i++){
+        var tt = i / sr, ph = (tt * x[0]) % 1, wv;
+        wv = t.type === "sine" ? Math.sin(2 * Math.PI * ph) : t.type === "square" ? (ph < .5 ? 1 : -1) : (ph < .5 ? 4*ph - 1 : 3 - 4*ph);
+        out[pos + i] = .4 * wv * (tt < .01 ? tt / .01 : Math.pow(.004, (tt - .01) / (x[1] - .01)));
+      }
+      pos += len;
+    });
+    toneSamples[key] = {s: out, sr: sr};
+    return (toneUrls[key] = wavUrl(out, sr));
+  }
+  function toneSrc(key){ var u = toneUrl(key); return {url: u, samples: toneSamples[key]}; }
+  function getSilent(){
+    if (silentUrl) return silentUrl;
+    var s = new Float32Array(8000);
+    for (var i = 0; i < s.length; i++) s[i] = (i % 2 ? 1 : -1) / 32767;
+    return (silentUrl = wavUrl(s, 8000));
+  }
+
+  function playUrl(url){
+    var my = ++token, p;
+    el.loop = true; el.muted = false; el.volume = 1; el.src = url;
+    try { p = el.play(); } catch(e){ p = Promise.reject(e); }
+    return Promise.resolve(p).then(function(){ return my === token; },
+      function(err){ if (my !== token) return false; throw err; });
+  }
+  function actx(){
+    if (!actxO) { var C = window.AudioContext || window.webkitAudioContext; if (C) { try { actxO = new C(); } catch(e){} } }
+    if (actxO && actxO.state === "suspended") { try { actxO.resume(); } catch(e){} }
+    return actxO;
+  }
+  function wstop(){ if (wsrc) { try { wsrc.stop(); } catch(e){} wsrc = null; } }
+  function webPlay(src, my){
+    var a = actx();
+    if (!a) return Promise.reject(new Error("WebAudio není dostupné"));
+    if (!src.samples) return Promise.reject(new Error("žádný zdroj"));
+    var b = a.createBuffer(1, src.samples.s.length, src.samples.sr);
+    b.getChannelData(0).set(src.samples.s);
+    if (my !== token) return Promise.resolve(false);
+    var s = a.createBufferSource(); s.buffer = b; s.loop = true; s.connect(a.destination); s.start(); wsrc = s;
+    return Promise.resolve(true);
+  }
+  function playSrc(src){
+    wstop();
+    var pr = playUrl(src.url), my = token;
+    return pr.catch(function(err){
+      if (my !== token) return false;
+      return webPlay(src, my).catch(function(e2){ throw (err && err.name === "NotAllowedError") ? err : e2; });
+    });
+  }
+  function halt(){ token++; try { el.pause(); } catch(e){} wstop(); mode = "idle"; armed = false; }
+  function pending(){ return items.some(function(i){ return !i.done; }); }
+
+  function startKeep(){
+    if (mode !== "idle" || !pending() || !gesture) return;
+    mode = "keep";
+    playUrl(getSilent()).then(function(ok){
+      if (!ok) return;
+      armed = true; banner();
+      try { if (navigator.mediaSession) navigator.mediaSession.metadata = new MediaMetadata({title:"Připomínač běží", artist:"Čeká na zadaný čas"}); } catch(e){}
+    }, function(){ if (mode === "keep") { mode = "idle"; armed = false; } banner(); });
+  }
+  function syncKeep(){
+    if (pending()) { if (mode === "idle") startKeep(); }
+    else if (mode === "keep") halt();
+    banner();
+  }
+  function banner(){
+    var b = $("banner");
+    if (mode === "ring" || mode === "preview") return;
+    if (!pending()) { b.hidden = true; return; }
+    b.hidden = false;
+    if (armed) { b.className = "banner ok"; b.textContent = "● Hlídání zapnuto: nech stránku otevřenou, v nastavený čas se spustí zvuk." + (window.Notification && Notification.permission !== "granted" ? " Povol upozornění tlačítkem níže." : ""); }
+    else if (!gesture) { b.className = "banner warn"; b.textContent = "⚠ Klepni kamkoli na stránku, aby prohlížeč povolil zvuk. Bez toho nemusí zazvonit."; }
+    else { b.className = "banner warn"; b.textContent = "⚠ Prohlížeč nepovolil zvuk na pozadí. Zvonění mimo stránku nemusí fungovat."; }
+  }
+
+  function playAlarm(it){
+    Promise.resolve(toneSrc(it.tone)).then(playSrc).then(function(){ if (current === it) $("unmute").hidden = true; })
+    .catch(function(){ if (current === it) blocked(); });
+  }
+  function blocked(){
+    $("ringWarn").textContent = "Prohlížeč zablokoval zvuk. Klepni na „Spustit zvuk“.";
+    $("unmute").hidden = false;
+  }
+
+  function startRing(it){
+    if (current) { queue.push(it); return; }
+    stopPreview(true);
+    current = it; mode = "ring";
+    $("ringTxt").textContent = it.text; $("ringWarn").textContent = ""; $("unmute").hidden = true;
+    $("ring").classList.add("on");
+    document.title = "⏰ Je čas! " + it.text;
+    playAlarm(it);
+    if (navigator.vibrate) {
+      var vib = function(){ try { navigator.vibrate([500,250,500,250,500]); } catch(e){} };
+      vib(); clearInterval(vibT); vibT = setInterval(vib, 3000);
+    }
+    if (window.Notification && Notification.permission === "granted") {
+      try { new Notification("Je čas! ⏰", {body: it.text, tag: "pripominac", requireInteraction: true, renotify: true, silent: false, vibrate: [500,250,500,250,500]}); } catch(e){}
+    }
+  }
+  function closeRing(snooze){
+    var it = current;
+    halt(); current = null; clearInterval(vibT);
+    $("ring").classList.remove("on"); document.title = TITLE;
+    if (it) {
+      if (snooze) { it.at = Date.now() + 60000; it.done = false; }
+      save(); render();
+    }
+    var next = queue.shift();
+    if (next) startRing(next); else syncKeep();
+  }
+  $("stop").addEventListener("click", function(){ closeRing(true); });
+  $("done").addEventListener("click", function(){ closeRing(false); });
+  $("unmute").addEventListener("click", function(){ if (current) { $("ringWarn").textContent = ""; playAlarm(current); } });
+
+  function tick(){
+    var now = new Date();
+    $("clock").textContent = pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
+    $("today").textContent = now.toLocaleDateString("cs-CZ", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+    var changed = false;
+    items.forEach(function(it){
+      if (!it.done && it.at <= now.getTime()) { it.done = true; changed = true; startRing(it); }
+    });
+    if (changed) { save(); render(); }
+    syncKeep();
+  }
+
+  function render(){
+    var box = $("items"); box.textContent = "";
+    if (!items.length) {
+      var p = document.createElement("p"); p.className = "empty";
+      p.textContent = "Zatím nic. Napiš poznámku, nastav datum a čas a přidej ji.";
+      box.appendChild(p); return;
+    }
+    items.slice().sort(function(a,b){ return a.at - b.at; }).forEach(function(it){
+      var d = document.createElement("div"); d.className = "item" + (it.done ? " done" : "");
+      var l = document.createElement("div");
+      var w = document.createElement("p"); w.className = "when"; w.textContent = fmt(it.at);
+      var x = document.createElement("p"); x.className = "txt"; x.textContent = it.text;
+      var m = document.createElement("p"); m.className = "meta";
+      m.textContent = "Znělka: " + (TONES[it.tone] ? TONES[it.tone].n : "Zvonek") + (it.done ? " · odezněla" : "");
+      l.appendChild(w); l.appendChild(x); l.appendChild(m);
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "Smazat";
+      b.addEventListener("click", function(){
+        items = items.filter(function(z){ return z.id !== it.id; });
+        save(); render(); syncKeep();
+      });
+      d.appendChild(l); d.appendChild(b); box.appendChild(d);
+    });
+  }
+
+  function stopPreview(noSync){
+    if (mode !== "preview") return;
+    clearTimeout(prevTimer); halt();
+    $("prev").textContent = "Přehrát";
+    if (!noSync) syncKeep();
+  }
+  $("prev").addEventListener("click", function(){
+    if (mode === "preview") { stopPreview(); return; }
+    if (current) return;
+    actx();
+    mode = "preview"; $("prev").textContent = "Zastavit"; setMsg("", false);
+    playSrc(toneSrc(sel.value)).catch(function(err){
+      stopPreview();
+      setMsg(err && err.name === "NotAllowedError" ? "Prohlížeč zablokoval zvuk, zkus to znovu." : "Zvuk se nepodařilo přehrát: " + (err && (err.name || err.message) || ""), true);
+    });
+    prevTimer = setTimeout(function(){ stopPreview(); }, 8000);
+  });
+
+  $("f").addEventListener("submit", function(e){
+    e.preventDefault();
+    try {
+      gesture = true;
+      var text = $("txt").value.trim();
+      if (!text) { setMsg("Napiš, co si chceš připomenout.", true); return; }
+      var tv = $("t").value.slice(0, 5), sc = parseInt($("s").value, 10);
+      if (isNaN(sc) || sc < 0 || sc > 59) { setMsg("Sekundy musí být číslo od 0 do 59.", true); return; }
+      tv += ":" + pad(sc);
+      var at = new Date($("d").value + "T" + tv).getTime();
+      if (isNaN(at)) { setMsg("Vyber datum a čas.", true); return; }
+      var id = String(Date.now()) + Math.random().toString(36).slice(2, 6);
+      items.push({id: id, text: text, at: at, tone: sel.value, done: false});
+      if (window.Notification && Notification.permission === "default") { try { Notification.requestPermission(); } catch(e2){} }
+      stopPreview(true);
+      save(); render(); syncKeep();
+      $("txt").value = "";
+      setMsg("Přidáno na " + fmt(at) + ".", false);
+    } catch(err) {
+      setMsg("Chyba: " + (err && err.message ? err.message : err), true);
+    }
+  });
+
+  var n = new Date(Date.now() + 60000);
+  $("d").value = n.getFullYear() + "-" + pad(n.getMonth()+1) + "-" + pad(n.getDate());
+  $("t").value = pad(n.getHours()) + ":" + pad(n.getMinutes()); $("s").value = n.getSeconds();
+
+  function notifState(){
+    var el2 = $("notifState");
+    if (!window.Notification) { el2.textContent = "Tento prohlížeč upozornění nepodporuje."; $("notif").hidden = true; return; }
+    if (Notification.permission === "granted") { el2.textContent = "Upozornění jsou povolená."; $("notif").hidden = true; }
+    else if (Notification.permission === "denied") { el2.textContent = "Upozornění jsou zablokovaná. Povol je v nastavení webu v prohlížeči."; $("notif").hidden = true; }
+    else el2.textContent = "";
+  }
+  $("notif").addEventListener("click", function(){
+    try {
+      var r = Notification.requestPermission(function(){ notifState(); });
+      if (r && r.then) r.then(notifState);
+    } catch(e){ notifState(); }
+  });
+  notifState();
+
+  ["pointerdown","touchend","keydown","click"].forEach(function(ev){
+    document.addEventListener(ev, function(){ gesture = true; actx(); syncKeep(); }, true);
+  });
+  document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "visible") tick(); });
+
+  load(); render(); tick();
+  setInterval(tick, 1000);
+  try {
+    var wk = new Worker(URL.createObjectURL(new Blob(["setInterval(function(){postMessage(1)},1000)"], {type:"text/javascript"})));
+    wk.onmessage = tick;
+  } catch(e){}
+})();
+</scr__ipt>
+</body>
+</html>
+</script>
+
+<script type="text/plain" id="src-vek">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kolik je dítěti let</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #fff7e6;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    padding: 24px;
+    width: 100%;
+    max-width: 420px;
+  }
+  h1 { font-size: 22px; margin: 0 0 18px; text-align: center; color: #444; }
+  h2 { font-size: 16px; margin: 0 0 8px; color: #666; }
+  .row { display: flex; gap: 10px; }
+  .field { flex: 1; }
+  .full { margin-bottom: 14px; }
+  label { display: block; font-size: 14px; color: #666; margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    font-size: 20px;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    text-align: center;
+    background: #fff;
+  }
+  input[type="text"] { text-align: left; }
+  select { text-align: left; font-size: 18px; }
+  input:focus, select:focus { outline: none; border-color: #f5a623; }
+  button {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  #tlacitko { background: #f5a623; margin-top: 18px; font-size: 20px; }
+  #tlacitko:active { background: #d98f14; }
+  #uloz { background: #3a9d5d; margin-top: 10px; }
+  #uloz:active { background: #2b7a3d; }
+  #smaz { background: #d9534f; flex: 0 0 auto; width: auto; padding: 10px 16px; font-size: 16px; }
+  #smaz:active { background: #b52b27; }
+  #stahni { background: #3b7dd8; font-size: 16px; padding: 12px; }
+  #stahni:active { background: #2a5fa8; }
+  .ulozene {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 2px dashed #eee;
+  }
+  .ulozene .row { align-items: center; }
+  .zaloha { margin-top: 16px; }
+  .napoveda { font-size: 13px; color: #888; margin-top: 8px; line-height: 1.4; }
+  #vysledek {
+    margin-top: 22px;
+    min-height: 70px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #2b7a3d;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #vysledek .jmeno { font-size: 18px; font-weight: 500; color: #666; margin-bottom: 4px; }
+  #vysledek.chyba { font-size: 17px; font-weight: 500; color: #c0392b; }
+  #vysledek.info { font-size: 17px; font-weight: 400; color: #999; }
+  #zprava { text-align: center; font-size: 14px; color: #3a9d5d; min-height: 20px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎈 Kolik je dítěti let</h1>
+
+  <div class="full">
+    <label for="jmeno">Jméno dítěte</label>
+    <input id="jmeno" type="text" placeholder="Např. Honzík" autocomplete="off">
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="den">Den</label>
+      <input id="den" type="number" inputmode="numeric" min="1" max="31" placeholder="18">
+    </div>
+    <div class="field">
+      <label for="mesic">Měsíc</label>
+      <input id="mesic" type="number" inputmode="numeric" min="1" max="12" placeholder="11">
+    </div>
+    <div class="field">
+      <label for="rok">Rok</label>
+      <input id="rok" type="number" inputmode="numeric" min="1900" max="2100" placeholder="2018">
+    </div>
+  </div>
+
+  <button id="tlacitko" type="button">Potvrdit</button>
+  <button id="uloz" type="button">Uložit dítě</button>
+  <div id="zprava"></div>
+
+  <div id="vysledek" class="info">Zadej datum narození a potvrď</div>
+
+  <div class="ulozene">
+    <h2>Uložené děti</h2>
+    <div class="row">
+      <select id="seznam"></select>
+      <button id="smaz" type="button">Smazat</button>
+    </div>
+
+    <div class="zaloha">
+      <h2>Trvalé uložení</h2>
+      <button id="stahni" type="button">⬇ Stáhnout do souboru</button>
+      <div class="napoveda">
+        Stáhne se celá aplikace i se všemi uloženými dětmi (soubor .html).
+        Příště otevři tento stažený soubor a děti v něm zůstanou navždy,
+        i po resetu Opery. Po každém přidání nebo smazání dítěte stáhni soubor znovu.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script id="data" type="application/json">[]</scr__ipt>
+
+<script>
+  var zdroj = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  var KLIC = 'deti_vek_ulozene_v2';
+
+  var jmenoEl = document.getElementById('jmeno');
+  var denEl = document.getElementById('den');
+  var mesicEl = document.getElementById('mesic');
+  var rokEl = document.getElementById('rok');
+  var tlacitko = document.getElementById('tlacitko');
+  var ulozBtn = document.getElementById('uloz');
+  var smazBtn = document.getElementById('smaz');
+  var stahniBtn = document.getElementById('stahni');
+  var seznamEl = document.getElementById('seznam');
+  var out = document.getElementById('vysledek');
+  var zpravaEl = document.getElementById('zprava');
+
+  var deti = [];
+  var smazane = [];
+
+  function seradDeti() {
+    deti.sort(function (a, b) {
+      return a.jmeno.localeCompare(b.jmeno, 'cs', { sensitivity: 'base' });
+    });
+  }
+
+  function nactiVsechno() {
+    var vlozene = [];
+    try {
+      var d = JSON.parse(document.getElementById('data').textContent);
+      if (Array.isArray(d)) vlozene = d;
+    } catch (e) {}
+
+    var lokalni = [];
+    try {
+      var raw = localStorage.getItem(KLIC);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && Array.isArray(o.deti)) lokalni = o.deti;
+        if (o && Array.isArray(o.smazane)) smazane = o.smazane;
+      }
+    } catch (e) {}
+
+    var vysledek = [];
+    vlozene.forEach(function (x) {
+      if (smazane.indexOf(x.jmeno.toLowerCase()) === -1) vysledek.push(x);
+    });
+    lokalni.forEach(function (x) {
+      var nalezeno = false;
+      for (var i = 0; i < vysledek.length; i++) {
+        if (vysledek[i].jmeno.toLowerCase() === x.jmeno.toLowerCase()) {
+          vysledek[i] = x;
+          nalezeno = true;
+          break;
+        }
+      }
+      if (!nalezeno) vysledek.push(x);
+    });
+    return vysledek;
+  }
+
+  function ulozLokalne() {
+    try {
+      localStorage.setItem(KLIC, JSON.stringify({ deti: deti, smazane: smazane }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function vykresliSeznam(vybraneJmeno) {
+    seradDeti();
+    seznamEl.innerHTML = '';
+    var prvni = document.createElement('option');
+    prvni.value = '';
+    prvni.textContent = deti.length ? 'Vyber uložené dítě…' : 'Zatím nikdo není uložen';
+    seznamEl.appendChild(prvni);
+
+    deti.forEach(function (dite) {
+      var o = document.createElement('option');
+      o.value = dite.jmeno;
+      o.textContent = dite.jmeno + ' (' + dite.d + '. ' + dite.m + '. ' + dite.r + ')';
+      seznamEl.appendChild(o);
+    });
+
+    if (vybraneJmeno) seznamEl.value = vybraneJmeno;
+  }
+
+  function sklonuj(n, jeden, dva, pet) {
+    if (n === 1) return n + ' ' + jeden;
+    if (n >= 2 && n <= 4) return n + ' ' + dva;
+    return n + ' ' + pet;
+  }
+
+  function zobrazVysledek(text, trida, jmeno) {
+    out.innerHTML = '';
+    out.className = trida || '';
+    if (jmeno) {
+      var j = document.createElement('div');
+      j.className = 'jmeno';
+      j.textContent = jmeno;
+      out.appendChild(j);
+    }
+    var t = document.createElement('div');
+    t.textContent = text;
+    out.appendChild(t);
+  }
+
+  function zprava(text) {
+    zpravaEl.textContent = text;
+  }
+
+  function precti() {
+    return {
+      jmeno: jmenoEl.value.trim(),
+      d: parseInt(denEl.value, 10),
+      m: parseInt(mesicEl.value, 10),
+      r: parseInt(rokEl.value, 10)
+    };
+  }
+
+  function platneDatum(d, m, r) {
+    if (!d || !m || !r || String(r).length < 4) return 'Vyplň prosím den, měsíc i rok.';
+    var n = new Date(r, m - 1, d);
+    if (n.getFullYear() !== r || n.getMonth() !== m - 1 || n.getDate() !== d) {
+      return 'Takové datum neexistuje, zkontroluj den a měsíc.';
+    }
+    var dnes = new Date();
+    dnes.setHours(0, 0, 0, 0);
+    if (n > dnes) return 'Datum je v budoucnosti.';
+    return '';
+  }
+
+  function spocitej() {
+    zprava('');
+    var v = precti();
+    var chyba = platneDatum(v.d, v.m, v.r);
+    if (chyba) {
+      zobrazVysledek(chyba, 'chyba');
+      return;
+    }
+
+    var narozeni = new Date(v.r, v.m - 1, v.d);
+    var dnes = new Date();
+    dnes.setHours(0, 0, 0, 0);
+
+    var roky = dnes.getFullYear() - narozeni.getFullYear();
+    var mesice = dnes.getMonth() - narozeni.getMonth();
+    var dny = dnes.getDate() - narozeni.getDate();
+
+    if (dny < 0) {
+      mesice--;
+      var predchozi = new Date(dnes.getFullYear(), dnes.getMonth(), 0);
+      dny += predchozi.getDate();
+    }
+    if (mesice < 0) {
+      roky--;
+      mesice += 12;
+    }
+
+    var casti = [];
+    if (roky > 0) casti.push(sklonuj(roky, 'rok', 'roky', 'let'));
+    if (mesice > 0) casti.push(sklonuj(mesice, 'měsíc', 'měsíce', 'měsíců'));
+    if (dny > 0) casti.push(sklonuj(dny, 'den', 'dny', 'dní'));
+
+    if (casti.length === 0) {
+      zobrazVysledek('Dnes se narodilo! 🎉', '', v.jmeno);
+      return;
+    }
+
+    var text;
+    if (casti.length === 1) {
+      text = casti[0];
+    } else {
+      text = casti.slice(0, -1).join(', ') + ' a ' + casti[casti.length - 1];
+    }
+
+    if (mesice === 0 && dny === 0 && roky > 0) {
+      text += ' 🎂';
+    }
+
+    zobrazVysledek(text, '', v.jmeno);
+  }
+
+  function ulozDite() {
+    var v = precti();
+    if (!v.jmeno) {
+      zprava('');
+      zobrazVysledek('Napiš prosím jméno dítěte.', 'chyba');
+      return;
+    }
+    var chyba = platneDatum(v.d, v.m, v.r);
+    if (chyba) {
+      zprava('');
+      zobrazVysledek(chyba, 'chyba');
+      return;
+    }
+
+    var klic = v.jmeno.toLowerCase();
+    smazane = smazane.filter(function (n) { return n !== klic; });
+
+    var nalezeno = false;
+    for (var i = 0; i < deti.length; i++) {
+      if (deti[i].jmeno.toLowerCase() === klic) {
+        deti[i] = { jmeno: v.jmeno, d: v.d, m: v.m, r: v.r };
+        nalezeno = true;
+        break;
+      }
+    }
+    if (!nalezeno) deti.push({ jmeno: v.jmeno, d: v.d, m: v.m, r: v.r });
+
+    seradDeti();
+    ulozLokalne();
+    vykresliSeznam(v.jmeno);
+    zprava('Uloženo: ' + v.jmeno + '. Pro trvalé uložení stáhni soubor.');
+  }
+
+  function vyberDite() {
+    var jmeno = seznamEl.value;
+    if (!jmeno) return;
+    for (var i = 0; i < deti.length; i++) {
+      if (deti[i].jmeno === jmeno) {
+        jmenoEl.value = deti[i].jmeno;
+        denEl.value = deti[i].d;
+        mesicEl.value = deti[i].m;
+        rokEl.value = deti[i].r;
+        zprava('');
+        zobrazVysledek('Datum je vyplněno, stiskni Potvrdit', 'info');
+        return;
+      }
+    }
+  }
+
+  function smazDite() {
+    var jmeno = seznamEl.value;
+    if (!jmeno) {
+      zprava('Nejdřív vyber dítě v seznamu.');
+      return;
+    }
+    if (!confirm('Opravdu smazat: ' + jmeno + '?')) return;
+    var klic = jmeno.toLowerCase();
+    deti = deti.filter(function (d) { return d.jmeno !== jmeno; });
+    if (smazane.indexOf(klic) === -1) smazane.push(klic);
+    ulozLokalne();
+    vykresliSeznam();
+    zprava('Smazáno: ' + jmeno + '. Pro trvalé smazání stáhni soubor znovu.');
+  }
+
+  function stahniSoubor() {
+    seradDeti();
+    var json = JSON.stringify(deti).replace(/</g, '\\u003c');
+    var html = zdroj.replace(
+      /(<script id="data" type="application\/json">)[\s\S]*?(<\/script>)/,
+      function (cely, zacatek, konec) { return zacatek + json + konec; }
+    );
+    var blob = new Blob([html], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'deti-vek.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    zprava('Soubor stažen (' + deti.length + ' dětí). Příště otevři tento soubor.');
+  }
+
+  tlacitko.addEventListener('click', spocitej);
+  ulozBtn.addEventListener('click', ulozDite);
+  smazBtn.addEventListener('click', smazDite);
+  seznamEl.addEventListener('change', vyberDite);
+  stahniBtn.addEventListener('click', stahniSoubor);
+
+  [jmenoEl, denEl, mesicEl, rokEl].forEach(function (el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        spocitej();
+      }
+    });
+  });
+
+  deti = nactiVsechno();
+  vykresliSeznam();
+</scr__ipt>
+</body>
+</html>
+</script>
+
+<script type="text/plain" id="src-sipka">
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Náhodná šipka</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { margin: 0 0 20px; color: #333; }
+  .box {
+    background: #fff;
+    padding: 25px;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  .arrows {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .arrow {
+    font-size: 40px;
+    padding: 18px;
+    border: 3px solid #ccc;
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    background: #fafafa;
+    transition: 0.15s;
+  }
+  .arrow:hover { background: #eef; }
+  .arrow.checked {
+    border-color: #2e8b57;
+    background: #e6f7ee;
+  }
+  .arrow.running {
+    border-color: #f59e0b;
+    background: #fff3d6;
+    box-shadow: 0 0 0 4px rgba(245,158,11,0.4);
+  }
+  .arrow.winner {
+    border-color: #dc2626;
+    background: #fee2e2;
+    box-shadow: 0 0 0 4px rgba(220,38,38,0.4);
+  }
+  .arrow .tick {
+    display: block;
+    font-size: 18px;
+    color: #2e8b57;
+    min-height: 22px;
+  }
+  button {
+    font-size: 18px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    background: #3b82f6;
+    color: #fff;
+    margin: 4px;
+  }
+  button:hover { background: #2563eb; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.sec { background: #888; }
+  button.sec:hover { background: #666; }
+
+  #stage { margin: 15px 0 5px; min-height: 120px; }
+  #result {
+    font-size: 90px;
+    min-height: 110px;
+  }
+  #info { color: #666; min-height: 22px; }
+
+  /* Ruleta */
+  #roulette {
+    display: none;
+    position: relative;
+    width: 100%;
+    height: 110px;
+    overflow: hidden;
+    border: 3px solid #333;
+    border-radius: 12px;
+    background: #fafafa;
+  }
+  #strip {
+    display: flex;
+    height: 100%;
+    will-change: transform;
+  }
+  #strip div {
+    flex: 0 0 100px;
+    width: 100px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 54px;
+    border-right: 1px solid #ddd;
+  }
+  #marker {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    margin-left: -2px;
+    background: #dc2626;
+    z-index: 2;
+  }
+
+  /* Kolo štěstí */
+  #wheelWrap {
+    display: none;
+    position: relative;
+    width: 300px;
+    height: 320px;
+    margin: 0 auto;
+  }
+  #pointer {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    margin-left: -14px;
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 28px solid #dc2626;
+    z-index: 2;
+  }
+  #wheel {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+
+  #historyTitle { font-size: 14px; color: #888; margin-top: 15px; }
+  #history {
+    margin-top: 10px;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid #ddd;
+    padding-top: 10px;
+    font-size: 26px;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+
+<h1>Náhodná šipka</h1>
+
+<div class="box">
+  <div class="arrows" id="arrows"></div>
+
+  <button id="pickBtn" onclick="pick()">Vybrat náhodnou</button>
+  <button id="resetBtn" class="sec" onclick="resetChecks()">Zrušit fajfky</button>
+
+  <div id="stage">
+    <div id="roulette">
+      <div id="marker"></div>
+      <div id="strip"></div>
+    </div>
+    <div id="wheelWrap">
+      <div id="pointer"></div>
+      <canvas id="wheel" width="300" height="300"></canvas>
+    </div>
+    <div id="result"></div>
+  </div>
+  <div id="info"></div>
+
+  <div id="historyTitle">Historie (<span id="count">0</span>):</div>
+  <div id="history"></div>
+  <button class="sec" onclick="clearHistory()" style="margin-top:10px;font-size:14px;padding:8px 14px;">Smazat historii</button>
+</div>
+
+<script>
+  const options = [
+    { symbol: "⬆️", name: "nahoru" },
+    { symbol: "⬇️", name: "dolů" },
+    { symbol: "⬅️", name: "doleva" },
+    { symbol: "➡️", name: "doprava" }
+  ];
+  const colors = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"];
+  const SEGMENTS = 12;
+  const selected = new Set();
+  const history = [];
+  let busy = false;
+
+  const arrowsEl = document.getElementById("arrows");
+  const resultEl = document.getElementById("result");
+  const infoEl = document.getElementById("info");
+  const rouletteEl = document.getElementById("roulette");
+  const stripEl = document.getElementById("strip");
+  const wheelWrap = document.getElementById("wheelWrap");
+  const wheelEl = document.getElementById("wheel");
+
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* Náhodný výběr: stejná hodnota smí padnout 2x po sobě, ale ne 3x */
+  function makeTracker() { return { last: [] }; }
+
+  function drawNoTriple(tracker, list) {
+    let pool = list;
+    const l = tracker.last;
+    if (list.length > 1 && l.length >= 2 && l[l.length - 1] === l[l.length - 2]) {
+      pool = list.filter(x => x !== l[l.length - 1]);
+    }
+    const v = pool[Math.floor(Math.random() * pool.length)];
+    l.push(v);
+    if (l.length > 2) l.shift();
+    return v;
+  }
+
+  const arrowTracker = makeTracker();
+  const animTracker = makeTracker();
+
+  options.forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "arrow";
+    d.innerHTML = o.symbol + '<span class="tick"></span>';
+    d.onclick = () => { if (!busy) toggle(i, d); };
+    arrowsEl.appendChild(d);
+  });
+
+  function toggle(i, el) {
+    if (selected.has(i)) {
+      selected.delete(i);
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    } else {
+      selected.add(i);
+      el.classList.add("checked");
+      el.querySelector(".tick").textContent = "✔";
+    }
+  }
+
+  function setBusy(b) {
+    busy = b;
+    document.getElementById("pickBtn").disabled = b;
+    document.getElementById("resetBtn").disabled = b;
+  }
+
+  function hideAnimations() {
+    rouletteEl.style.display = "none";
+    wheelWrap.style.display = "none";
+    document.querySelectorAll(".arrow").forEach(el => el.classList.remove("running", "winner"));
+  }
+
+  function pick() {
+    if (busy) return;
+    if (selected.size === 0) {
+      infoEl.textContent = "Nejdřív zaškrtni aspoň jednu šipku.";
+      resultEl.textContent = "";
+      return;
+    }
+    const arr = Array.from(selected);
+    const winnerIdx = drawNoTriple(arrowTracker, arr);
+
+    setBusy(true);
+    hideAnimations();
+    resultEl.textContent = "";
+    infoEl.textContent = "Losuje se...";
+
+    const type = drawNoTriple(animTracker, [0, 1, 2]);
+    if (type === 0) animRoulette(arr, winnerIdx);
+    else if (type === 1) animWheel(arr, winnerIdx);
+    else animSquare(arr, winnerIdx);
+  }
+
+  function finish(winnerIdx) {
+    const chosen = options[winnerIdx];
+    hideAnimations();
+    resultEl.textContent = chosen.symbol;
+    infoEl.textContent = "Vybráno: " + chosen.name;
+    history.push(chosen.symbol);
+    renderHistory();
+    setBusy(false);
+  }
+
+  /* 1) Ruleta */
+  function animRoulette(arr, winnerIdx) {
+    const ITEM = 100, TOTAL = 50, WIN_POS = 40;
+    stripEl.innerHTML = "";
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement("div");
+      const idx = (i === WIN_POS) ? winnerIdx : arr[Math.floor(Math.random() * arr.length)];
+      d.textContent = options[idx].symbol;
+      stripEl.appendChild(d);
+    }
+    rouletteEl.style.display = "block";
+    stripEl.style.transition = "none";
+    stripEl.style.transform = "translateX(0)";
+    void stripEl.offsetWidth;
+
+    const w = rouletteEl.clientWidth;
+    const offset = (Math.random() - 0.5) * ITEM * 0.6;
+    const target = WIN_POS * ITEM + ITEM / 2 - w / 2 + offset;
+    stripEl.style.transition = "transform 5s cubic-bezier(0.12, 0.7, 0.1, 1)";
+    stripEl.style.transform = "translateX(" + (-target) + "px)";
+
+    setTimeout(() => finish(winnerIdx), 5300);
+  }
+
+  /* 2) Kolo štěstí – 12 dílů, šipky se střídají dokola */
+  function wheelSlots(arr) {
+    const slots = [];
+    for (let i = 0; i < SEGMENTS; i++) slots.push(arr[i % arr.length]);
+    return slots;
+  }
+
+  function drawWheel(slots) {
+    const ctx = wheelEl.getContext("2d");
+    const cx = 150, cy = 150, r = 146;
+    const seg = (Math.PI * 2) / SEGMENTS;
+    ctx.clearRect(0, 0, 300, 300);
+    slots.forEach((idx, i) => {
+      const a0 = -Math.PI / 2 + i * seg;
+      const a1 = a0 + seg;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const mid = a0 + seg / 2;
+      ctx.save();
+      ctx.translate(cx + Math.cos(mid) * r * 0.74, cy + Math.sin(mid) * r * 0.74);
+      ctx.font = "26px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(options[idx].symbol, 0, 0);
+      ctx.restore();
+    });
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#333";
+    ctx.fill();
+  }
+
+  function animWheel(arr, winnerIdx) {
+    const slots = wheelSlots(shuffle(arr.slice()));
+    drawWheel(slots);
+    wheelWrap.style.display = "block";
+    wheelEl.style.transition = "none";
+    wheelEl.style.transform = "rotate(0deg)";
+    void wheelEl.offsetWidth;
+
+    const segDeg = 360 / SEGMENTS;
+    const candidates = [];
+    slots.forEach((idx, i) => { if (idx === winnerIdx) candidates.push(i); });
+    const i = candidates[Math.floor(Math.random() * candidates.length)];
+    const center = (i + 0.5) * segDeg;
+    const jitter = (Math.random() - 0.5) * segDeg * 0.7;
+    const finalDeg = 360 * 6 + (360 - center) + jitter;
+
+    wheelEl.style.transition = "transform 5s cubic-bezier(0.15, 0.6, 0.15, 1)";
+    wheelEl.style.transform = "rotate(" + finalDeg + "deg)";
+
+    setTimeout(() => finish(winnerIdx), 5300);
+  }
+
+  /* 3) Obrys čtverce, který postupně zpomaluje */
+  function animSquare(arr, winnerIdx) {
+    const tiles = arrowsEl.children;
+    const order = shuffle(arr.slice());
+    const n = order.length;
+    let pos = Math.floor(Math.random() * n);
+    let steps = 15 + Math.floor(Math.random() * 6);
+    while (order[(pos + steps) % n] !== winnerIdx) steps++;
+
+    let step = 0;
+    let prev = null;
+
+    function tick() {
+      if (prev !== null) tiles[prev].classList.remove("running");
+      const cur = order[(pos + step) % n];
+      tiles[cur].classList.add("running");
+      prev = cur;
+
+      if (step >= steps) {
+        setTimeout(() => {
+          tiles[cur].classList.remove("running");
+          tiles[cur].classList.add("winner");
+          setTimeout(() => finish(winnerIdx), 700);
+        }, 300);
+        return;
+      }
+      step++;
+      const delay = 60 + Math.pow(step / steps, 3) * 520;
+      setTimeout(tick, delay);
+    }
+    tick();
+  }
+
+  function renderHistory() {
+    document.getElementById("count").textContent = history.length;
+    const h = document.getElementById("history");
+    h.textContent = history.join(" ");
+    h.scrollTop = h.scrollHeight;
+  }
+
+  function clearHistory() {
+    if (busy) return;
+    history.length = 0;
+    arrowTracker.last = [];
+    renderHistory();
+    resultEl.textContent = "";
+    infoEl.textContent = "";
+  }
+
+  function resetChecks() {
+    selected.clear();
+    document.querySelectorAll(".arrow").forEach(el => {
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    });
+  }
+</scr__ipt>
+
+</body>
+</html>
+</script>
+
+<script>
+(function(){
+  var APPS=[
+    {id:'src-zakaznici',name:'Zákazníci',desc:'Seznam zákazníků a počet dveří',kw:'zakaznici zákazníci dvere dveře telefon seznam'},
+    {id:'src-nahled',name:'HTML náhled',desc:'Vlož HTML kód, uvidíš výsledek a rozbor',kw:'html nahled náhled kod kód editor rozbor'},
+    {id:'src-klavesy',name:'Útok kláves',desc:'Hra: piš písmena dřív, než dorazí',kw:'utok útok klaves kláves hra psani psaní'},
+    {id:'src-nasobilka',name:'Příklady z násobilky',desc:'Násobení a dělení, QR kód trestu',kw:'nasobilka násobilka priklady příklady deleni dělení qr trest matematika'},
+    {id:'src-pripominac',name:'Připomínač se zvonkem',desc:'Připomínky s datem, časem a zvonkem',kw:'pripominac připomínač zvonek budik budík alarm upozorneni upozornění'},
+    {id:'src-vek',name:'Kolik je dítěti let',desc:'Věk dítěte z data narození',kw:'vek věk dite dítě deti děti narozeni narození let'},
+    {id:'src-sipka',name:'Náhodná šipka',desc:'Losování šipky: ruleta, kolo štěstí',kw:'sipka šipka nahodna náhodná losovani losování ruleta kolo'}
+  ];
+  var $=function(id){return document.getElementById(id)};
+  var list=$('list'),q=$('q'),none=$('none'),menu=$('menu'),viewer=$('viewer'),frames=$('frames'),title=$('title');
+  var made={},active=null;
+
+  function norm(s){
+    return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function renderList(){
+    var t=norm(q.value.trim());
+    list.innerHTML='';
+    var n=0;
+    APPS.forEach(function(a){
+      if(t && norm(a.name+' '+a.desc+' '+a.kw).indexOf(t)<0) return;
+      n++;
+      var b=document.createElement('button');
+      b.type='button';b.className='app';
+      var s1=document.createElement('b');s1.textContent=a.name;
+      var s2=document.createElement('span');s2.textContent=a.desc;
+      b.appendChild(s1);b.appendChild(s2);
+      b.addEventListener('click',function(){openApp(a)});
+      list.appendChild(b);
+    });
+    none.style.display=n?'none':'block';
+  }
+
+  function openApp(a){
+    if(!made[a.id]){
+      var code=$(a.id).textContent.replace(/<\/scr__ipt/g,'</script').trim();
+      var f=document.createElement('iframe');
+      f.setAttribute('sandbox','allow-scripts allow-same-origin allow-modals allow-downloads allow-forms allow-popups');
+      f.setAttribute('allow','autoplay; clipboard-write; notifications');
+      f.title=a.name;
+      f.srcdoc=code;
+      frames.appendChild(f);
+      made[a.id]=f;
+    }
+    Object.keys(made).forEach(function(k){made[k].style.display='none'});
+    made[a.id].style.display='block';
+    active=a;
+    title.textContent=a.name;
+    menu.style.display='none';
+    viewer.style.display='flex';
+  }
+
+  $('back').addEventListener('click',function(){
+    viewer.style.display='none';
+    menu.style.display='block';
+    q.focus();
+  });
+  q.addEventListener('input',renderList);
+  q.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      var first=list.querySelector('.app');
+      if(first) first.click();
+    }
+  });
+  renderList();
+})();
+</script>
+</body>
+</html>
