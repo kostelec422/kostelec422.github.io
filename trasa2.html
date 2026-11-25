@@ -31,6 +31,7 @@ button.on { background: #f59e0b; }
 #cam video, #cam canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 #advice { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px; background: rgba(0,0,0,.65); color: #fff; font-size: 18px; z-index: 3; }
 #warn { font-size: 12px; color: #a16207; margin-top: 8px; }
+#voiceStatus { font-size: 12px; color: #666; margin-top: 4px; min-height: 16px; }
 
 /* Ruleta */
 #roulette { display: none; position: relative; width: 100%; height: 110px; overflow: hidden; border: 3px solid #333; border-radius: 12px; background: #fafafa; }
@@ -54,7 +55,9 @@ button.on { background: #f59e0b; }
 <div class="box">
 <button id="camBtn" onclick="toggleCam()">📷 Zapnout kameru</button>
 <button id="torchBtn" onclick="toggleTorch()" disabled>🔦 Svítilna</button>
-<label style="display:block;margin-top:6px;color:#555"><input type="checkbox" id="voice" checked> Hlasové pokyny</label>
+<label style="display:block;margin-top:6px;color:#555"><input type="checkbox" id="voice"> Hlasové pokyny</label>
+<button class="sec" onclick="testVoice()" style="font-size:14px;padding:8px 14px;">🔊 Test hlasu</button>
+<div id="voiceStatus"></div>
 <div id="cam">
 <video id="video" playsinline muted></video>
 <canvas id="overlay"></canvas>
@@ -159,6 +162,7 @@ document.querySelectorAll(".arrow").forEach(el => el.classList.remove("running",
 
 function pick() {
 if (busy) return;
+unlockVoice();
 if (selected.size === 0) {
 infoEl.textContent = "Nejdřív zaškrtni aspoň jednu šipku.";
 resultEl.textContent = "";
@@ -306,6 +310,79 @@ infoEl.textContent = "";
 }
 function resetChecks() { setSelected([]); }
 
+/* ===== HLAS ===== */
+const voiceEl = document.getElementById("voice");
+const voiceStatus = document.getElementById("voiceStatus");
+const isPhone = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+const hasTTS = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+
+// výchozí stav: notebook zapnuto, telefon vypnuto; vlastní volba se pamatuje
+voiceEl.checked = !isPhone;
+try {
+  const saved = localStorage.getItem("voice");
+  if (saved !== null) voiceEl.checked = saved === "1";
+} catch (e) {}
+voiceEl.onchange = () => {
+  try { localStorage.setItem("voice", voiceEl.checked ? "1" : "0"); } catch (e) {}
+  if (voiceEl.checked) { unlockVoice(); say("Hlas je zapnutý", true); }
+  else if (hasTTS) speechSynthesis.cancel();
+};
+
+let czVoice = null, unlocked = false;
+function loadVoices() {
+  if (!hasTTS) return;
+  const vs = speechSynthesis.getVoices();
+  if (!vs.length) return;
+  czVoice = vs.find(v => /^cs([-_]|$)/i.test(v.lang))
+         || vs.find(v => /czech|čeština|česk/i.test(v.name)) || null;
+  voiceStatus.textContent = czVoice
+    ? "Hlas: " + czVoice.name
+    : "Český hlas v zařízení nenalezen – použije se výchozí (v nastavení systému doinstaluj češtinu).";
+}
+if (hasTTS) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+  setTimeout(loadVoices, 500);
+  setTimeout(loadVoices, 1500);
+} else {
+  voiceStatus.textContent = "Tento prohlížeč nepodporuje čtení nahlas.";
+}
+
+// prohlížeče povolí mluvení až po klepnutí – "odemkneme" ho prvním klepnutím kamkoli
+function unlockVoice() {
+  if (!hasTTS || unlocked) return;
+  unlocked = true;
+  const u = new SpeechSynthesisUtterance(" ");
+  u.volume = 0;
+  speechSynthesis.speak(u);
+}
+["pointerdown", "touchstart", "keydown", "click"].forEach(ev =>
+  document.addEventListener(ev, unlockVoice, { once: false, passive: true }));
+
+function say(text, force) {
+  if (!hasTTS || !(force || voiceEl.checked)) return;
+  try {
+    if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+    // Chrome občas zahodí řeč hned po cancel(), proto krátké zpoždění
+    setTimeout(() => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "cs-CZ";
+      if (czVoice) u.voice = czVoice;
+      u.rate = 0.95; u.pitch = 1; u.volume = 1;
+      u.onerror = e => { voiceStatus.textContent = "Chyba hlasu: " + (e.error || "neznámá"); };
+      speechSynthesis.resume();
+      speechSynthesis.speak(u);
+    }, 80);
+  } catch (e) {
+    voiceStatus.textContent = "Hlas se nepodařilo spustit.";
+  }
+}
+function testVoice() {
+  unlockVoice();
+  say("Test hlasu. Jdi doprava.", true);
+}
+
 /* ===== AR kamera ===== */
 const camEl = document.getElementById("cam");
 const video = document.getElementById("video");
@@ -318,14 +395,6 @@ small.width = 64; small.height = 48;
 const sctx = small.getContext("2d", { willReadFrequently: true });
 let stream = null, track = null, torchOn = false, timer = null;
 let smooth = [0, 0, 0], lastKey = "", stable = 0, lastSpoken = "", lastSpeakT = 0;
-
-function say(text) {
-if (!document.getElementById("voice").checked || !window.speechSynthesis) return;
-speechSynthesis.cancel();
-const u = new SpeechSynthesisUtterance(text);
-u.lang = "cs-CZ";
-speechSynthesis.speak(u);
-}
 
 async function toggleCam() {
 if (stream) { stopCam(); return; }
@@ -411,7 +480,9 @@ stable = key === lastKey ? stable + 1 : 0;
 lastKey = key;
 if (stable === 3 && dirs.length && !busy) {
 setSelected(dirs);
-if (msg !== lastSpoken && Date.now() - lastSpeakT > 3000) { say(msg); lastSpoken = msg; lastSpeakT = Date.now(); }
+if (msg !== lastSpoken && Date.now() - lastSpeakT > 3000) {
+say(msg.replace(/[⬆️⬇️⬅️➡️]/g, "")); lastSpoken = msg; lastSpeakT = Date.now();
+}
 }
 }
 
