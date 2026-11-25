@@ -24,7 +24,6 @@
   button.mic { background: #16a34a; }
   button.mic.on { background: #dc2626; }
 
-  /* Žárovka */
   #bulb {
     font-size: 64px;
     cursor: pointer;
@@ -35,30 +34,21 @@
     opacity: 0.55;
     transition: filter 0.3s, opacity 0.3s;
   }
-  #bulb.running { opacity: 1; filter: none; animation: blink 0.35s infinite alternate; }
-  /* Normální žárovka – na ulici */
   #bulb.on {
     opacity: 1;
     filter: drop-shadow(0 0 10px #facc15) drop-shadow(0 0 22px #fde047);
   }
-  /* Velká žárovka – maximální jas do lesa */
   #bulb.big {
     opacity: 1;
     filter:
       drop-shadow(0 0 6px #fff)
-      drop-shadow(0 0 16px #fff)
-      drop-shadow(0 0 32px #fff)
-      drop-shadow(0 0 50px #fde047)
-      drop-shadow(0 0 80px #facc15)
-      drop-shadow(0 0 120px #facc15)
-      drop-shadow(0 0 180px #fde047);
-  }
-  @keyframes blink {
-    from { filter: drop-shadow(0 0 4px #facc15); }
-    to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
+      drop-shadow(0 0 18px #fff)
+      drop-shadow(0 0 36px #fff)
+      drop-shadow(0 0 60px #fde047)
+      drop-shadow(0 0 100px #facc15)
+      drop-shadow(0 0 150px #facc15);
   }
 
-  /* Normální žárovka – jemné teplé světlo */
   #small {
     display: none;
     position: fixed;
@@ -69,7 +59,6 @@
     pointer-events: none;
   }
 
-  /* Velká žárovka – čistě bílá celá obrazovka (maximální možný jas) */
   #big {
     display: none;
     position: fixed;
@@ -88,6 +77,7 @@
   #voice { margin-bottom: 12px; }
   #heard { color: #444; font-size: 14px; min-height: 18px; margin-top: 6px; word-break: break-word; }
   #hint { color: #888; font-size: 12px; margin-top: 4px; line-height: 1.4; }
+  #warning { color: #b45309; font-size: 13px; margin-top: 8px; line-height: 1.4; }
 
   #stage { margin: 15px 0 5px; min-height: 120px; }
   #result { font-size: 90px; min-height: 110px; }
@@ -121,7 +111,12 @@
     <button id="micBtn" class="mic" onclick="toggleListen()">🎤 Zapnout hlasové pokyny</button>
     <div id="heard"></div>
     <div id="hint">
-      Řekni: „vybrat šipku doleva doprava nahoru“, „zapnout žárovku“ (ulice), „zapnout velkou žárovku“ (les – maximální jas), „vypnout žárovku“.
+      „zapnout žárovku“ = slabší (ulice)<br>
+      „zapnout velkou žárovku“ = maximální jas (les)<br>
+      „vypnout žárovku“
+    </div>
+    <div id="warning">
+      Baterka svítí jen dokud je stránka otevřená a obrazovka zapnutá. Po vypnutí obrazovky ji prohlížeč vždy zhasne.
     </div>
   </div>
 
@@ -174,11 +169,10 @@
   const heardEl = document.getElementById("heard");
   const micBtn = document.getElementById("micBtn");
 
-  /* ---------- Žárovka ---------- */
   let bulbMode = "off", torchStream = null, wake = null;
 
   async function torchOn() {
-    if (torchStream) return;
+    if (torchStream) return true;
     const msg = document.getElementById("bulbMsg");
     msg.textContent = "";
     try {
@@ -193,8 +187,10 @@
       }
       await track.applyConstraints({ advanced: [{ torch: true }] });
       torchStream = stream;
+      return true;
     } catch (e) {
-      msg.textContent = "Svítilnu telefonu se nepodařilo zapnout (prohlížeč to nepodporuje nebo chybí povolení kamery).";
+      msg.textContent = "Svítilnu se nepodařilo zapnout (chybí povolení nebo prohlížeč to nepodporuje).";
+      return false;
     }
   }
 
@@ -220,12 +216,9 @@
   }
 
   function toggleBulb() {
-    // kliknutí přepíná jen mezi off ↔ on (normální)
-    // velkou žárovku zapneš hlasem „velkou žárovku“
     setBulb(bulbMode === "off" ? "on" : "off");
   }
 
-  /* Snaží se udržet displej + baterku co nejdéle */
   async function updateWake() {
     const need = listening || bulbMode !== "off";
     if (need && !wake && navigator.wakeLock) {
@@ -239,20 +232,19 @@
     }
   }
 
-  // Při návratu na stránku znovu zapni baterku, pokud má svítit
-  document.addEventListener("visibilitychange", () => {
+  // Po návratu na stránku znovu zapni baterku
+  document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible") {
       updateWake();
-      if (bulbMode !== "off") torchOn();
+      if (bulbMode !== "off") {
+        // zkus znovu zapnout
+        torchStream = null; // vynutí nové získání
+        await torchOn();
+      }
     }
   });
 
-  // Při úplném zavření stránky už prohlížeč baterku obvykle vypne – to nejde obejít
-  window.addEventListener("pagehide", () => {
-    // nenecháváme explicitně vypínat – ať to zkusí zůstat zapnuté co nejdéle
-  });
-
-  /* ---------- Hlasové pokyny ---------- */
+  // Hlasové ovládání
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null, listening = false, pendingUntil = 0;
 
@@ -274,13 +266,9 @@
     heardEl.textContent = "Slyšel jsem: „" + raw.trim() + "“";
 
     if (/zarovk|svitiln|baterk/.test(t)) {
-      if (/vypn|zhasn/.test(t)) {
-        setBulb("off");
-      } else if (/velk/.test(t)) {
-        setBulb("big");          // maximální jas do lesa
-      } else if (/zapn|rozsvit|svit/.test(t)) {
-        setBulb("on");           // normální na ulici
-      }
+      if (/vypn|zhasn/.test(t)) setBulb("off");
+      else if (/velk/.test(t)) setBulb("big");
+      else if (/zapn|rozsvit|svit/.test(t)) setBulb("on");
       return;
     }
 
@@ -350,7 +338,6 @@
     updateWake();
   }
 
-  /* Tlačítka sluchátek / médií */
   let mediaReady = false, silentAudio = null;
   function silentWav() {
     const sr = 8000, n = sr, b = new ArrayBuffer(44 + n), v = new DataView(b);
@@ -388,7 +375,7 @@
     }
   });
 
-  /* ---------- Losování ---------- */
+  // Losování (zůstává stejné)
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
