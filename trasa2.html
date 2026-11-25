@@ -40,12 +40,19 @@
     opacity: 1;
     filter: drop-shadow(0 0 14px #facc15) drop-shadow(0 0 34px #fde047);
   }
+  #bulb.big {
+    opacity: 1;
+    filter: drop-shadow(0 0 20px #fff) drop-shadow(0 0 50px #fde047) drop-shadow(0 0 90px #facc15);
+  }
   @keyframes blink {
     from { filter: drop-shadow(0 0 4px #facc15); }
     to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
   }
 
-  /* Velká žárovka: celá obrazovka svítí bíle */
+  /* Malá žárovka: jemné teplé světlo přes obrazovku, stránka zůstává ovladatelná */
+  #small { display: none; position: fixed; inset: 0; background: #ffc83a; opacity: 0.3; z-index: 998; pointer-events: none; }
+
+  /* Velká žárovka: celá obrazovka svítí čistě bíle, nejvíc jak jde */
   #big { display: none; position: fixed; inset: 0; background: #fff; z-index: 999; align-items: flex-end; justify-content: center; padding: 24px; color: #999; font-size: 15px; text-align: center; cursor: pointer; }
 
   #voice { margin-bottom: 12px; }
@@ -73,6 +80,7 @@
 
 <h1>Náhodná šipka</h1>
 
+<div id="small"></div>
 <div id="big" onclick="setBulb('off')">Klepni nebo řekni „vypnout žárovku“</div>
 
 <div class="box">
@@ -130,10 +138,11 @@
   const wheelEl = document.getElementById("wheel");
   const bulbEl = document.getElementById("bulb");
   const bigEl = document.getElementById("big");
+  const smallEl = document.getElementById("small");
   const heardEl = document.getElementById("heard");
   const micBtn = document.getElementById("micBtn");
 
-  /* ---------- Žárovka: 'off' | 'on' (svítilna) | 'big' (svítilna + celá obrazovka bíle) ---------- */
+  /* ---------- Žárovka: 'off' | 'on' (malá: svítilna + jemné světlo) | 'big' (velká: svítilna + celá obrazovka bíle) ---------- */
   let bulbMode = "off", torchStream = null, wake = null;
 
   async function torchOn() {
@@ -158,8 +167,9 @@
 
   async function setBulb(mode) {
     bulbMode = mode;
-    bulbEl.className = mode === "off" ? "" : "on";
+    bulbEl.className = mode === "off" ? "" : (mode === "big" ? "big" : "on");
     bigEl.style.display = mode === "big" ? "flex" : "none";
+    smallEl.style.display = mode === "on" ? "block" : "none";
     if (mode === "off") torchOff(); else await torchOn();
     updateWake();
   }
