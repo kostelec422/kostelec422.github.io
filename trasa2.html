@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Náhodná šipka</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+  h1 { margin: 0 0 20px; color: #333; }
+  .box { background: #fff; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 420px; width: 100%; text-align: center; }
+  .arrows { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .arrow { font-size: 40px; padding: 18px; border: 3px solid #ccc; border-radius: 12px; cursor: pointer; user-select: none; background: #fafafa; transition: 0.15s; }
+  .arrow:hover { background: #eef; }
+  .arrow.checked { border-color: #2e8b57; background: #e6f7ee; }
+  .arrow.running { border-color: #f59e0b; background: #fff3d6; box-shadow: 0 0 0 4px rgba(245,158,11,0.4); }
+  .arrow.winner { border-color: #dc2626; background: #fee2e2; box-shadow: 0 0 0 4px rgba(220,38,38,0.4); }
+  .arrow .tick { display: block; font-size: 18px; color: #2e8b57; min-height: 22px; }
+  button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; background: #3b82f6; color: #fff; margin: 4px; }
+  button:hover { background: #2563eb; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.sec { background: #888; }
+  button.sec:hover { background: #666; }
+  button.mic { background: #16a34a; }
+  button.mic.on { background: #dc2626; }
+
+  /* Žárovka */
+  #bulb {
+    font-size: 64px;
+    cursor: pointer;
+    line-height: 1.1;
+    margin: 0 0 10px;
+    user-select: none;
+    filter: grayscale(1) brightness(0.7);
+    opacity: 0.55;
+    transition: filter 0.3s, opacity 0.3s;
+  }
+  #bulb.running { opacity: 1; filter: none; animation: blink 0.35s infinite alternate; }
+  #bulb.on {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px #facc15) drop-shadow(0 0 34px #fde047);
+  }
+  @keyframes blink {
+    from { filter: drop-shadow(0 0 4px #facc15); }
+    to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
+  }
+
+  /* Velká žárovka: celá obrazovka svítí bíle */
+  #big { display: none; position: fixed; inset: 0; background: #fff; z-index: 999; align-items: flex-end; justify-content: center; padding: 24px; color: #999; font-size: 15px; text-align: center; cursor: pointer; }
+
+  #voice { margin-bottom: 12px; }
+  #heard { color: #444; font-size: 14px; min-height: 18px; margin-top: 6px; word-break: break-word; }
+  #hint { color: #888; font-size: 12px; margin-top: 4px; line-height: 1.4; }
+
+  #stage { margin: 15px 0 5px; min-height: 120px; }
+  #result { font-size: 90px; min-height: 110px; }
+  #info { color: #666; min-height: 22px; }
+
+  #roulette { display: none; position: relative; width: 100%; height: 110px; overflow: hidden; border: 3px solid #333; border-radius: 12px; background: #fafafa; }
+  #strip { display: flex; height: 100%; will-change: transform; }
+  #strip div { flex: 0 0 100px; width: 100px; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 54px; border-right: 1px solid #ddd; }
+  #marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #dc2626; z-index: 2; }
+
+  #wheelWrap { display: none; position: relative; width: 300px; height: 320px; margin: 0 auto; }
+  #pointer { position: absolute; top: 0; left: 50%; margin-left: -14px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid #dc2626; z-index: 2; }
+  #wheel { position: absolute; top: 20px; left: 0; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+
+  #historyTitle { font-size: 14px; color: #888; margin-top: 15px; }
+  #history { margin-top: 10px; text-align: left; max-height: 200px; overflow-y: auto; border-top: 1px solid #ddd; padding-top: 10px; font-size: 26px; line-height: 1.5; word-break: break-all; }
+</style>
+</head>
+<body>
+
+<h1>Náhodná šipka</h1>
+
+<div id="big" onclick="setBulb('off')">Klepni nebo řekni „vypnout žárovku“</div>
+
+<div class="box">
+  <div id="bulb" onclick="toggleBulb()" role="button" aria-label="Svítilna">💡</div>
+  <div id="bulbMsg" style="color:#b45309;font-size:13px;min-height:16px;margin-bottom:8px;"></div>
+
+  <div id="voice">
+    <button id="micBtn" class="mic" onclick="toggleListen()">🎤 Zapnout hlasové pokyny</button>
+    <div id="heard"></div>
+    <div id="hint">Řekni: „vybrat šipku doleva doprava nahoru“, „zapnout žárovku“, „zapnout velkou žárovku“, „vypnout žárovku“.</div>
+  </div>
+
+  <div class="arrows" id="arrows"></div>
+
+  <button id="pickBtn" onclick="pick()">Vybrat náhodnou</button>
+  <button id="resetBtn" class="sec" onclick="resetChecks()">Zrušit fajfky</button>
+
+  <div id="stage">
+    <div id="roulette">
+      <div id="marker"></div>
+      <div id="strip"></div>
+    </div>
+    <div id="wheelWrap">
+      <div id="pointer"></div>
+      <canvas id="wheel" width="300" height="300"></canvas>
+    </div>
+    <div id="result"></div>
+  </div>
+  <div id="info"></div>
+
+  <div id="historyTitle">Historie (<span id="count">0</span>):</div>
+  <div id="history"></div>
+  <button class="sec" onclick="clearHistory()" style="margin-top:10px;font-size:14px;padding:8px 14px;">Smazat historii</button>
+</div>
+
+<script>
+  const options = [
+    { symbol: "⬆️", name: "nahoru" },
+    { symbol: "⬇️", name: "dolů" },
+    { symbol: "⬅️", name: "doleva" },
+    { symbol: "➡️", name: "doprava" }
+  ];
+  const colors = ["#f87171", "#60a5fa", "#34d399", "#fbbf24"];
+  const SEGMENTS = 12;
+  const selected = new Set();
+  const history = [];
+  let busy = false;
+
+  const arrowsEl = document.getElementById("arrows");
+  const resultEl = document.getElementById("result");
+  const infoEl = document.getElementById("info");
+  const rouletteEl = document.getElementById("roulette");
+  const stripEl = document.getElementById("strip");
+  const wheelWrap = document.getElementById("wheelWrap");
+  const wheelEl = document.getElementById("wheel");
+  const bulbEl = document.getElementById("bulb");
+  const bigEl = document.getElementById("big");
+  const heardEl = document.getElementById("heard");
+  const micBtn = document.getElementById("micBtn");
+
+  /* ---------- Žárovka: 'off' | 'on' (svítilna) | 'big' (svítilna + celá obrazovka bíle) ---------- */
+  let bulbMode = "off", torchStream = null, wake = null;
+
+  async function torchOn() {
+    if (torchStream) return;
+    const msg = document.getElementById("bulbMsg");
+    msg.textContent = "";
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+      const track = stream.getVideoTracks()[0];
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      if (!caps.torch) { stream.getTracks().forEach(t => t.stop()); throw new Error("no torch"); }
+      await track.applyConstraints({ advanced: [{ torch: true }] });
+      torchStream = stream;
+    } catch (e) {
+      msg.textContent = "Svítilnu telefonu se nepodařilo zapnout (nepodporuje to prohlížeč nebo chybí povolení kamery).";
+    }
+  }
+
+  function torchOff() {
+    if (torchStream) { torchStream.getTracks().forEach(t => t.stop()); torchStream = null; }
+  }
+
+  async function setBulb(mode) {
+    bulbMode = mode;
+    bulbEl.className = mode === "off" ? "" : "on";
+    bigEl.style.display = mode === "big" ? "flex" : "none";
+    if (mode === "off") torchOff(); else await torchOn();
+    updateWake();
+  }
+
+  function toggleBulb() { setBulb(bulbMode === "off" ? "on" : "off"); }
+
+  /* Udržuje displej zapnutý, dokud svítí žárovka nebo se poslouchá (jinak prohlížeč stránku uspí) */
+  async function updateWake() {
+    const need = listening || bulbMode !== "off";
+    if (need && !wake && navigator.wakeLock) {
+      try {
+        wake = await navigator.wakeLock.request("screen");
+        wake.addEventListener("release", () => { wake = null; });
+      } catch (e) {}
+    } else if (!need && wake) {
+      try { await wake.release(); } catch (e) {}
+      wake = null;
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") updateWake();
+  });
+
+  /* ---------- Hlasové pokyny ---------- */
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false, pendingUntil = 0;
+
+  function norm(s) {
+    return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function applySelection(dirs) {
+    selected.clear();
+    document.querySelectorAll(".arrow").forEach(el => {
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    });
+    dirs.forEach(i => toggle(i, arrowsEl.children[i]));
+  }
+
+  function handleSpeech(raw) {
+    const t = norm(raw);
+    heardEl.textContent = "Slyšel jsem: „" + raw.trim() + "“";
+
+    /* Žárovka */
+    if (/zarovk|svitiln/.test(t)) {
+      if (/vypn|zhasn/.test(t)) setBulb("off");
+      else if (/velk/.test(t)) setBulb("big");
+      else if (/zapn|rozsvit|svit/.test(t)) setBulb("on");
+      return;
+    }
+
+    /* Výběr šipky: „vybrat šipku doleva doprava nahoru“ (směry můžou přijít i v další větě do 8 s) */
+    const now = Date.now();
+    const hasKey = /sipk|vybr|vyber/.test(t);
+    const dirs = [];
+    if (/nahoru/.test(t)) dirs.push(0);
+    if (/dolu/.test(t)) dirs.push(1);
+    if (/doleva|vlevo/.test(t)) dirs.push(2);
+    if (/doprava|vpravo/.test(t)) dirs.push(3);
+    if (hasKey) pendingUntil = now + 8000;
+    if (dirs.length && (hasKey || now < pendingUntil)) {
+      if (busy) { heardEl.textContent += " (právě se losuje)"; return; }
+      pendingUntil = 0;
+      applySelection(dirs);
+      pick();
+    }
+  }
+
+  function makeRec() {
+    rec = new SR();
+    rec.lang = "cs-CZ";
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = e => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) handleSpeech(e.results[i][0].transcript);
+      }
+    };
+    rec.onerror = e => {
+      if (e.error !== "no-speech" && e.error !== "aborted") heardEl.textContent = "Chyba rozpoznávání: " + e.error;
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        listening = false;
+        heardEl.textContent = "Chybí povolení mikrofonu.";
+        updateMic();
+        updateWake();
+      }
+    };
+    rec.onend = () => {
+      if (listening) setTimeout(() => { try { rec.start(); } catch (_) {} }, 300);
+    };
+    try { rec.start(); } catch (_) {}
+  }
+
+  function updateMic() {
+    micBtn.classList.toggle("on", listening);
+    micBtn.textContent = listening ? "⏹ Vypnout hlasové pokyny" : "🎤 Zapnout hlasové pokyny";
+    if (listening) heardEl.textContent = "Poslouchám…";
+  }
+
+  function toggleListen() {
+    if (listening) {
+      listening = false;
+      try { rec.stop(); } catch (_) {}
+      heardEl.textContent = "";
+    } else {
+      if (!SR) { heardEl.textContent = "Tento prohlížeč nepodporuje rozpoznávání řeči (zkus Chrome)."; return; }
+      listening = true;
+      makeRec();
+    }
+    updateMic();
+    updateWake();
+  }
+
+  /* ---------- Tlačítka bez dotyku displeje ---------- */
+  /* Web nevidí hlasitost ani boční tlačítka. Jde ale zachytit tlačítko sluchátek / hodinek / ovládání médií:
+     po prvním dotyku hraje tichý zvuk a jeho „play/pause/další/předchozí“ zapíná a vypíná poslech. */
+  let mediaReady = false, silentAudio = null;
+  function silentWav() {
+    const sr = 8000, n = sr, b = new ArrayBuffer(44 + n), v = new DataView(b);
+    const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVEfmt "); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true);
+    new Uint8Array(b, 44).fill(128);
+    return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+  }
+  function initMedia() {
+    if (mediaReady) return;
+    mediaReady = true;
+    try {
+      silentAudio = new Audio(silentWav());
+      silentAudio.loop = true;
+      silentAudio.play().catch(() => { mediaReady = false; });
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: "Náhodná šipka", artist: "Hlasové pokyny" });
+        const flip = () => { toggleListen(); if (silentAudio) silentAudio.play().catch(() => {}); };
+        ["play", "pause", "nexttrack", "previoustrack"].forEach(a => {
+          try { navigator.mediaSession.setActionHandler(a, flip); } catch (_) {}
+        });
+      }
+    } catch (_) { mediaReady = false; }
+  }
+  document.addEventListener("pointerdown", initMedia, { once: true });
+
+  /* Poslech se zkusí zapnout hned po otevření stránky (když je mikrofon už povolený) */
+  window.addEventListener("load", () => {
+    if (SR && !listening) { listening = true; makeRec(); updateMic(); updateWake(); }
+  });
+
+  /* ---------- Losování ---------- */
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /* Náhodný výběr: stejná hodnota smí padnout 2x po sobě, ale ne 3x */
+  function makeTracker() { return { last: [] }; }
+
+  function drawNoTriple(tracker, list) {
+    let pool = list;
+    const l = tracker.last;
+    if (list.length > 1 && l.length >= 2 && l[l.length - 1] === l[l.length - 2]) {
+      pool = list.filter(x => x !== l[l.length - 1]);
+    }
+    const v = pool[Math.floor(Math.random() * pool.length)];
+    l.push(v);
+    if (l.length > 2) l.shift();
+    return v;
+  }
+
+  const arrowTracker = makeTracker();
+  const animTracker = makeTracker();
+
+  options.forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "arrow";
+    d.innerHTML = o.symbol + '<span class="tick"></span>';
+    d.onclick = () => { if (!busy) toggle(i, d); };
+    arrowsEl.appendChild(d);
+  });
+
+  function toggle(i, el) {
+    if (selected.has(i)) {
+      selected.delete(i);
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    } else {
+      selected.add(i);
+      el.classList.add("checked");
+      el.querySelector(".tick").textContent = "✔";
+    }
+  }
+
+  function setBusy(b) {
+    busy = b;
+    document.getElementById("pickBtn").disabled = b;
+    document.getElementById("resetBtn").disabled = b;
+  }
+
+  function hideAnimations() {
+    rouletteEl.style.display = "none";
+    wheelWrap.style.display = "none";
+    document.querySelectorAll(".arrow").forEach(el => el.classList.remove("running", "winner"));
+  }
+
+  function pick() {
+    if (busy) return;
+    if (selected.size === 0) {
+      infoEl.textContent = "Nejdřív zaškrtni aspoň jednu šipku.";
+      resultEl.textContent = "";
+      return;
+    }
+    const arr = Array.from(selected);
+    const winnerIdx = drawNoTriple(arrowTracker, arr);
+
+    setBusy(true);
+    hideAnimations();
+    resultEl.textContent = "";
+    infoEl.textContent = "Losuje se...";
+
+    const type = drawNoTriple(animTracker, [0, 1, 2]);
+    if (type === 0) animRoulette(arr, winnerIdx);
+    else if (type === 1) animWheel(arr, winnerIdx);
+    else animSquare(arr, winnerIdx);
+  }
+
+  function finish(winnerIdx) {
+    const chosen = options[winnerIdx];
+    hideAnimations();
+    resultEl.textContent = chosen.symbol;
+    infoEl.textContent = "Vybráno: " + chosen.name;
+    history.push(chosen.symbol);
+    renderHistory();
+    setBusy(false);
+  }
+
+  /* 1) Ruleta */
+  function animRoulette(arr, winnerIdx) {
+    const ITEM = 100, TOTAL = 50, WIN_POS = 40;
+    stripEl.innerHTML = "";
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement("div");
+      const idx = (i === WIN_POS) ? winnerIdx : arr[Math.floor(Math.random() * arr.length)];
+      d.textContent = options[idx].symbol;
+      stripEl.appendChild(d);
+    }
+    rouletteEl.style.display = "block";
+    stripEl.style.transition = "none";
+    stripEl.style.transform = "translateX(0)";
+    void stripEl.offsetWidth;
+
+    const w = rouletteEl.clientWidth;
+    const offset = (Math.random() - 0.5) * ITEM * 0.6;
+    const target = WIN_POS * ITEM + ITEM / 2 - w / 2 + offset;
+    stripEl.style.transition = "transform 5s cubic-bezier(0.12, 0.7, 0.1, 1)";
+    stripEl.style.transform = "translateX(" + (-target) + "px)";
+
+    setTimeout(() => finish(winnerIdx), 5300);
+  }
+
+  /* 2) Kolo štěstí – 12 dílů, šipky se střídají dokola */
+  function wheelSlots(arr) {
+    const slots = [];
+    for (let i = 0; i < SEGMENTS; i++) slots.push(arr[i % arr.length]);
+    return slots;
+  }
+
+  function drawWheel(slots) {
+    const ctx = wheelEl.getContext("2d");
+    const cx = 150, cy = 150, r = 146;
+    const seg = (Math.PI * 2) / SEGMENTS;
+    ctx.clearRect(0, 0, 300, 300);
+    slots.forEach((idx, i) => {
+      const a0 = -Math.PI / 2 + i * seg;
+      const a1 = a0 + seg;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const mid = a0 + seg / 2;
+      ctx.save();
+      ctx.translate(cx + Math.cos(mid) * r * 0.74, cy + Math.sin(mid) * r * 0.74);
+      ctx.font = "26px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(options[idx].symbol, 0, 0);
+      ctx.restore();
+    });
+    ctx.beginPath();
+    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#333";
+    ctx.fill();
+  }
+
+  function animWheel(arr, winnerIdx) {
+    const slots = wheelSlots(shuffle(arr.slice()));
+    drawWheel(slots);
+    wheelWrap.style.display = "block";
+    wheelEl.style.transition = "none";
+    wheelEl.style.transform = "rotate(0deg)";
+    void wheelEl.offsetWidth;
+
+    const segDeg = 360 / SEGMENTS;
+    const candidates = [];
+    slots.forEach((idx, i) => { if (idx === winnerIdx) candidates.push(i); });
+    const i = candidates[Math.floor(Math.random() * candidates.length)];
+    const center = (i + 0.5) * segDeg;
+    const jitter = (Math.random() - 0.5) * segDeg * 0.7;
+    const finalDeg = 360 * 6 + (360 - center) + jitter;
+
+    wheelEl.style.transition = "transform 5s cubic-bezier(0.15, 0.6, 0.15, 1)";
+    wheelEl.style.transform = "rotate(" + finalDeg + "deg)";
+
+    setTimeout(() => finish(winnerIdx), 5300);
+  }
+
+  /* 3) Obrys čtverce, který postupně zpomaluje */
+  function animSquare(arr, winnerIdx) {
+    const tiles = arrowsEl.children;
+    const order = shuffle(arr.slice());
+    const n = order.length;
+    let pos = Math.floor(Math.random() * n);
+    let steps = 15 + Math.floor(Math.random() * 6);
+    while (order[(pos + steps) % n] !== winnerIdx) steps++;
+
+    let step = 0;
+    let prev = null;
+
+    function tick() {
+      if (prev !== null) tiles[prev].classList.remove("running");
+      const cur = order[(pos + step) % n];
+      tiles[cur].classList.add("running");
+      prev = cur;
+
+      if (step >= steps) {
+        setTimeout(() => {
+          tiles[cur].classList.remove("running");
+          tiles[cur].classList.add("winner");
+          setTimeout(() => finish(winnerIdx), 700);
+        }, 300);
+        return;
+      }
+      step++;
+      const delay = 60 + Math.pow(step / steps, 3) * 520;
+      setTimeout(tick, delay);
+    }
+    tick();
+  }
+
+  function renderHistory() {
+    document.getElementById("count").textContent = history.length;
+    const h = document.getElementById("history");
+    h.textContent = history.join(" ");
+    h.scrollTop = h.scrollHeight;
+  }
+
+  function clearHistory() {
+    if (busy) return;
+    history.length = 0;
+    arrowTracker.last = [];
+    renderHistory();
+    resultEl.textContent = "";
+    infoEl.textContent = "";
+  }
+
+  function resetChecks() {
+    selected.clear();
+    document.querySelectorAll(".arrow").forEach(el => {
+      el.classList.remove("checked");
+      el.querySelector(".tick").textContent = "";
+    });
+  }
+</script>
+
+</body>
+</html>
