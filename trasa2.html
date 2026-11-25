@@ -40,20 +40,40 @@
     opacity: 1;
     filter: drop-shadow(0 0 14px #facc15) drop-shadow(0 0 34px #fde047);
   }
+  /* Maximální záře pro velkou žárovku */
   #bulb.big {
     opacity: 1;
-    filter: drop-shadow(0 0 20px #fff) drop-shadow(0 0 50px #fde047) drop-shadow(0 0 90px #facc15);
+    filter:
+      drop-shadow(0 0 8px #fff)
+      drop-shadow(0 0 20px #fff)
+      drop-shadow(0 0 40px #fde047)
+      drop-shadow(0 0 70px #facc15)
+      drop-shadow(0 0 110px #facc15)
+      drop-shadow(0 0 160px #fde047);
   }
   @keyframes blink {
     from { filter: drop-shadow(0 0 4px #facc15); }
     to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
   }
 
-  /* Malá žárovka: jemné teplé světlo přes obrazovku, stránka zůstává ovladatelná */
+  /* Malá žárovka: jemné teplé světlo */
   #small { display: none; position: fixed; inset: 0; background: #ffc83a; opacity: 0.3; z-index: 998; pointer-events: none; }
 
-  /* Velká žárovka: celá obrazovka svítí čistě bíle, nejvíc jak jde */
-  #big { display: none; position: fixed; inset: 0; background: #fff; z-index: 999; align-items: flex-end; justify-content: center; padding: 24px; color: #999; font-size: 15px; text-align: center; cursor: pointer; }
+  /* Velká žárovka: čistě bílá celá obrazovka – maximální jas */
+  #big {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    z-index: 9999;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 24px;
+    color: #666;
+    font-size: 15px;
+    text-align: center;
+    cursor: pointer;
+  }
 
   #voice { margin-bottom: 12px; }
   #heard { color: #444; font-size: 14px; min-height: 18px; margin-top: 6px; word-break: break-word; }
@@ -142,7 +162,7 @@
   const heardEl = document.getElementById("heard");
   const micBtn = document.getElementById("micBtn");
 
-  /* ---------- Žárovka: 'off' | 'on' (malá: svítilna + jemné světlo) | 'big' (velká: svítilna + celá obrazovka bíle) ---------- */
+  /* ---------- Žárovka: 'off' | 'on' (malá) | 'big' (velká – maximální jas) ---------- */
   let bulbMode = "off", torchStream = null, wake = null;
 
   async function torchOn() {
@@ -176,7 +196,7 @@
 
   function toggleBulb() { setBulb(bulbMode === "off" ? "on" : "off"); }
 
-  /* Udržuje displej zapnutý, dokud svítí žárovka nebo se poslouchá (jinak prohlížeč stránku uspí) */
+  /* Udržuje displej zapnutý */
   async function updateWake() {
     const need = listening || bulbMode !== "off";
     if (need && !wake && navigator.wakeLock) {
@@ -214,7 +234,6 @@
     const t = norm(raw);
     heardEl.textContent = "Slyšel jsem: „" + raw.trim() + "“";
 
-    /* Žárovka */
     if (/zarovk|svitiln/.test(t)) {
       if (/vypn|zhasn/.test(t)) setBulb("off");
       else if (/velk/.test(t)) setBulb("big");
@@ -222,7 +241,6 @@
       return;
     }
 
-    /* Výběr šipky: „vybrat šipku doleva doprava nahoru“ (směry můžou přijít i v další větě do 8 s) */
     const now = Date.now();
     const hasKey = /sipk|vybr|vyber/.test(t);
     const dirs = [];
@@ -285,8 +303,6 @@
   }
 
   /* ---------- Tlačítka bez dotyku displeje ---------- */
-  /* Web nevidí hlasitost ani boční tlačítka. Jde ale zachytit tlačítko sluchátek / hodinek / ovládání médií:
-     po prvním dotyku hraje tichý zvuk a jeho „play/pause/další/předchozí“ zapíná a vypíná poslech. */
   let mediaReady = false, silentAudio = null;
   function silentWav() {
     const sr = 8000, n = sr, b = new ArrayBuffer(44 + n), v = new DataView(b);
@@ -315,7 +331,6 @@
   }
   document.addEventListener("pointerdown", initMedia, { once: true });
 
-  /* Poslech se zkusí zapnout hned po otevření stránky (když je mikrofon už povolený) */
   window.addEventListener("load", () => {
     if (SR && !listening) { listening = true; makeRec(); updateMic(); updateWake(); }
   });
@@ -329,7 +344,6 @@
     return a;
   }
 
-  /* Náhodný výběr: stejná hodnota smí padnout 2x po sobě, ale ne 3x */
   function makeTracker() { return { last: [] }; }
 
   function drawNoTriple(tracker, list) {
@@ -410,7 +424,6 @@
     setBusy(false);
   }
 
-  /* 1) Ruleta */
   function animRoulette(arr, winnerIdx) {
     const ITEM = 100, TOTAL = 50, WIN_POS = 40;
     stripEl.innerHTML = "";
@@ -434,7 +447,6 @@
     setTimeout(() => finish(winnerIdx), 5300);
   }
 
-  /* 2) Kolo štěstí – 12 dílů, šipky se střídají dokola */
   function wheelSlots(arr) {
     const slots = [];
     for (let i = 0; i < SEGMENTS; i++) slots.push(arr[i % arr.length]);
@@ -496,7 +508,6 @@
     setTimeout(() => finish(winnerIdx), 5300);
   }
 
-  /* 3) Obrys čtverce, který postupně zpomaluje */
   function animSquare(arr, winnerIdx) {
     const tiles = arrowsEl.children;
     const order = shuffle(arr.slice());
