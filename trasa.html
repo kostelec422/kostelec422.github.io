@@ -6,160 +6,58 @@
 <title>Náhodná šipka</title>
 <style>
   * { box-sizing: border-box; }
-  body {
-    font-family: Arial, sans-serif;
-    background: #f0f2f5;
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
   h1 { margin: 0 0 20px; color: #333; }
-  .box {
-    background: #fff;
-    padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    max-width: 420px;
-    width: 100%;
-    text-align: center;
-  }
-  .arrows {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .arrow {
-    font-size: 40px;
-    padding: 18px;
-    border: 3px solid #ccc;
-    border-radius: 12px;
-    cursor: pointer;
-    user-select: none;
-    background: #fafafa;
-    transition: 0.15s;
-  }
+  .box { background: #fff; padding: 25px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 420px; width: 100%; text-align: center; }
+  .arrows { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .arrow { font-size: 40px; padding: 18px; border: 3px solid #ccc; border-radius: 12px; cursor: pointer; user-select: none; background: #fafafa; transition: 0.15s; }
   .arrow:hover { background: #eef; }
-  .arrow.checked {
-    border-color: #2e8b57;
-    background: #e6f7ee;
-  }
-  .arrow.running {
-    border-color: #f59e0b;
-    background: #fff3d6;
-    box-shadow: 0 0 0 4px rgba(245,158,11,0.4);
-  }
-  .arrow.winner {
-    border-color: #dc2626;
-    background: #fee2e2;
-    box-shadow: 0 0 0 4px rgba(220,38,38,0.4);
-  }
-  .arrow .tick {
-    display: block;
-    font-size: 18px;
-    color: #2e8b57;
-    min-height: 22px;
-  }
-  button {
-    font-size: 18px;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    background: #3b82f6;
-    color: #fff;
-    margin: 4px;
-  }
+  .arrow.checked { border-color: #2e8b57; background: #e6f7ee; }
+  .arrow.running { border-color: #f59e0b; background: #fff3d6; box-shadow: 0 0 0 4px rgba(245,158,11,0.4); }
+  .arrow.winner { border-color: #dc2626; background: #fee2e2; box-shadow: 0 0 0 4px rgba(220,38,38,0.4); }
+  .arrow .tick { display: block; font-size: 18px; color: #2e8b57; min-height: 22px; }
+  button { font-size: 18px; padding: 12px 24px; border: none; border-radius: 10px; cursor: pointer; background: #3b82f6; color: #fff; margin: 4px; }
   button:hover { background: #2563eb; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   button.sec { background: #888; }
   button.sec:hover { background: #666; }
 
-  #stage { margin: 15px 0 5px; min-height: 120px; }
-  #result {
-    font-size: 90px;
-    min-height: 110px;
+  /* Žárovka */
+  #bulb {
+    font-size: 64px;
+    cursor: pointer;
+    line-height: 1.1;
+    margin: 0 0 10px;
+    user-select: none;
+    filter: grayscale(1) brightness(0.7);
+    opacity: 0.55;
+    transition: filter 0.3s, opacity 0.3s;
   }
+  #bulb.running { opacity: 1; filter: none; animation: blink 0.35s infinite alternate; }
+  #bulb.on {
+    opacity: 1;
+    filter: drop-shadow(0 0 14px #facc15) drop-shadow(0 0 34px #fde047);
+  }
+  @keyframes blink {
+    from { filter: drop-shadow(0 0 4px #facc15); }
+    to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
+  }
+
+  #stage { margin: 15px 0 5px; min-height: 120px; }
+  #result { font-size: 90px; min-height: 110px; }
   #info { color: #666; min-height: 22px; }
 
-  /* Ruleta */
-  #roulette {
-    display: none;
-    position: relative;
-    width: 100%;
-    height: 110px;
-    overflow: hidden;
-    border: 3px solid #333;
-    border-radius: 12px;
-    background: #fafafa;
-  }
-  #strip {
-    display: flex;
-    height: 100%;
-    will-change: transform;
-  }
-  #strip div {
-    flex: 0 0 100px;
-    width: 100px;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 54px;
-    border-right: 1px solid #ddd;
-  }
-  #marker {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    margin-left: -2px;
-    background: #dc2626;
-    z-index: 2;
-  }
+  #roulette { display: none; position: relative; width: 100%; height: 110px; overflow: hidden; border: 3px solid #333; border-radius: 12px; background: #fafafa; }
+  #strip { display: flex; height: 100%; will-change: transform; }
+  #strip div { flex: 0 0 100px; width: 100px; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 54px; border-right: 1px solid #ddd; }
+  #marker { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #dc2626; z-index: 2; }
 
-  /* Kolo štěstí */
-  #wheelWrap {
-    display: none;
-    position: relative;
-    width: 300px;
-    height: 320px;
-    margin: 0 auto;
-  }
-  #pointer {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    margin-left: -14px;
-    width: 0; height: 0;
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-top: 28px solid #dc2626;
-    z-index: 2;
-  }
-  #wheel {
-    position: absolute;
-    top: 20px;
-    left: 0;
-    border-radius: 50%;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  }
+  #wheelWrap { display: none; position: relative; width: 300px; height: 320px; margin: 0 auto; }
+  #pointer { position: absolute; top: 0; left: 50%; margin-left: -14px; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid #dc2626; z-index: 2; }
+  #wheel { position: absolute; top: 20px; left: 0; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 
   #historyTitle { font-size: 14px; color: #888; margin-top: 15px; }
-  #history {
-    margin-top: 10px;
-    text-align: left;
-    max-height: 200px;
-    overflow-y: auto;
-    border-top: 1px solid #ddd;
-    padding-top: 10px;
-    font-size: 26px;
-    line-height: 1.5;
-    word-break: break-all;
-  }
+  #history { margin-top: 10px; text-align: left; max-height: 200px; overflow-y: auto; border-top: 1px solid #ddd; padding-top: 10px; font-size: 26px; line-height: 1.5; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -167,6 +65,9 @@
 <h1>Náhodná šipka</h1>
 
 <div class="box">
+  <div id="bulb" onclick="toggleBulb()" role="button" aria-label="Svítilna">💡</div>
+  <div id="bulbMsg" style="color:#b45309;font-size:13px;min-height:16px;margin-bottom:8px;"></div>
+
   <div class="arrows" id="arrows"></div>
 
   <button id="pickBtn" onclick="pick()">Vybrat náhodnou</button>
@@ -210,6 +111,32 @@
   const stripEl = document.getElementById("strip");
   const wheelWrap = document.getElementById("wheelWrap");
   const wheelEl = document.getElementById("wheel");
+  const bulbEl = document.getElementById("bulb");
+  let bulbOn = false, torchStream = null;
+
+  /* Žárovka: zapíná/vypíná ji uživatel klepnutím, zároveň zkusí rozsvítit svítilnu telefonu */
+  async function toggleBulb() {
+    const msg = document.getElementById("bulbMsg");
+    msg.textContent = "";
+    if (!bulbOn) {
+      bulbOn = true;
+      bulbEl.className = "on";
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+        const track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (!caps.torch) { stream.getTracks().forEach(t => t.stop()); throw new Error("no torch"); }
+        await track.applyConstraints({ advanced: [{ torch: true }] });
+        torchStream = stream;
+      } catch (e) {
+        msg.textContent = "Svítilnu telefonu se nepodařilo zapnout (nepodporuje to prohlížeč nebo chybí povolení kamery).";
+      }
+    } else {
+      bulbOn = false;
+      bulbEl.className = "";
+      if (torchStream) { torchStream.getTracks().forEach(t => t.stop()); torchStream = null; }
+    }
+  }
 
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
