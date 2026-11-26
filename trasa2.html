@@ -24,6 +24,7 @@
   button.mic { background: #16a34a; }
   button.mic.on { background: #dc2626; }
 
+  /* Žárovka */
   #bulb {
     font-size: 64px;
     cursor: pointer;
@@ -34,50 +35,29 @@
     opacity: 0.55;
     transition: filter 0.3s, opacity 0.3s;
   }
+  #bulb.running { opacity: 1; filter: none; animation: blink 0.35s infinite alternate; }
   #bulb.on {
     opacity: 1;
-    filter: drop-shadow(0 0 10px #facc15) drop-shadow(0 0 22px #fde047);
+    filter: drop-shadow(0 0 10px #facc15);
   }
   #bulb.big {
     opacity: 1;
-    filter:
-      drop-shadow(0 0 6px #fff)
-      drop-shadow(0 0 18px #fff)
-      drop-shadow(0 0 36px #fff)
-      drop-shadow(0 0 60px #fde047)
-      drop-shadow(0 0 100px #facc15)
-      drop-shadow(0 0 150px #facc15);
+    filter: drop-shadow(0 0 20px #fff) drop-shadow(0 0 50px #fde047) drop-shadow(0 0 90px #facc15);
+  }
+  @keyframes blink {
+    from { filter: drop-shadow(0 0 4px #facc15); }
+    to   { filter: drop-shadow(0 0 22px #facc15) drop-shadow(0 0 40px #fde047); }
   }
 
-  #small {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: #ffc83a;
-    opacity: 0.28;
-    z-index: 998;
-    pointer-events: none;
-  }
+  /* Malá žárovka: slabé, tlumené oranžové světlo (displej je ztmavený), stránka zůstává ovladatelná */
+  #small { display: none; position: fixed; inset: 0; background: radial-gradient(circle at 50% 35%, #ffb84d 0%, #8a5a10 65%, #2e1c00 100%); opacity: 0.8; z-index: 998; pointer-events: none; }
 
-  #big {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: #ffffff;
-    z-index: 9999;
-    align-items: flex-end;
-    justify-content: center;
-    padding: 24px;
-    color: #555;
-    font-size: 15px;
-    text-align: center;
-    cursor: pointer;
-  }
+  /* Velká žárovka: celá obrazovka svítí čistě bíle, nejvíc jak jde */
+  #big { display: none; position: fixed; inset: 0; background: #fff; z-index: 999; align-items: flex-end; justify-content: center; padding: 24px; color: #999; font-size: 15px; text-align: center; cursor: pointer; }
 
   #voice { margin-bottom: 12px; }
   #heard { color: #444; font-size: 14px; min-height: 18px; margin-top: 6px; word-break: break-word; }
   #hint { color: #888; font-size: 12px; margin-top: 4px; line-height: 1.4; }
-  #warning { color: #b45309; font-size: 13px; margin-top: 8px; line-height: 1.4; }
 
   #stage { margin: 15px 0 5px; min-height: 120px; }
   #result { font-size: 90px; min-height: 110px; }
@@ -110,14 +90,7 @@
   <div id="voice">
     <button id="micBtn" class="mic" onclick="toggleListen()">🎤 Zapnout hlasové pokyny</button>
     <div id="heard"></div>
-    <div id="hint">
-      „zapnout žárovku“ = slabší (ulice)<br>
-      „zapnout velkou žárovku“ = maximální jas (les)<br>
-      „vypnout žárovku“
-    </div>
-    <div id="warning">
-      Baterka svítí jen dokud je stránka otevřená a obrazovka zapnutá. Po vypnutí obrazovky ji prohlížeč vždy zhasne.
-    </div>
+    <div id="hint">Řekni: „vybrat šipku doleva doprava nahoru“, „zapnout žárovku“, „zapnout velkou žárovku“, „vypnout žárovku“.</div>
   </div>
 
   <div class="arrows" id="arrows"></div>
@@ -169,36 +142,27 @@
   const heardEl = document.getElementById("heard");
   const micBtn = document.getElementById("micBtn");
 
+  /* ---------- Žárovka: 'off' | 'on' (malá: svítilna + slabé tlumené světlo) | 'big' (velká: svítilna + celá obrazovka bíle) ---------- */
   let bulbMode = "off", torchStream = null, wake = null;
 
   async function torchOn() {
-    if (torchStream) return true;
+    if (torchStream) return;
     const msg = document.getElementById("bulbMsg");
     msg.textContent = "";
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } }
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
       const track = stream.getVideoTracks()[0];
       const caps = track.getCapabilities ? track.getCapabilities() : {};
-      if (!caps.torch) {
-        stream.getTracks().forEach(t => t.stop());
-        throw new Error("no torch");
-      }
+      if (!caps.torch) { stream.getTracks().forEach(t => t.stop()); throw new Error("no torch"); }
       await track.applyConstraints({ advanced: [{ torch: true }] });
       torchStream = stream;
-      return true;
     } catch (e) {
-      msg.textContent = "Svítilnu se nepodařilo zapnout (chybí povolení nebo prohlížeč to nepodporuje).";
-      return false;
+      msg.textContent = "Svítilnu telefonu se nepodařilo zapnout (nepodporuje to prohlížeč nebo chybí povolení kamery).";
     }
   }
 
   function torchOff() {
-    if (torchStream) {
-      torchStream.getTracks().forEach(t => t.stop());
-      torchStream = null;
-    }
+    if (torchStream) { torchStream.getTracks().forEach(t => t.stop()); torchStream = null; }
   }
 
   async function setBulb(mode) {
@@ -206,19 +170,13 @@
     bulbEl.className = mode === "off" ? "" : (mode === "big" ? "big" : "on");
     bigEl.style.display = mode === "big" ? "flex" : "none";
     smallEl.style.display = mode === "on" ? "block" : "none";
-
-    if (mode === "off") {
-      torchOff();
-    } else {
-      await torchOn();
-    }
+    if (mode === "off") torchOff(); else await torchOn();
     updateWake();
   }
 
-  function toggleBulb() {
-    setBulb(bulbMode === "off" ? "on" : "off");
-  }
+  function toggleBulb() { setBulb(bulbMode === "off" ? "on" : "off"); }
 
+  /* Udržuje displej zapnutý, dokud svítí žárovka nebo se poslouchá (jinak prohlížeč stránku uspí) */
   async function updateWake() {
     const need = listening || bulbMode !== "off";
     if (need && !wake && navigator.wakeLock) {
@@ -231,20 +189,11 @@
       wake = null;
     }
   }
-
-  // Po návratu na stránku znovu zapni baterku
-  document.addEventListener("visibilitychange", async () => {
-    if (document.visibilityState === "visible") {
-      updateWake();
-      if (bulbMode !== "off") {
-        // zkus znovu zapnout
-        torchStream = null; // vynutí nové získání
-        await torchOn();
-      }
-    }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") updateWake();
   });
 
-  // Hlasové ovládání
+  /* ---------- Hlasové pokyny ---------- */
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null, listening = false, pendingUntil = 0;
 
@@ -265,13 +214,15 @@
     const t = norm(raw);
     heardEl.textContent = "Slyšel jsem: „" + raw.trim() + "“";
 
-    if (/zarovk|svitiln|baterk/.test(t)) {
+    /* Žárovka */
+    if (/zarovk|svitiln/.test(t)) {
       if (/vypn|zhasn/.test(t)) setBulb("off");
       else if (/velk/.test(t)) setBulb("big");
       else if (/zapn|rozsvit|svit/.test(t)) setBulb("on");
       return;
     }
 
+    /* Výběr šipky: „vybrat šipku doleva doprava nahoru“ (směry můžou přijít i v další větě do 8 s) */
     const now = Date.now();
     const hasKey = /sipk|vybr|vyber/.test(t);
     const dirs = [];
@@ -299,9 +250,7 @@
       }
     };
     rec.onerror = e => {
-      if (e.error !== "no-speech" && e.error !== "aborted") {
-        heardEl.textContent = "Chyba rozpoznávání: " + e.error;
-      }
+      if (e.error !== "no-speech" && e.error !== "aborted") heardEl.textContent = "Chyba rozpoznávání: " + e.error;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         listening = false;
         heardEl.textContent = "Chybí povolení mikrofonu.";
@@ -327,10 +276,7 @@
       try { rec.stop(); } catch (_) {}
       heardEl.textContent = "";
     } else {
-      if (!SR) {
-        heardEl.textContent = "Tento prohlížeč nepodporuje rozpoznávání řeči (zkus Chrome).";
-        return;
-      }
+      if (!SR) { heardEl.textContent = "Tento prohlížeč nepodporuje rozpoznávání řeči (zkus Chrome)."; return; }
       listening = true;
       makeRec();
     }
@@ -338,6 +284,9 @@
     updateWake();
   }
 
+  /* ---------- Tlačítka bez dotyku displeje ---------- */
+  /* Web nevidí hlasitost ani boční tlačítka. Jde ale zachytit tlačítko sluchátek / hodinek / ovládání médií:
+     po prvním dotyku hraje tichý zvuk a jeho „play/pause/další/předchozí“ zapíná a vypíná poslech. */
   let mediaReady = false, silentAudio = null;
   function silentWav() {
     const sr = 8000, n = sr, b = new ArrayBuffer(44 + n), v = new DataView(b);
@@ -366,16 +315,12 @@
   }
   document.addEventListener("pointerdown", initMedia, { once: true });
 
+  /* Poslech se zkusí zapnout hned po otevření stránky (když je mikrofon už povolený) */
   window.addEventListener("load", () => {
-    if (SR && !listening) {
-      listening = true;
-      makeRec();
-      updateMic();
-      updateWake();
-    }
+    if (SR && !listening) { listening = true; makeRec(); updateMic(); updateWake(); }
   });
 
-  // Losování (zůstává stejné)
+  /* ---------- Losování ---------- */
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -384,6 +329,7 @@
     return a;
   }
 
+  /* Náhodný výběr: stejná hodnota smí padnout 2x po sobě, ale ne 3x */
   function makeTracker() { return { last: [] }; }
 
   function drawNoTriple(tracker, list) {
@@ -464,6 +410,7 @@
     setBusy(false);
   }
 
+  /* 1) Ruleta */
   function animRoulette(arr, winnerIdx) {
     const ITEM = 100, TOTAL = 50, WIN_POS = 40;
     stripEl.innerHTML = "";
@@ -487,6 +434,7 @@
     setTimeout(() => finish(winnerIdx), 5300);
   }
 
+  /* 2) Kolo štěstí – 12 dílů, šipky se střídají dokola */
   function wheelSlots(arr) {
     const slots = [];
     for (let i = 0; i < SEGMENTS; i++) slots.push(arr[i % arr.length]);
@@ -548,6 +496,7 @@
     setTimeout(() => finish(winnerIdx), 5300);
   }
 
+  /* 3) Obrys čtverce, který postupně zpomaluje */
   function animSquare(arr, winnerIdx) {
     const tiles = arrowsEl.children;
     const order = shuffle(arr.slice());
