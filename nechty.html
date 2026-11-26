@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nehty – výběr služby</title>
+<style>
+  :root{--bg:#fff;--fg:#2b2b2b;--card:#fdf0f4;--accent:#d6336c;--line:#f3c9d7}
+  @media (prefers-color-scheme:dark){:root{--bg:#1c1a1b;--fg:#f4eef0;--card:#2a2427;--accent:#ff6fa0;--line:#4a3a40}}
+  body{margin:0;padding:20px;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;max-width:480px;margin-inline:auto}
+  h1{font-size:1.5rem;text-align:center;color:var(--accent)}
+  .item{display:flex;justify-content:space-between;padding:14px;margin:10px 0;background:var(--card);border:2px solid var(--line);border-radius:12px;cursor:pointer}
+  .item.on{border-color:var(--accent)}
+  .total{display:flex;justify-content:space-between;font-weight:700;font-size:1.2rem;margin:20px 0}
+  button{width:100%;padding:14px;font-size:1rem;border:0;border-radius:12px;background:var(--accent);color:#fff;cursor:pointer}
+  #ok{text-align:center;margin-top:14px;font-weight:600}
+</style>
+</head>
+<body>
+<h1>💅 Vyber si nehty</h1>
+<div id="list"></div>
+<div class="total"><span>Celkem</span><span id="sum">0 Kč</span></div>
+<button onclick="done()">Objednat</button>
+<div id="ok"></div>
+<script>
+  const services=[
+    {n:"Manikúra",p:350},
+    {n:"Gel lak",p:550},
+    {n:"Akryl / gelové nehty",p:900},
+    {n:"Doplnění nehtů",p:700},
+    {n:"Zdobení (1 nehet)",p:30},
+    {n:"Francouzská manikúra",p:650}
+  ];
+  const sel=new Set();
+  const list=document.getElementById("list");
+  services.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="item";
+    d.innerHTML=`<span>${s.n}</span><span>${s.p} Kč</span>`;
+    d.onclick=()=>{
+      sel.has(i)?sel.delete(i):sel.add(i);
+      d.classList.toggle("on");
+      document.getElementById("sum").textContent=[...sel].reduce((a,k)=>a+services[k].p,0)+" Kč";
+      document.getElementById("ok").textContent="";
+    };
+    list.appendChild(d);
+  });
+  function done(){
+    document.getElementById("ok").textContent=sel.size?"Hotovo, pustíme se do toho! ✨":"Nejdřív něco vyber.";
+  }
+</script>
+</body>
+</html>
