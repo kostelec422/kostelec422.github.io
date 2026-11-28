@@ -19,7 +19,9 @@ textarea{width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px s
 button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer;margin:0 8px 0 0}
 button.s{background:transparent;color:var(--ac);border:1px solid var(--ac)}
 button:disabled{opacity:.4}
-#info{color:var(--mut);margin:0 0 10px}
+#info{color:var(--mut);margin:0 0 6px}
+#bar{height:6px;border-radius:3px;background:var(--bd);overflow:hidden;margin-bottom:10px}
+#bar div{height:100%;width:0;background:var(--ac)}
 #ly div{padding:6px 8px;border-radius:6px;color:var(--mut);transition:.2s}
 #ly div.on{background:var(--ac);color:#fff}
 .h{display:none}
@@ -36,7 +38,7 @@ button:disabled{opacity:.4}
 
 <div class="c">
 <label for="l">Text písničky <small>(nepovinné – bude se zpívat)</small></label>
-<textarea id="l" placeholder="Sem napiš text, který se v písničce zazpívá. Nebo nech prázdné a bude jen hudba."></textarea>
+<textarea id="l" placeholder="Sem napiš text, který se v písničce zazpívá. Když je krátký, bude se opakovat, aby písnička trvala aspoň minutu."></textarea>
 </div>
 
 <button id="go">▶ Zahrát písničku</button>
@@ -44,6 +46,7 @@ button:disabled{opacity:.4}
 
 <div id="res" class="c h" style="margin-top:14px">
 <p id="info"></p>
+<div id="bar"><div id="bp"></div></div>
 <div id="ly"></div>
 </div>
 </div>
@@ -51,10 +54,12 @@ button:disabled{opacity:.4}
 <script>
 const $=id=>document.getElementById(id);
 const mtof=m=>440*Math.pow(2,(m-69)/12);
+const MIN_MS=60000;          // každá písnička trvá minimálně minutu
+const INTRO_MS=4000;         // krátký úvod hudby před zpěvem
 document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('dragstart',e=>e.preventDefault());
 
-let ctx=null,master=null,timer=null,running=false,voice=null,songId=0;
+let ctx=null,master=null,timer=null,prog=null,running=false,voice=null,songId=0,t0=0;
 
 function pickVoice(){
   if(!('speechSynthesis' in window))return;
@@ -66,32 +71,31 @@ if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pick
 /* ---------- automatické vyhodnocení textu ---------- */
 const KEYS={
   sleep:['uspá','uspan','spát','spani','spinká','dobrou noc','ukolébav','hajej','sladce spi','sny','sen','měsíc','hvězd','noc'],
-  sad:['smut','pláč','plač','bol','sám','osam','zlomen','ztrat','stesk','rozchod','slz','mrzí','zem','umř','smrt','lítost','chybí','chyb','konec','sbohem','deštiv','déšť'],
+  sad:['smut','pláč','plač','bol','sám','osam','zlomen','ztrat','stesk','rozchod','slz','mrzí','umř','smrt','lítost','chybí','chyb','konec','sbohem','deštiv','déšť'],
   wild:['divok','rychl','part','rock','šíl','energ','tanč','ohn','křik','bouř','pecka','metal','punk','řev','jedem','hoří','zábav','mejdan','pařba'],
   happy:['vesel','radost','šťast','sluní','léto','smích','směj','láska','lásk','miluj','úsměv','krás','sláv','hurá','jupí']
 };
 function analyze(text,lyrics){
-  const x=(text+' '+lyrics).toLowerCase();
+  const all=text+' '+lyrics,x=all.toLowerCase();
   const sc={};
   for(const k in KEYS)sc[k]=KEYS[k].filter(w=>x.includes(w)).length;
   const excl=(x.match(/!/g)||[]).length;
-  const caps=((text+' '+lyrics).match(/\b[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{3,}\b/g)||[]).length;
+  const caps=(all.match(/\b[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]{3,}\b/g)||[]).length;
   sc.wild+=Math.floor(excl/2)+caps;
   let best='calm',max=0;
   for(const k in sc){if(sc[k]>max){max=sc[k];best=k}}
   const M={
-    sad:  {name:'smutná',  tempo:66, minor:true, pad:'triangle',lp:900, drums:false,mel:'sine',    rate:.8, pitch:.8, up:.6, wild:false},
-    wild: {name:'divoká',  tempo:148,minor:true, pad:'sawtooth',lp:1800,drums:true, mel:'square',  rate:1.3,pitch:1.2,up:1.0,wild:true},
-    sleep:{name:'ukolébavka',tempo:52,minor:false,pad:'sine',   lp:700, drums:false,mel:'sine',    rate:.65,pitch:.95,up:.5, wild:false},
-    happy:{name:'veselá',  tempo:112,minor:false,pad:'triangle',lp:2000,drums:true, mel:'triangle',rate:1.1,pitch:1.1,up:.9, wild:false},
-    calm: {name:'klidná',  tempo:90, minor:false,pad:'triangle',lp:1500,drums:true, mel:'triangle',rate:1,  pitch:1,  up:.7, wild:false}
+    sad:  {name:'smutná',   tempo:66, minor:true, pad:'triangle',lp:900, drums:false,mel:'sine',    rate:.8, pitch:.8, up:.6,wild:false},
+    wild: {name:'divoká',   tempo:148,minor:true, pad:'sawtooth',lp:1800,drums:true, mel:'square',  rate:1.3,pitch:1.2,up:1.0,wild:true},
+    sleep:{name:'ukolébavka',tempo:52,minor:false,pad:'sine',    lp:700, drums:false,mel:'sine',    rate:.65,pitch:.95,up:.5,wild:false},
+    happy:{name:'veselá',   tempo:112,minor:false,pad:'triangle',lp:2000,drums:true, mel:'triangle',rate:1.1,pitch:1.1,up:.9,wild:false},
+    calm: {name:'klidná',   tempo:90, minor:false,pad:'triangle',lp:1500,drums:true, mel:'triangle',rate:1,  pitch:1,  up:.7,wild:false}
   }[best];
   const m={...M};
-  // tempo se ještě upraví podle textu
   const lines=lyrics.split(/\n+/).filter(s=>s.trim());
   if(lines.length){
     const avg=lines.reduce((a,l)=>a+l.trim().split(/\s+/).length,0)/lines.length;
-    m.tempo+=Math.round((6-avg)*3);          // dlouhé řádky = pomaleji
+    m.tempo+=Math.round((6-avg)*3);
   }
   m.tempo+=Math.min(excl,5)*3;
   m.tempo=Math.max(48,Math.min(165,m.tempo));
@@ -111,7 +115,7 @@ function startMusic(M){
   M.root=root;
   const scale=M.minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
   M.scale=scale;
-  const prog=M.minor?[0,8,3,10]:[0,7,9,5];
+  const pr=M.minor?[0,8,3,10]:[0,7,9,5];
   const third=M.minor?3:4;
   let nextT=ctx.currentTime+.1,beatN=0,idx=3;
 
@@ -146,7 +150,7 @@ function startMusic(M){
   }
   function playBeat(n,t){
     const bar=Math.floor(n/4),k=n%4;
-    const cr=root+prog[bar%4];
+    const cr=root+pr[bar%4];
     if(k===0){
       [0,third,7].forEach(iv=>tone(mtof(cr+iv),t,4*beat,M.pad,.08,M.lp));
       tone(mtof(cr-12),t,M.drums?beat*.9:4*beat*.95,'sine',.22);
@@ -180,7 +184,7 @@ function synthLine(M,line){
   const start=t;
   let idx=5;
   words.forEach(w=>{
-    const syl=Math.max(1,Math.round(w.replace(/[^aeiouyáéěíóúůý]/gi,'').length)||1);
+    const syl=Math.max(1,(w.match(/[aeiouyáéěíóúůý]/gi)||[]).length);
     for(let s=0;s<syl;s++){
       idx+=Math.floor(Math.random()*5)-2;idx=Math.max(0,Math.min(13,idx));
       const m=M.root+12+M.scale[idx%7]+12*Math.floor(idx/7);
@@ -202,29 +206,47 @@ function synthLine(M,line){
   return (t-start)*1000+M.beat*500;
 }
 
-/* ---------- zpěv textu ---------- */
+/* ---------- konec s doznětím ---------- */
+function finish(id){
+  if(!running||id!==songId)return;
+  try{
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0,ctx.currentTime+3);
+  }catch(e){}
+  setTimeout(()=>{if(running&&id===songId)stop()},3100);
+}
+
+/* ---------- zpěv textu (opakuje se, dokud neuplyne minuta) ---------- */
 function sing(M,lines,id){
   const ly=$('ly');
+  const n=lines.length;
   let i=0,fallback=false;
-
-  function done(){setTimeout(()=>{if(running&&id===songId)stop()},2500)}
 
   function nextLine(){
     if(!running||id!==songId)return;
-    if(i>=lines.length){done();return}
+    // text se dozpívá celý aspoň jednou; pak se opakuje, dokud neuplyne minuta
+    if(i>=n && performance.now()-t0>=MIN_MS-3500){
+      setTimeout(()=>finish(id),M.beat*1000*2);
+      return;
+    }
     const li=i++;
-    [...ly.children].forEach((e,j)=>e.classList.toggle('on',j===li));
-    const gap=M.wild?300:800;
+    const line=lines[li%n];
+    [...ly.children].forEach((e,j)=>e.classList.toggle('on',j===li%n));
+    const gap=M.wild?350:900;
+
     if(fallback||!('speechSynthesis' in window)){
-      const ms=synthLine(M,lines[li]);
+      const ms=synthLine(M,line);
       setTimeout(nextLine,ms+gap);
       return;
     }
-    const u=new SpeechSynthesisUtterance(lines[li]);
+    const u=new SpeechSynthesisUtterance(line);
     u.lang='cs-CZ';
     if(voice)u.voice=voice;
     u.rate=M.rate;
-    u.pitch=Math.max(.1,Math.min(2,.6+Math.random()*.6*M.up*M.pitch+(M.pitch-1)*.5));
+    // každý řádek trochu jiná výška, refrén (opakování) o něco výš
+    const lift=li>=n?.15:0;
+    u.pitch=Math.max(.1,Math.min(2,.6+Math.random()*.6*M.up*M.pitch+(M.pitch-1)*.5+lift));
     u.volume=1;
     let started=false,finished=false;
     const fin=()=>{if(finished)return;finished=true;setTimeout(nextLine,gap)};
@@ -234,21 +256,27 @@ function sing(M,lines,id){
       if(!started&&!finished){finished=true;fallback=true;i=li;setTimeout(nextLine,50)}else fin();
     };
     speechSynthesis.speak(u);
-    // pojistka: pokud se hlas vůbec nerozběhne, přepne se na vlastní zpěv
     setTimeout(()=>{
       if(!started&&!finished&&running&&id===songId){
         finished=true;fallback=true;speechSynthesis.cancel();i=li;nextLine();
       }
     },3000);
-    // pojistka proti zaseknutí konce věty
-    setTimeout(()=>{if(started&&!finished)fin()},Math.max(8000,lines[li].length*400));
+    setTimeout(()=>{if(started&&!finished)fin()},Math.max(8000,line.length*400));
   }
-  nextLine();
+  setTimeout(nextLine,INTRO_MS);
+}
+
+function tickProgress(id){
+  if(!running||id!==songId)return;
+  const p=Math.min(100,(performance.now()-t0)/MIN_MS*100);
+  $('bp').style.width=p+'%';
+  prog=setTimeout(()=>tickProgress(id),250);
 }
 
 function stop(){
   running=false;songId++;
   clearInterval(timer);timer=null;
+  clearTimeout(prog);prog=null;
   if('speechSynthesis' in window)speechSynthesis.cancel();
   if(ctx){try{ctx.close()}catch(e){}ctx=null}
   $('st').disabled=true;
@@ -265,13 +293,17 @@ $('go').onclick=()=>{
   const lines=l?l.split(/\n+/).map(s=>s.trim()).filter(Boolean):[];
   const ly=$('ly');ly.innerHTML='';
   lines.forEach(x=>{const d=document.createElement('div');d.textContent=x;ly.appendChild(d)});
-  $('info').textContent='Nálada: '+M.name+' · tempo '+M.tempo+' BPM'+(lines.length?'':' · bez textu, jen hudba');
+  $('info').textContent='Nálada: '+M.name+' · tempo '+M.tempo+' BPM · minimálně 1 minuta'+(lines.length?'':' · bez textu, jen hudba');
+  $('bp').style.width='0';
   $('res').classList.remove('h');
   running=true;songId++;
   const id=songId;
+  t0=performance.now();
   $('go').disabled=true;$('st').disabled=false;
   startMusic(M);
+  tickProgress(id);
   if(lines.length)sing(M,lines,id);
+  else setTimeout(()=>finish(id),MIN_MS+1500);
 };
 $('st').onclick=stop;
 </script>
