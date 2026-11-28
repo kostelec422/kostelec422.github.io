@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generátor písniček</title>
+<style>
+:root{--bg:#f6f4fb;--card:#fff;--tx:#1d1b26;--mut:#6b6880;--ac:#6c4cf1;--bd:#ddd8ee}
+@media (prefers-color-scheme:dark){:root{--bg:#14121c;--card:#1e1b2b;--tx:#efedf7;--mut:#a19db8;--ac:#8f78ff;--bd:#352f4d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;padding:16px}
+.w{max-width:620px;margin:0 auto}
+h1{font-size:1.5rem;margin:8px 0 16px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
+label{display:block;font-weight:600;margin-bottom:6px}
+small{color:var(--mut);font-weight:400}
+textarea{width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit;resize:vertical}
+button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;margin:6px 6px 0 0}
+button.s{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+button:disabled{opacity:.5}
+audio{width:100%;margin-top:10px}
+#info{color:var(--mut);margin:0 0 8px}
+#ly div{padding:4px 8px;border-radius:6px;color:var(--mut)}
+#ly div.on{background:var(--ac);color:#fff}
+.h{display:none}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>🎵 Generátor písniček</h1>
+
+<div class="c">
+<label for="t">O čem bude písnička? <small>(např. smutná, divoká…)</small></label>
+<textarea id="t" placeholder="Např.: Smutná písnička o rozchodu…"></textarea>
+</div>
+
+<div class="c">
+<label for="l">Text písničky <small>(nepovinné)</small></label>
+<textarea id="l" placeholder="Sem můžeš napsat text, nebo nechat prázdné…"></textarea>
+</div>
+
+<button id="go">Vygenerovat písničku</button>
+
+<div id="res" class="c h" style="margin-top:14px">
+<p id="info"></p>
+<audio id="au" controls></audio>
+<div>
+<button id="dw" class="s">💾 Uložit hudbu (.wav)</button>
+<button id="dt" class="s">💾 Uložit text (.txt)</button>
+</div>
+<div id="ly" style="margin-top:12px"></div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let wavBlob=null,txtBlob=null,url=null;
+
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+
+function mood(text){
+  const x=text.toLowerCase();
+  const sad=['smut','pláč','plač','bol','sám','osam','zlomen','ztrat','stesk','sad','cry','rozchod','slz','tich','mrzí','chyb'];
+  const wild=['divok','rychl','part','rock','šíl','energ','tanč','ohn','wild','křik','bouř','veselá','vesel','pecka','metal','punk'];
+  let s=0,w=0;
+  sad.forEach(k=>{if(x.includes(k))s++});
+  wild.forEach(k=>{if(x.includes(k))w++});
+  return {s,w};
+}
+
+async function make(text,seed){
+  const {s,w}=mood(text);
+  const r=rng(seed);
+  const wildness=(s+w===0)?0.4:w/(s+w);
+  const minor=s>0||w===0;
+  const tempo=Math.round(68+wildness*92);
+  const bars=wildness>0.5?24:16;
+  const beat=60/tempo;
+  const dur=bars*4*beat+2;
+  const sr=44100;
+  const ctx=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
+  const master=ctx.createGain();master.gain.value=.5;master.connect(ctx.destination);
+
+  const root=52+Math.floor(r()*12);
+  const scale=minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
+  const prog=minor?[0,8,3,10]:[0,7,9,5];
+  const third=minor?3:4;
+
+  function tone(f,t,d,type,g,lp){
+    const o=ctx.createOscillator(),e=ctx.createGain();
+    o.type=type;o.frequency.value=f;
+    let node=o;
+    if(lp){const fl=ctx.createBiquadFilter();fl.type='lowpass';fl.frequency.value=lp;o.connect(fl);node=fl}
+    node.connect(e);e.connect(master);
+    e.gain.setValueAtTime(0,t);
+    e.gain.linearRampToValueAtTime(g,t+.02);
+    e.gain.exponentialRampToValueAtTime(.001,t+d);
+    o.start(t);o.stop(t+d+.05);
+  }
+  const nb=ctx.createBuffer(1,sr,sr),nd=nb.getChannelData(0);
+  for(let i=0;i<sr;i++)nd[i]=r()*2-1;
+  function noise(t,d,g,hp){
+    const n=ctx.createBufferSource();n.buffer=nb;
+    const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=hp;
+    const e=ctx.createGain();
+    n.connect(f);f.connect(e);e.connect(master);
+    e.gain.setValueAtTime(g,t);e.gain.exponentialRampToValueAtTime(.001,t+d);
+    n.start(t);n.stop(t+d+.05);
+  }
+  function kick(t,g){
+    const o=ctx.createOscillator(),e=ctx.createGain();
+    o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(40,t+.12);
+    o.connect(e);e.connect(master);
+    e.gain.setValueAtTime(g,t);e.gain.exponentialRampToValueAtTime(.001,t+.25);
+    o.start(t);o.stop(t+.3);
+  }
+
+  let idx=3;
+  for(let b=0;b<bars;b++){
+    const cr=root+prog[b%4];
+    const t0=b*4*beat+.1;
+    const padType=wildness>0.5?'sawtooth':'triangle';
+    const padLp=wildness>0.5?1800:900;
+    [0,third,7].forEach(iv=>{
+      tone(mtof(cr+iv),t0,4*beat,padType,.07,padLp);
+    });
+    tone(mtof(cr-12),t0,beat*(wildness>0.5?.9:3.8),'sine',.22);
+    if(wildness>0.5)for(let k=1;k<4;k++)tone(mtof(cr-12),t0+k*beat,beat*.9,'sine',.18);
+
+    for(let k=0;k<4;k++){
+      const t=t0+k*beat;
+      if(wildness>0.35){
+        kick(t,.6);
+        if(k%2===1)noise(t,.15,.35,1500);
+        noise(t,.04,.12,7000);noise(t+beat/2,.04,.1,7000);
+      }else if(k===0){kick(t,.35)}
+    }
+
+    let pos=0;
+    while(pos<4){
+      const len=wildness>0.5?(r()<.6?.5:1):(r()<.3?1:2);
+      if(r()<(wildness>0.5?.1:.25)){pos+=len;continue}
+      idx+=Math.floor(r()*5)-2;
+      idx=Math.max(0,Math.min(13,idx));
+      const m=root+12+scale[idx%7]+12*Math.floor(idx/7);
+      const t=t0+pos*beat;
+      if(wildness>0.5){tone(mtof(m),t,len*beat*.9,'square',.09,3000)}
+      else{tone(mtof(m),t,len*beat*1.6,'sine',.2)}
+      pos+=len;
+    }
+  }
+  const buf=await ctx.startRendering();
+  return {buf,tempo,minor,wildness,dur:buf.duration};
+}
+
+function toWav(buf){
+  const ch=buf.numberOfChannels,len=buf.length,sr=buf.sampleRate;
+  const d=[];for(let c=0;c<ch;c++)d.push(buf.getChannelData(c));
+  let peak=0;
+  for(let c=0;c<ch;c++)for(let i=0;i<len;i++){const a=Math.abs(d[c][i]);if(a>peak)peak=a}
+  const k=peak>0?0.92/peak:1;
+  const ab=new ArrayBuffer(44+len*ch*2),v=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  ws(0,'RIFF');v.setUint32(4,36+len*ch*2,true);ws(8,'WAVE');ws(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*ch*2,true);v.setUint16(32,ch*2,true);v.setUint16(34,16,true);
+  ws(36,'data');v.setUint32(40,len*ch*2,true);
+  let o=44;
+  for(let i=0;i<len;i++)for(let c=0;c<ch;c++){
+    const x=Math.max(-1,Math.min(1,d[c][i]*k));
+    v.setInt16(o,x<0?x*0x8000:x*0x7FFF,true);o+=2;
+  }
+  return new Blob([ab],{type:'audio/wav'});
+}
+
+function dl(blob,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+$('go').onclick=async()=>{
+  const t=$('t').value.trim(),l=$('l').value.trim();
+  if(!t){alert('Napiš, o čem bude písnička.');return}
+  const btn=$('go');btn.disabled=true;btn.textContent='Generuji…';
+  try{
+    const res=await make(t,hash(t+l)^Date.now());
+    wavBlob=toWav(res.buf);
+    if(url)URL.revokeObjectURL(url);
+    url=URL.createObjectURL(wavBlob);
+    $('au').src=url;
+    const nm=res.wildness>0.6?'divoká':res.wildness<0.3?'smutná':'smíšená';
+    $('info').textContent='Nálada: '+nm+' · tempo '+res.tempo+' BPM · '+(res.minor?'moll':'dur')+' · '+Math.round(res.dur)+' s';
+    const lines=l?l.split(/\n+/).filter(Boolean):[];
+    const ly=$('ly');ly.innerHTML='';
+    lines.forEach(x=>{const d=document.createElement('div');d.textContent=x;ly.appendChild(d)});
+    txtBlob=new Blob(['Téma: '+t+'\n\n'+(l||'(bez textu)')],{type:'text/plain;charset=utf-8'});
+    $('dt').style.display='inline-block';
+    $('res').classList.remove('h');
+    const au=$('au');
+    au.ontimeupdate=()=>{
+      if(!lines.length)return;
+      const i=Math.min(lines.length-1,Math.floor(au.currentTime/au.duration*lines.length));
+      [...ly.children].forEach((e,j)=>e.classList.toggle('on',j===i));
+    };
+  }catch(e){alert('Chyba při generování: '+e.message)}
+  btn.disabled=false;btn.textContent='Vygenerovat znovu';
+};
+$('dw').onclick=()=>wavBlob&&dl(wavBlob,'pisnicka.wav');
+$('dt').onclick=()=>txtBlob&&dl(txtBlob,'text_pisnicky.txt');
+</script>
+</body>
+</html>
