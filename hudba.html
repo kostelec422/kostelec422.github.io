@@ -3,104 +3,119 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Generátor písniček</title>
+<title>Písnička</title>
 <style>
 :root{--bg:#f6f4fb;--card:#fff;--tx:#1d1b26;--mut:#6b6880;--ac:#6c4cf1;--bd:#ddd8ee}
 @media (prefers-color-scheme:dark){:root{--bg:#14121c;--card:#1e1b2b;--tx:#efedf7;--mut:#a19db8;--ac:#8f78ff;--bd:#352f4d}}
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+textarea,select{-webkit-user-select:text;user-select:text}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif;padding:16px}
 .w{max-width:620px;margin:0 auto}
 h1{font-size:1.5rem;margin:8px 0 16px}
 .c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:14px}
 label{display:block;font-weight:600;margin-bottom:6px}
 small{color:var(--mut);font-weight:400}
-textarea{width:100%;min-height:90px;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit;resize:vertical}
-button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;margin:6px 6px 0 0}
+textarea,select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:90px;resize:vertical}
+button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;cursor:pointer;margin:0 8px 0 0}
 button.s{background:transparent;color:var(--ac);border:1px solid var(--ac)}
-button:disabled{opacity:.5}
-audio{width:100%;margin-top:10px}
-#info{color:var(--mut);margin:0 0 8px}
-#ly div{padding:4px 8px;border-radius:6px;color:var(--mut)}
+button:disabled{opacity:.4}
+#info{color:var(--mut);margin:0 0 10px}
+#ly div{padding:5px 8px;border-radius:6px;color:var(--mut);transition:.2s}
 #ly div.on{background:var(--ac);color:#fff}
 .h{display:none}
 </style>
 </head>
 <body>
 <div class="w">
-<h1>🎵 Generátor písniček</h1>
+<h1>🎵 Písnička</h1>
 
 <div class="c">
-<label for="t">O čem bude písnička? <small>(např. smutná, divoká…)</small></label>
-<textarea id="t" placeholder="Např.: Smutná písnička o rozchodu…"></textarea>
+<label for="t">O čem bude písnička? <small>(např. smutná, divoká, na uspání…)</small></label>
+<textarea id="t" placeholder="Např.: Písnička o rozchodu…"></textarea>
 </div>
 
 <div class="c">
-<label for="l">Text písničky <small>(nepovinné)</small></label>
-<textarea id="l" placeholder="Sem můžeš napsat text, nebo nechat prázdné…"></textarea>
+<label for="m">Nálada</label>
+<select id="m">
+<option value="auto">Podle toho, co jsem napsal</option>
+<option value="sad">Smutná</option>
+<option value="wild">Divoká</option>
+<option value="sleep">Na uspání</option>
+<option value="plain">Prostě obyčejná</option>
+</select>
 </div>
 
-<button id="go">Vygenerovat písničku</button>
+<div class="c">
+<label for="l">Text písničky <small>(nepovinné – bude se zpívat)</small></label>
+<textarea id="l" placeholder="Sem napiš text, který se v písničce zazpívá. Nebo nech prázdné a bude jen hudba."></textarea>
+</div>
+
+<button id="go">▶ Zahrát písničku</button>
+<button id="st" class="s" disabled>■ Zastavit</button>
 
 <div id="res" class="c h" style="margin-top:14px">
 <p id="info"></p>
-<audio id="au" controls></audio>
-<div>
-<button id="dw" class="s">💾 Uložit hudbu (.wav)</button>
-<button id="dt" class="s">💾 Uložit text (.txt)</button>
-</div>
-<div id="ly" style="margin-top:12px"></div>
+<div id="ly"></div>
 </div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-let wavBlob=null,txtBlob=null,url=null;
-
-function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
-function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const mtof=m=>440*Math.pow(2,(m-69)/12);
+document.addEventListener('contextmenu',e=>e.preventDefault());
 
-function mood(text){
+let ctx=null,master=null,timer=null,running=false,words=[],wi=0,voice=null;
+
+function detect(text){
   const x=text.toLowerCase();
-  const sad=['smut','pláč','plač','bol','sám','osam','zlomen','ztrat','stesk','sad','cry','rozchod','slz','tich','mrzí','chyb'];
-  const wild=['divok','rychl','part','rock','šíl','energ','tanč','ohn','wild','křik','bouř','veselá','vesel','pecka','metal','punk'];
-  let s=0,w=0;
-  sad.forEach(k=>{if(x.includes(k))s++});
-  wild.forEach(k=>{if(x.includes(k))w++});
-  return {s,w};
+  const has=a=>a.some(k=>x.includes(k));
+  if(has(['uspá','uspan','spát','spani','spinká','dobrou noc','ukolébav','hajej','sladce spi','noc'])) return 'sleep';
+  const s=['smut','pláč','plač','bol','sám','osam','zlomen','ztrat','stesk','rozchod','slz','mrzí','sad','cry'].filter(k=>x.includes(k)).length;
+  const w=['divok','rychl','part','rock','šíl','energ','tanč','ohn','wild','křik','bouř','vesel','pecka','metal','punk'].filter(k=>x.includes(k)).length;
+  if(s>w) return 'sad';
+  if(w>s) return 'wild';
+  return 'plain';
 }
 
-async function make(text,seed){
-  const {s,w}=mood(text);
-  const r=rng(seed);
-  const wildness=(s+w===0)?0.4:w/(s+w);
-  const minor=s>0||w===0;
-  const tempo=Math.round(68+wildness*92);
-  const bars=wildness>0.5?24:16;
-  const beat=60/tempo;
-  const dur=bars*4*beat+2;
-  const sr=44100;
-  const ctx=new OfflineAudioContext(2,Math.ceil(sr*dur),sr);
-  const master=ctx.createGain();master.gain.value=.5;master.connect(ctx.destination);
+const MOODS={
+  sad:  {name:'smutná',  tempo:66, minor:true,  pad:'triangle',lp:900, drums:false,mel:'sine',    rate:.75,pitch:.8, up:.6},
+  wild: {name:'divoká',  tempo:150,minor:true,  pad:'sawtooth',lp:1800,drums:true, mel:'square',  rate:1.35,pitch:1.2,up:1.0},
+  sleep:{name:'na uspání',tempo:54,minor:false, pad:'sine',    lp:700, drums:false,mel:'sine',    rate:.6, pitch:.9, up:.5},
+  plain:{name:'obyčejná',tempo:100,minor:false, pad:'triangle',lp:1500,drums:true, mel:'triangle',rate:1,  pitch:1,  up:.8}
+};
 
-  const root=52+Math.floor(r()*12);
-  const scale=minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
-  const prog=minor?[0,8,3,10]:[0,7,9,5];
-  const third=minor?3:4;
+function pickVoice(){
+  const v=speechSynthesis.getVoices();
+  voice=v.find(x=>/^cs/i.test(x.lang))||null;
+}
+if('speechSynthesis' in window){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}
+
+function startMusic(M){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  ctx=new AC();
+  master=ctx.createGain();master.gain.value=.4;master.connect(ctx.destination);
+  const beat=60/M.tempo;
+  const root=50+Math.floor(Math.random()*10);
+  const scale=M.minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
+  const prog=M.minor?[0,8,3,10]:[0,7,9,5];
+  const third=M.minor?3:4;
+  let nextT=ctx.currentTime+.1,beatN=0,idx=3;
+
+  const nb=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate),nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
 
   function tone(f,t,d,type,g,lp){
     const o=ctx.createOscillator(),e=ctx.createGain();
     o.type=type;o.frequency.value=f;
-    let node=o;
-    if(lp){const fl=ctx.createBiquadFilter();fl.type='lowpass';fl.frequency.value=lp;o.connect(fl);node=fl}
-    node.connect(e);e.connect(master);
+    let n=o;
+    if(lp){const fl=ctx.createBiquadFilter();fl.type='lowpass';fl.frequency.value=lp;o.connect(fl);n=fl}
+    n.connect(e);e.connect(master);
     e.gain.setValueAtTime(0,t);
-    e.gain.linearRampToValueAtTime(g,t+.02);
+    e.gain.linearRampToValueAtTime(g,t+.03);
     e.gain.exponentialRampToValueAtTime(.001,t+d);
     o.start(t);o.stop(t+d+.05);
   }
-  const nb=ctx.createBuffer(1,sr,sr),nd=nb.getChannelData(0);
-  for(let i=0;i<sr;i++)nd[i]=r()*2-1;
   function noise(t,d,g,hp){
     const n=ctx.createBufferSource();n.buffer=nb;
     const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=hp;
@@ -117,99 +132,96 @@ async function make(text,seed){
     o.start(t);o.stop(t+.3);
   }
 
-  let idx=3;
-  for(let b=0;b<bars;b++){
-    const cr=root+prog[b%4];
-    const t0=b*4*beat+.1;
-    const padType=wildness>0.5?'sawtooth':'triangle';
-    const padLp=wildness>0.5?1800:900;
-    [0,third,7].forEach(iv=>{
-      tone(mtof(cr+iv),t0,4*beat,padType,.07,padLp);
-    });
-    tone(mtof(cr-12),t0,beat*(wildness>0.5?.9:3.8),'sine',.22);
-    if(wildness>0.5)for(let k=1;k<4;k++)tone(mtof(cr-12),t0+k*beat,beat*.9,'sine',.18);
-
-    for(let k=0;k<4;k++){
-      const t=t0+k*beat;
-      if(wildness>0.35){
-        kick(t,.6);
-        if(k%2===1)noise(t,.15,.35,1500);
-        noise(t,.04,.12,7000);noise(t+beat/2,.04,.1,7000);
-      }else if(k===0){kick(t,.35)}
+  function playBeat(n,t){
+    const bar=Math.floor(n/4),k=n%4;
+    const cr=root+prog[bar%4];
+    if(k===0){
+      [0,third,7].forEach(iv=>tone(mtof(cr+iv),t,4*beat,M.pad,.08,M.lp));
+      tone(mtof(cr-12),t,M.drums?beat*.9:4*beat*.95,'sine',.22);
+    }else if(M.drums&&M.name==='divoká'){
+      tone(mtof(cr-12),t,beat*.9,'sine',.18);
     }
-
-    let pos=0;
-    while(pos<4){
-      const len=wildness>0.5?(r()<.6?.5:1):(r()<.3?1:2);
-      if(r()<(wildness>0.5?.1:.25)){pos+=len;continue}
-      idx+=Math.floor(r()*5)-2;
+    if(M.drums){
+      if(M.name==='divoká'||k%2===0)kick(t,.55);
+      if(k%2===1)noise(t,.14,.3,1500);
+      if(M.name==='divoká'){noise(t,.04,.1,7000);noise(t+beat/2,.04,.1,7000)}
+    }
+    const step=M.name==='divoká'?.5:1;
+    for(let p=0;p<1;p+=step){
+      if(Math.random()<(M.name==='divoká'?.1:.3))continue;
+      idx+=Math.floor(Math.random()*5)-2;
       idx=Math.max(0,Math.min(13,idx));
       const m=root+12+scale[idx%7]+12*Math.floor(idx/7);
-      const t=t0+pos*beat;
-      if(wildness>0.5){tone(mtof(m),t,len*beat*.9,'square',.09,3000)}
-      else{tone(mtof(m),t,len*beat*1.6,'sine',.2)}
-      pos+=len;
+      tone(mtof(m),t+p*beat,beat*(M.name==='divoká'?.45:1.6),M.mel,M.name==='na uspání'?.12:.16,3200);
     }
   }
-  const buf=await ctx.startRendering();
-  return {buf,tempo,minor,wildness,dur:buf.duration};
+
+  timer=setInterval(()=>{
+    while(nextT<ctx.currentTime+.3){playBeat(beatN,nextT);nextT+=beat;beatN++}
+  },40);
 }
 
-function toWav(buf){
-  const ch=buf.numberOfChannels,len=buf.length,sr=buf.sampleRate;
-  const d=[];for(let c=0;c<ch;c++)d.push(buf.getChannelData(c));
-  let peak=0;
-  for(let c=0;c<ch;c++)for(let i=0;i<len;i++){const a=Math.abs(d[c][i]);if(a>peak)peak=a}
-  const k=peak>0?0.92/peak:1;
-  const ab=new ArrayBuffer(44+len*ch*2),v=new DataView(ab);
-  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
-  ws(0,'RIFF');v.setUint32(4,36+len*ch*2,true);ws(8,'WAVE');ws(12,'fmt ');
-  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
-  v.setUint32(24,sr,true);v.setUint32(28,sr*ch*2,true);v.setUint16(32,ch*2,true);v.setUint16(34,16,true);
-  ws(36,'data');v.setUint32(40,len*ch*2,true);
-  let o=44;
-  for(let i=0;i<len;i++)for(let c=0;c<ch;c++){
-    const x=Math.max(-1,Math.min(1,d[c][i]*k));
-    v.setInt16(o,x<0?x*0x8000:x*0x7FFF,true);o+=2;
+function sing(M,lines){
+  const flat=[];
+  lines.forEach((ln,li)=>ln.split(/\s+/).filter(Boolean).forEach((w,i,a)=>flat.push({w,li,end:i===a.length-1})));
+  words=flat;wi=0;
+  let idx=4;
+  const ly=$('ly');
+  function next(){
+    if(!running)return;
+    if(wi>=words.length){setTimeout(()=>{if(running)stop()},2500);return}
+    const it=words[wi++];
+    [...ly.children].forEach((e,j)=>e.classList.toggle('on',j===it.li));
+    idx+=Math.floor(Math.random()*5)-2;
+    idx=Math.max(0,Math.min(10,idx));
+    const u=new SpeechSynthesisUtterance(it.w);
+    u.lang='cs-CZ';
+    if(voice)u.voice=voice;
+    u.rate=M.rate;
+    u.pitch=Math.max(.1,Math.min(2,.5+(idx/10)*M.up*1.3*M.pitch));
+    u.volume=1;
+    const pause=it.end?(M.name==='divoká'?250:700):(M.name==='divoká'?30:120);
+    u.onend=()=>setTimeout(next,pause);
+    u.onerror=()=>setTimeout(next,pause);
+    speechSynthesis.speak(u);
   }
-  return new Blob([ab],{type:'audio/wav'});
+  setTimeout(next,1200);
 }
 
-function dl(blob,name){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=name;
-  document.body.appendChild(a);a.click();a.remove();
+function stop(){
+  running=false;
+  clearInterval(timer);timer=null;
+  if('speechSynthesis' in window)speechSynthesis.cancel();
+  if(ctx){try{ctx.close()}catch(e){}ctx=null}
+  $('st').disabled=true;
+  $('go').disabled=false;
+  $('go').textContent='▶ Zahrát znovu';
+  [...$('ly').children].forEach(e=>e.classList.remove('on'));
 }
 
-$('go').onclick=async()=>{
+$('go').onclick=()=>{
   const t=$('t').value.trim(),l=$('l').value.trim();
-  if(!t){alert('Napiš, o čem bude písnička.');return}
-  const btn=$('go');btn.disabled=true;btn.textContent='Generuji…';
-  try{
-    const res=await make(t,hash(t+l)^Date.now());
-    wavBlob=toWav(res.buf);
-    if(url)URL.revokeObjectURL(url);
-    url=URL.createObjectURL(wavBlob);
-    $('au').src=url;
-    const nm=res.wildness>0.6?'divoká':res.wildness<0.3?'smutná':'smíšená';
-    $('info').textContent='Nálada: '+nm+' · tempo '+res.tempo+' BPM · '+(res.minor?'moll':'dur')+' · '+Math.round(res.dur)+' s';
-    const lines=l?l.split(/\n+/).filter(Boolean):[];
-    const ly=$('ly');ly.innerHTML='';
-    lines.forEach(x=>{const d=document.createElement('div');d.textContent=x;ly.appendChild(d)});
-    txtBlob=new Blob(['Téma: '+t+'\n\n'+(l||'(bez textu)')],{type:'text/plain;charset=utf-8'});
-    $('dt').style.display='inline-block';
-    $('res').classList.remove('h');
-    const au=$('au');
-    au.ontimeupdate=()=>{
-      if(!lines.length)return;
-      const i=Math.min(lines.length-1,Math.floor(au.currentTime/au.duration*lines.length));
-      [...ly.children].forEach((e,j)=>e.classList.toggle('on',j===i));
-    };
-  }catch(e){alert('Chyba při generování: '+e.message)}
-  btn.disabled=false;btn.textContent='Vygenerovat znovu';
+  if(!t&&!l&&$('m').value==='auto'){alert('Napiš, o čem bude písnička, nebo vyber náladu.');return}
+  if(running)stop();
+  let key=$('m').value;
+  if(key==='auto')key=detect(t+' '+l);
+  const M=MOODS[key];
+  const lines=l?l.split(/\n+/).map(s=>s.trim()).filter(Boolean):[];
+  const ly=$('ly');ly.innerHTML='';
+  lines.forEach(x=>{const d=document.createElement('div');d.textContent=x;ly.appendChild(d)});
+  let info='Nálada: '+M.name+' · tempo '+M.tempo+' BPM';
+  if(lines.length){
+    if(!('speechSynthesis' in window))info+=' · tento prohlížeč neumí zpívat, bude jen hudba';
+    else if(!voice)info+=' · český hlas nenalezen, zpívá výchozí hlas';
+  }else info+=' · bez textu';
+  $('info').textContent=info;
+  $('res').classList.remove('h');
+  running=true;
+  $('go').disabled=true;$('st').disabled=false;
+  startMusic(M);
+  if(lines.length&&'speechSynthesis' in window){speechSynthesis.cancel();sing(M,lines)}
 };
-$('dw').onclick=()=>wavBlob&&dl(wavBlob,'pisnicka.wav');
-$('dt').onclick=()=>txtBlob&&dl(txtBlob,'text_pisnicky.txt');
+$('st').onclick=stop;
 </script>
 </body>
 </html>
